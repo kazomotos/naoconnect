@@ -188,11 +188,11 @@ class OpenMuc (Param):
 
     def _putTransferChannel(self, value):
         ''' 
-        [{
+        {
             "device:" <device>, "channel" <channel>, 
             "telegraf": [<twin>, <insatance>, <measurement>]
             "interval": <sec>
-        }] 
+        } 
         '''
         self.db.putTinyTables(OpenMuc.NAME_TRANSFERCHANNELS, value)
         self.transfere = self._getTransferChannels()

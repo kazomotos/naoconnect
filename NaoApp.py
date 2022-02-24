@@ -138,7 +138,7 @@ class NaoApp(Param):
         while 1==1:
             try:
                 data_len = len(data)
-                status = self.sendTelegrafData(["6221352146234623465,instance=2341642346 123462357245723455=0.23 111224652346232", "6221352146234623465,instance=2341642346 123462357245723455=0.23 111224652346234"])    
+                status = self.sendTelegrafData(data)    
                 if status == 204:
                     self.sending_counter += data_len
                     print("number of sent values:", data_len)
@@ -171,7 +171,7 @@ class NaoApp(Param):
                 sleep(self.transfer_config[NaoApp.ERRORSLEEP])
                 self.DataFromDb.refreshConnection()
             try:
-                status = self.sendTelegrafData(["6221352146234623465,instance=2341642346 123462357245723455=0.23 111224652346232", "6221352146234623465,instance=2341642346 123462357245723455=0.23 111224652346234"])    
+                status = self.sendTelegrafData(data)    
                 if status == 204:
                     self.DataFromDb.confirmTransfer()
                     self.sending_counter += data_len
