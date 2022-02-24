@@ -154,7 +154,7 @@ class NaoApp(Param):
                 print("ERROR-Nao:", e)
                 sleep(self.transfer_config[NaoApp.ERRORSLEEP])
             if self.end_transfer: break
-            if time() - start > NaoApp.MAXBUFFERTIME: 
+            if time() - start > self.transfer_config(NaoApp.MAXBUFFERTIME): 
                 print("WARNING:", len(data), "datasets destroyed")
                 break 
             # TODO: hier könnte noch ein Buffer auf Festplatte gebaut werden
