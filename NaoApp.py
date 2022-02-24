@@ -6,8 +6,8 @@ from urllib.parse import quote
 from json import loads
 from time import sleep, time
 from threading import Thread
-from nao.TinyDb import TinyDb
-from nao.Param import Param
+from naoconnect.TinyDb import TinyDb
+from naoconnect.Param import Param
 
 class NaoApp(Param):
     URLLOGIN = "/api/nao/auth/login"

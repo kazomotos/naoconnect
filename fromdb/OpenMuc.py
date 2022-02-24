@@ -4,8 +4,8 @@ from base64 import b64encode
 from json import loads
 from time import time
 from copy import copy
-from nao.TinyDb import TinyDb
-from nao.Param import Param
+from naoconnect.TinyDb import TinyDb
+from naoconnect.Param import Param
 
 class OpenMuc (Param):
     RESTCHANNELS = "/rest/channels/"

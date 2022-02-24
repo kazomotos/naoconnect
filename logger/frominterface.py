@@ -1,5 +1,5 @@
-from nao.TinyDb import TinyDb
-from nao.Param import Param
+from naoconnect.TinyDb import TinyDb
+from naoconnect.Param import Param
 from datetime import datetime
 from time import sleep
 

@@ -1,5 +1,4 @@
 'Autor: Rupert Wieser -- Naotilus -- 20220219'
-from tkinter.messagebox import RETRY
 from tinydb import TinyDB, where, Query
 
 class TinyDb ():
