@@ -3,6 +3,7 @@ from naoconnect.Param import Param
 from datetime import datetime
 from time import sleep
 
+
 class vVissmann(Param):
     SECTONANO = 1000000000
 
@@ -30,14 +31,13 @@ class vVissmann(Param):
     def refreshConnection(self):
         print("refresh viControl")
         try:
-            if self.refreshConnection >= 5:
-                del self.Control
-                self.Control = None
-                sleep(60)
-                self.Control = self.viControl()
+            if self.refreshConnection >= 3:
+                return True
             self.Control.initComm()
+            return False
         except:
             print("reconnect")
+            return False
             
     
     def exit(self):

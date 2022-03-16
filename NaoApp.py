@@ -30,6 +30,28 @@ class NaoApp(Param):
     STANDARD_LOGGINGINTERVAL = 60
     STANDARD_DATAPERTELEGRAF = 200000
 
+
+class NaoApp(Param):
+    URLLOGIN = "/api/nao/auth/login"
+    URLTELEGRAF = "/api/telegraf/"
+    BEARER = "Bearer "
+    TRANSFERCONFIG = "transfer_config"
+    LOGINHEADER = {'Content-Type': 'application/x-www-form-urlencoded'}
+    TRANSFERHEADER = {"Authorization": "", 'Content-Type': 'text/plain', 'Cookie': ""}
+    MESSAGELOGIN = "MESSAGE: login nao"
+    TRANSFERINTERVAL = "transferinterval"
+    DATAPERTELEGRAF = "max_data_per_telegraf"
+    ERRORSLEEP = "error_sleep_time"
+    ERRORSLEEPLOGGER = "error_sleep_time_logger"
+    TOTALTRANSFER = "total_number_of_sent_data"
+    MAXBUFFERTIME = "max_buffer_time_DDR"
+    LOGGINGINTERVAL = "logging_interval"
+    STANDARD_MAXBUFFERTIME = 1800
+    STANDARD_ERRORSLEEP = 120
+    STANDARD_TRANSFERINTERVAL = 900
+    STANDARD_LOGGINGINTERVAL = 60
+    STANDARD_DATAPERTELEGRAF = 200000
+
     def __init__(self, host, email, password, DataFromDb=False, DataForLogging=False, tiny_db_name="nao.json"):
         self.auth = {
             NaoApp.NAME_HOST:host,
@@ -117,7 +139,7 @@ class NaoApp(Param):
                 self.end_confirmation = True
                 break     
 
-    def __DataTransferLoggingData(self):
+    def __DataTransferLoggingData(self):    
         while 1==1:
             start = time()
             try:    
@@ -125,7 +147,9 @@ class NaoApp(Param):
             except Exception as e:
                 print("ERROR-FromDb:", e)
                 sleep(self.transfer_config[NaoApp.ERRORSLEEPLOGGER])
-                self.DataForLogging.refreshConnection()
+                ending = self.DataForLogging.refreshConnection()
+                if ending:
+                    self.end_transfer = True
             diff = time() - start
             if self.end_transfer:
                 self.DataForLogging.exit()
@@ -241,3 +265,4 @@ if __name__ == "__main__":
     'test'
     Nao = NaoApp("nao-app.de", "???", "????")
     Nao.startDataTransferFromDb()
+
