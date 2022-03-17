@@ -226,20 +226,22 @@ class NaoApp(Param):
                 sleep(self.transfer_config[NaoApp.TRANSFERINTERVAL]-diff)
 
     def __dataTransferFromListener(self):
+        self.DataForListener.refreshConnection()
         while 1==1:
             start = time() 
             data = self.DataForListener.getTelegrafData()
             data_len = len(data)
             try:
-                status = self.sendTelegrafData(data)    
-                if status == 204:
-                    self.sending_counter += data_len
-                    print("number of sent values:", data_len)
-                elif status ==500:
-                    print("ERROR: nao.status=", status)
-                    self._loginNao()
-                else:
-                    print("ERROR: nao.status=", status)
+                if data != []:
+                    status = self.sendTelegrafData(data)    
+                    if status == 204:
+                        self.sending_counter += data_len
+                        print("number of sent values:", data_len)
+                    elif status ==500:
+                        print("ERROR: nao.status=", status)
+                        self._loginNao()
+                    else:
+                        print("ERROR: nao.status=", status)
             except Exception as e:
                 print("ERROR-Nao:", e)
                 sleep(self.transfer_config[NaoApp.ERRORSLEEP])
