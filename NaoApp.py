@@ -52,7 +52,7 @@ class NaoApp(Param):
     STANDARD_LOGGINGINTERVAL = 60
     STANDARD_DATAPERTELEGRAF = 200000
 
-    def __init__(self, host, email, password, DataFromDb=False, DataForLogging=False, tiny_db_name="nao.json"):
+    def __init__(self, host, email, password, DataFromDb=False, DataForLogging=False, DataForListener=False, tiny_db_name="nao.json"):
         self.auth = {
             NaoApp.NAME_HOST:host,
             NaoApp.NAME_PAYLOAD:NaoApp.NAME_EMAIL+"="+quote(email)+"&"+NaoApp.NAME_PASSWD+"="+quote(password)
@@ -62,6 +62,7 @@ class NaoApp(Param):
         self.db = TinyDb(tiny_db_name)
         self.DataFromDb = DataFromDb
         self.DataForLogging = DataForLogging
+        self.DataForListener = DataForListener
         self.transfer_config = self._getTransferCofnig()
         self.end_transfer = False
         self.end_confirmation = False
@@ -102,6 +103,13 @@ class NaoApp(Param):
         Thread(target=self.__DataTransferLogging, args=()).start()
         self.__transferInterrupt()
 
+    def startDataTransferFromListener(self):
+        if not self.DataForListener: 
+            print("ERROR: no interface logger in this class initialized")
+            return(-1)
+        Thread(target=self.__dataTransferFromListener, args=()).start()
+        self.__transferInterrupt()
+
     def __transferInterrupt(self):
         start_time = time()
         while 1==1:
@@ -131,7 +139,7 @@ class NaoApp(Param):
             self.logging_data = []
             self.logging_data_add = self.logging_data.extend
             Thread(target=self.__DataTransferLoggingBuffer, args=(data,)).start()
-            if time() - start > 1800:
+            if time() - start > 3600:
                 self._addAndUpdateTotalNumberOfSentData()
                 start = time()
             if self.end_transfer:
@@ -212,6 +220,35 @@ class NaoApp(Param):
             diff = time() - start
             if self.end_transfer:
                 self.DataFromDb.exit()
+                self.end_confirmation = True
+                break
+            if diff < self.transfer_config[NaoApp.TRANSFERINTERVAL]:
+                sleep(self.transfer_config[NaoApp.TRANSFERINTERVAL]-diff)
+
+    def __dataTransferFromListener(self):
+        while 1==1:
+            start = time() 
+            data = self.DataForListener.getTelegrafData()
+            data_len = len(data)
+            try:
+                status = self.sendTelegrafData(data)    
+                if status == 204:
+                    self.sending_counter += data_len
+                    print("number of sent values:", data_len)
+                elif status ==500:
+                    print("ERROR: nao.status=", status)
+                    self._loginNao()
+                else:
+                    print("ERROR: nao.status=", status)
+            except Exception as e:
+                print("ERROR-Nao:", e)
+                sleep(self.transfer_config[NaoApp.ERRORSLEEP])
+                self.DataForListener.refreshConnection()
+            if self.sending_counter > 10000:
+                self._addAndUpdateTotalNumberOfSentData()
+            diff = time() - start
+            if self.end_transfer:
+                self.DataForListener.exit()
                 self.end_confirmation = True
                 break
             if diff < self.transfer_config[NaoApp.TRANSFERINTERVAL]:
