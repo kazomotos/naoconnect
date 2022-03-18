@@ -236,7 +236,7 @@ class NaoApp(Param):
                 print("delteted data-len:", int(len(self.logging_data)-NaoApp.STANDARD_DATAPERTELEGRAF))
                 self.logging_data[int(len(self.logging_data)-NaoApp.STANDARD_DATAPERTELEGRAF):]
             try:
-                if data != []:
+                if self.logging_data != []:
                     status = self.sendTelegrafData(self.logging_data)    
                     if status == 204:
                         self.sending_counter += data_len

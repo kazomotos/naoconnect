@@ -21,6 +21,7 @@ class Mqtt(Param):
     def getTelegrafData(self):
         data = self.data
         self.data = []
+        self.add_data = self.data.append
         return(data)
     
     def _connect(self):
