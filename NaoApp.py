@@ -231,11 +231,16 @@ class NaoApp(Param):
             start = time() 
             data = self.DataForListener.getTelegrafData()
             data_len = len(data)
+            self.logging_data_add(data)
+            if (len(self.logging_data)) > NaoApp.STANDARD_DATAPERTELEGRAF:
+                print("delteted data-len:", int(len(self.logging_data)-NaoApp.STANDARD_DATAPERTELEGRAF))
+                self.logging_data[int(len(self.logging_data)-NaoApp.STANDARD_DATAPERTELEGRAF):]
             try:
                 if data != []:
-                    status = self.sendTelegrafData(data)    
+                    status = self.sendTelegrafData(self.logging_data)    
                     if status == 204:
                         self.sending_counter += data_len
+                        self.logging_data = []
                         print("number of sent values:", data_len)
                     elif status ==500:
                         print("ERROR: nao.status=", status)
