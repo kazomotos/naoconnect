@@ -240,7 +240,9 @@ class NaoApp(Param):
                     status = self.sendTelegrafData(self.logging_data)    
                     if status == 204:
                         self.sending_counter += data_len
+                        del self.logging_data
                         self.logging_data = []
+                        self.logging_data_add = self.logging_data.extend
                         print("number of sent values:", data_len)
                     elif status ==500:
                         print("ERROR: nao.status=", status)
