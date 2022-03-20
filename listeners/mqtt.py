@@ -12,6 +12,7 @@ class Mqtt(Param):
 
     def __init__ (self, broker, tiny_db_name="mqtt.json"):
         self.db = TinyDb(tiny_db_name)
+        self.broker = broker
         self.transfere = self._getTransferChannels()
         self.data = []
         self.add_data = self.data.append
@@ -32,7 +33,7 @@ class Mqtt(Param):
         subscribe.callback(
             self.__on_message, 
             list(self.transfere.keys()), 
-            hostname="192.168.178.152"
+            hostname=self.broker
         )
         print("mqtt connected")
 
