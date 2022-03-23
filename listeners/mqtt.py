@@ -99,10 +99,10 @@ class Mqtt(Param):
             self.db.putTinyTables(Mqtt.NAME_TRANSFERCHANNELS, val)
         self.transfere = value
 
-    def print(self, log):
+    def print(self, log:str):
         if self.error_log:
-            error_file = open(self.error_log, "w")
-            error_file.writelines(log)
+            error_file = open(self.error_log, "a")
+            error_file.writelines(log+'\n')
             error_file.close()
         else:
             print(log)

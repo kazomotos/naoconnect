@@ -305,10 +305,10 @@ class NaoApp(Param):
         self.headers[NaoApp.NAME_WEBAUTH] = NaoApp.BEARER + data[NaoApp.NAME_TOKENAC]
         # self.headers[NaoApp.NAME_COOKIE] = NaoApp.NAME_TOKENRE + data[NaoApp.NAME_TOKENRE]
 
-    def print(self, log):
+    def print(self, log:str):
         if self.error_log:
-            error_file = open(self.error_log, "w")
-            error_file.writelines(log)
+            error_file = open(self.error_log, "a")
+            error_file.writelines(log+'\n')
             error_file.close()
         else:
             print(log)
