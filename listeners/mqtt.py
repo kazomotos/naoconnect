@@ -10,7 +10,7 @@ import paho.mqtt.subscribe as subscribe
 class Mqtt(Param):
     SECTONANO = 1000000000
 
-    def __init__ (self, broker, tiny_db_name="mqtt.json"):
+    def __init__ (self, broker, tiny_db_name="mqtt.json", error_log=False):
         self.db = TinyDb(tiny_db_name)
         self.broker = broker
         self.transfere = self._getTransferChannels()
@@ -18,6 +18,7 @@ class Mqtt(Param):
         self.add_data = self.data.append
         self.disconnect = False
         self.disconnected = True
+        self.error_log=error_log
     
     def getTelegrafData(self):
         data = self.data
@@ -35,7 +36,7 @@ class Mqtt(Param):
             list(self.transfere.keys()), 
             hostname=self.broker
         )
-        print("mqtt connected")
+        self.print("mqtt connected")
 
     def __on_message(self, client, userdata, message):
         try:
@@ -47,18 +48,18 @@ class Mqtt(Param):
                     int(round(datetime.timestamp(datetime.utcnow()),0)*Mqtt.SECTONANO)
             ))
         except Exception as e:
-            print(e)
+            self.print(e)
             client.disconnect()
             self.disconnected = True
-            print("mqtt disconneted")
+            self.print("mqtt disconneted")
             self.refreshConnection()
         if self.disconnect:
             client.disconnect()
-            print("mqtt disconneted")
+            self.print("mqtt disconneted")
             self.disconnected = True
 
     def refreshConnection(self):
-        print("refresh mqtt")
+        self.print("refresh mqtt")
         self.disconnect = True
         while 1==1:
             sleep(5)
@@ -97,3 +98,11 @@ class Mqtt(Param):
         for val in value:
             self.db.putTinyTables(Mqtt.NAME_TRANSFERCHANNELS, val)
         self.transfere = value
+
+    def print(self, log):
+        if self.error_log:
+            error_file = open(self.error_log, "w")
+            error_file.writelines(log)
+            error_file.close()
+        else:
+            print(log)

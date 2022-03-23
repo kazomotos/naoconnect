@@ -52,11 +52,12 @@ class NaoApp(Param):
     STANDARD_LOGGINGINTERVAL = 60
     STANDARD_DATAPERTELEGRAF = 200000
 
-    def __init__(self, host, email, password, DataFromDb=False, DataForLogging=False, DataForListener=False, tiny_db_name="nao.json"):
+    def __init__(self, host, email, password, DataFromDb=False, DataForLogging=False, DataForListener=False, tiny_db_name="nao.json", error_log=False):
         self.auth = {
             NaoApp.NAME_HOST:host,
             NaoApp.NAME_PAYLOAD:NaoApp.NAME_EMAIL+"="+quote(email)+"&"+NaoApp.NAME_PASSWD+"="+quote(password)
         }
+        self.error_log = error_log
         self.__conneciton = None
         self.headers = NaoApp.TRANSFERHEADER
         self.db = TinyDb(tiny_db_name)
@@ -91,21 +92,21 @@ class NaoApp(Param):
     
     def startDataTransferFromDb(self):
         if not self.DataFromDb: 
-            print("ERROR: no db in this class initialized")
+            self.print("ERROR: no db in this class initialized")
             return(-1)
         Thread(target=self.__dataTransferFromDb, args=()).start()
         self.__transferInterrupt()
     
     def startDataTransferLogging(self):
         if not self.DataForLogging: 
-            print("ERROR: no interface logger in this class initialized")
+            self.print("ERROR: no interface logger in this class initialized")
             return(-1)
         Thread(target=self.__DataTransferLogging, args=()).start()
         self.__transferInterrupt()
 
     def startDataTransferFromListener(self):
         if not self.DataForListener: 
-            print("ERROR: no interface logger in this class initialized")
+            self.print("ERROR: no interface logger in this class initialized")
             return(-1)
         Thread(target=self.__dataTransferFromListener, args=()).start()
         self.__transferInterrupt()
@@ -113,11 +114,11 @@ class NaoApp(Param):
     def __transferInterrupt(self):
         start_time = time()
         while 1==1:
-            print("enter 'exit' for end data transfer to telegraf")
-            print("priode of transfer time:", round((time() - start_time)/60,2), "min, total sent value:",self.sending_counter)
+            self.print("enter 'exit' for end data transfer to telegraf")
+            self.print("priode of transfer time:", round((time() - start_time)/60,2), "min, total sent value:",self.sending_counter)
             input_str = input()
             if input_str == "exit" or input_str == "'exit'":
-                print("process will end soon")
+                self.print("process will end soon")
                 self.end_transfer = True
                 break
         while 1==1:
@@ -128,7 +129,7 @@ class NaoApp(Param):
 
     def exit(self):
         self._addAndUpdateTotalNumberOfSentData()
-        print("ending")
+        self.print("ending")
 
     def __DataTransferLogging(self):
         Thread(target=self.__DataTransferLoggingData, args=()).start()
@@ -153,7 +154,7 @@ class NaoApp(Param):
             try:    
                 self.logging_data_add(self.DataForLogging.getTelegrafData())
             except Exception as e:
-                print("ERROR-FromDb:", e)
+                self.print("ERROR-FromDb:", e)
                 sleep(self.transfer_config[NaoApp.ERRORSLEEPLOGGER])
                 ending = self.DataForLogging.refreshConnection()
                 if ending:
@@ -173,21 +174,20 @@ class NaoApp(Param):
                 status = self.sendTelegrafData(data)    
                 if status == 204:
                     self.sending_counter += data_len
-                    print("number of sent values:", data_len)
                     break
                 elif status == 500:
-                    print("ERROR: nao.status=", status)
+                    self.print("ERROR: nao.status=", status)
                     sleep(self.transfer_config[NaoApp.ERRORSLEEP])
                     self._loginNao()
                 else:
-                    print("ERROR: nao.status=", status)
+                    self.print("ERROR: nao.status=", status)
                     sleep(self.transfer_config[NaoApp.ERRORSLEEP])
             except Exception as e:
-                print("ERROR-Nao:", e)
+                self.print("ERROR-Nao:", e)
                 sleep(self.transfer_config[NaoApp.ERRORSLEEP])
             if self.end_transfer: break
             if time() - start > self.transfer_config[NaoApp.MAXBUFFERTIME]: 
-                print("WARNING:", len(data), "datasets destroyed")
+                self.print("WARNING:", len(data), "datasets destroyed")
                 break 
             # TODO: hier könnte noch ein Buffer auf Festplatte gebaut werden
 
@@ -199,7 +199,7 @@ class NaoApp(Param):
                 data_len = len(data)
             except Exception as e:
                 data = []
-                print("ERROR-FromDb:", e)
+                self.print("ERROR-FromDb:", e)
                 sleep(self.transfer_config[NaoApp.ERRORSLEEP])
                 self.DataFromDb.refreshConnection()
             try:
@@ -207,14 +207,13 @@ class NaoApp(Param):
                 if status == 204:
                     self.DataFromDb.confirmTransfer()
                     self.sending_counter += data_len
-                    print("number of sent values:", data_len)
                 elif status ==500:
-                    print("ERROR: nao.status=", status)
+                    self.print("ERROR: nao.status=", status)
                     self._loginNao()
                 else:
-                    print("ERROR: nao.status=", status)
+                    self.print("ERROR: nao.status=", status)
             except Exception as e:
-                print("ERROR-Nao:", e)
+                self.print("ERROR-Nao:", e)
                 sleep(self.transfer_config[NaoApp.ERRORSLEEP])
                 self.DataFromDb.refreshConnection()
             diff = time() - start
@@ -233,7 +232,7 @@ class NaoApp(Param):
             data_len = len(data)
             self.logging_data_add(data)
             if (len(self.logging_data)) > NaoApp.STANDARD_DATAPERTELEGRAF:
-                print("delteted data-len:", int(len(self.logging_data)-NaoApp.STANDARD_DATAPERTELEGRAF))
+                self.print("delteted data-len:", int(len(self.logging_data)-NaoApp.STANDARD_DATAPERTELEGRAF))
                 self.logging_data[int(len(self.logging_data)-NaoApp.STANDARD_DATAPERTELEGRAF):]
             try:
                 if self.logging_data != []:
@@ -243,14 +242,13 @@ class NaoApp(Param):
                         del self.logging_data
                         self.logging_data = []
                         self.logging_data_add = self.logging_data.extend
-                        print("number of sent values:", data_len)
                     elif status ==500:
-                        print("ERROR: nao.status=", status)
+                        self.print("ERROR: nao.status=", status)
                         self._loginNao()
                     else:
-                        print("ERROR: nao.status=", status)
+                        self.print("ERROR: nao.status=", status)
             except Exception as e:
-                print("ERROR-Nao:", e)
+                self.print("ERROR-Nao:", e)
                 sleep(self.transfer_config[NaoApp.ERRORSLEEP])
                 self.DataForListener.refreshConnection()
             if self.sending_counter > 10000:
@@ -299,13 +297,21 @@ class NaoApp(Param):
         return(number)
 
     def _loginNao(self):    
-        print(NaoApp.MESSAGELOGIN)
+        self.print(NaoApp.MESSAGELOGIN)
         self.__conneciton = http.client.HTTPSConnection(self.auth[NaoApp.NAME_HOST])
         self.__conneciton.request(NaoApp.NAME_POST, NaoApp.URLLOGIN, self.auth[NaoApp.NAME_PAYLOAD], NaoApp.LOGINHEADER)
         res = self.__conneciton.getresponse()
         data = loads(res.read().decode(NaoApp.NAME_UTF8))
         self.headers[NaoApp.NAME_WEBAUTH] = NaoApp.BEARER + data[NaoApp.NAME_TOKENAC]
         # self.headers[NaoApp.NAME_COOKIE] = NaoApp.NAME_TOKENRE + data[NaoApp.NAME_TOKENRE]
+
+    def print(self, log):
+        if self.error_log:
+            error_file = open(self.error_log, "w")
+            error_file.writelines(log)
+            error_file.close()
+        else:
+            print(log)
 
 if __name__ == "__main__":
     'test'
