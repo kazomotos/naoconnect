@@ -225,7 +225,6 @@ class NaoApp(Param):
                 sleep(self.transfer_config[NaoApp.TRANSFERINTERVAL]-diff)
 
     def __dataTransferFromListener(self):
-        self.DataForListener.refreshConnection()
         while 1==1:
             start = time() 
             data = self.DataForListener.getTelegrafData()
