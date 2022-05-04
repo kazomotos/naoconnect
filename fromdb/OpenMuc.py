@@ -67,7 +67,7 @@ class OpenMuc (Param):
             for data_set in history[OpenMuc.RECORDS]:
                 count += 1
                 data_add(OpenMuc.FORMAT_TELEGRAFFRAMESTRUCT % (
-                    channelinfo[OpenMuc.NAME_TELEGRAF][0], channelinfo[OpenMuc.NAME_TELEGRAF][1], channelinfo[OpenMuc.NAME_TELEGRAF][2],
+                    channelinfo[OpenMuc.NAME_POINT][0], channelinfo[OpenMuc.NAME_POINT][1], channelinfo[OpenMuc.NAME_POINT][2],
                     data_set[OpenMuc.NAME_VALUE], data_set[OpenMuc.NAME_TIMESTAP]*OpenMuc.MILTONANO
                 ))
             if count >= max_data_len: break
