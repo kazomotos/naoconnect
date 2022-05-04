@@ -24,7 +24,7 @@ class OpenMuc (Param):
     LASTTIMESAVESEC = 1800
     MILTONANO = 1000000
     SECTOMIL = 1000
-    RESTETTIME = 1500000000000
+    RESETTIME = 1600000000000
 
     def __init__(self, host, port, username, password, tiny_db_name="muc.json"):
         self.playload = ""
@@ -67,7 +67,7 @@ class OpenMuc (Param):
             for data_set in history[OpenMuc.RECORDS]:
                 count += 1
                 data_add(OpenMuc.FORMAT_TELEGRAFFRAMESTRUCT % (
-                    channelinfo[OpenMuc.NAME_POINT][0], channelinfo[OpenMuc.NAME_POINT][1], channelinfo[OpenMuc.NAME_POINT][2],
+                    channelinfo[OpenMuc.NAME_TELEGRAF][0], channelinfo[OpenMuc.NAME_TELEGRAF][1], channelinfo[OpenMuc.NAME_TELEGRAF][2],
                     data_set[OpenMuc.NAME_VALUE], data_set[OpenMuc.NAME_TIMESTAP]*OpenMuc.MILTONANO
                 ))
             if count >= max_data_len: break
@@ -182,7 +182,7 @@ class OpenMuc (Param):
                 set(list(last_timestamps.keys()))
         ))
         if len(missing_channels) > 0:
-            for channel in missing_channels: last_timestamps[channel] = OpenMuc.RESTETTIME
+            for channel in missing_channels: last_timestamps[channel] = OpenMuc.RESETTIME
             self.db.putTinyTables(OpenMuc.NAME_LASTTIME, last_timestamps)
         return(last_timestamps)
 
