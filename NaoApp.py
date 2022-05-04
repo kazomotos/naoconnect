@@ -9,27 +9,6 @@ from threading import Thread
 from naoconnect.TinyDb import TinyDb
 from naoconnect.Param import Param
 
-class NaoApp(Param):
-    URLLOGIN = "/api/nao/auth/login"
-    URLTELEGRAF = "/api/telegraf/"
-    BEARER = "Bearer "
-    TRANSFERCONFIG = "transfer_config"
-    LOGINHEADER = {'Content-Type': 'application/x-www-form-urlencoded'}
-    TRANSFERHEADER = {"Authorization": "", 'Content-Type': 'text/plain', 'Cookie': ""}
-    MESSAGELOGIN = "MESSAGE: login nao"
-    TRANSFERINTERVAL = "transferinterval"
-    DATAPERTELEGRAF = "max_data_per_telegraf"
-    ERRORSLEEP = "error_sleep_time"
-    ERRORSLEEPLOGGER = "error_sleep_time_logger"
-    TOTALTRANSFER = "total_number_of_sent_data"
-    MAXBUFFERTIME = "max_buffer_time_DDR"
-    LOGGINGINTERVAL = "logging_interval"
-    STANDARD_MAXBUFFERTIME = 1800
-    STANDARD_ERRORSLEEP = 120
-    STANDARD_TRANSFERINTERVAL = 900
-    STANDARD_LOGGINGINTERVAL = 60
-    STANDARD_DATAPERTELEGRAF = 200000
-
 
 class NaoApp(Param):
     URLLOGIN = "/api/nao/auth/login"
@@ -115,7 +94,7 @@ class NaoApp(Param):
         start_time = time()
         while 1==1:
             self.print("enter 'exit' for end data transfer to telegraf")
-            self.print("priode of transfer time:", round((time() - start_time)/60,2), "min, total sent value:",self.sending_counter)
+            self.print("priode of transfer time: " + str(round((time() - start_time)/60,2)) + " min, total sent value: " + str(self.sending_counter))
             input_str = input()
             if input_str == "exit" or input_str == "'exit'":
                 self.print("process will end soon")
@@ -154,7 +133,7 @@ class NaoApp(Param):
             try:    
                 self.logging_data_add(self.DataForLogging.getTelegrafData())
             except Exception as e:
-                self.print("ERROR-FromDb:", e)
+                self.print("ERROR-FromDb: "+  str(e))
                 sleep(self.transfer_config[NaoApp.ERRORSLEEPLOGGER])
                 ending = self.DataForLogging.refreshConnection()
                 if ending:
@@ -176,18 +155,18 @@ class NaoApp(Param):
                     self.sending_counter += data_len
                     break
                 elif status == 500:
-                    self.print("ERROR: nao.status=", status)
+                    self.print("ERROR: nao.status=" + str(status))
                     sleep(self.transfer_config[NaoApp.ERRORSLEEP])
                     self._loginNao()
                 else:
-                    self.print("ERROR: nao.status=", status)
+                    self.print("ERROR: nao.status=" + str(status))
                     sleep(self.transfer_config[NaoApp.ERRORSLEEP])
             except Exception as e:
-                self.print("ERROR-Nao:", e)
+                self.print("ERROR-Nao:" + str(e))
                 sleep(self.transfer_config[NaoApp.ERRORSLEEP])
             if self.end_transfer: break
             if time() - start > self.transfer_config[NaoApp.MAXBUFFERTIME]: 
-                self.print("WARNING:", len(data), "datasets destroyed")
+                self.print("WARNING:" + str(len(data)) + " datasets destroyed")
                 break 
             # TODO: hier könnte noch ein Buffer auf Festplatte gebaut werden
 
@@ -199,7 +178,7 @@ class NaoApp(Param):
                 data_len = len(data)
             except Exception as e:
                 data = []
-                self.print("ERROR-FromDb:", e)
+                self.print("ERROR-FromDb:" + str(e))
                 sleep(self.transfer_config[NaoApp.ERRORSLEEP])
                 self.DataFromDb.refreshConnection()
             try:
@@ -208,12 +187,12 @@ class NaoApp(Param):
                     self.DataFromDb.confirmTransfer()
                     self.sending_counter += data_len
                 elif status ==500:
-                    self.print("ERROR: nao.status=", status)
+                    self.print("ERROR: nao.status=" + str(status))
                     self._loginNao()
                 else:
-                    self.print("ERROR: nao.status=", status)
+                    self.print("ERROR: nao.status=" + str(status))
             except Exception as e:
-                self.print("ERROR-Nao:", e)
+                self.print("ERROR-Nao:" + str(e))
                 sleep(self.transfer_config[NaoApp.ERRORSLEEP])
                 self.DataFromDb.refreshConnection()
             diff = time() - start
@@ -231,7 +210,7 @@ class NaoApp(Param):
             data_len = len(data)
             self.logging_data_add(data)
             if (len(self.logging_data)) > NaoApp.STANDARD_DATAPERTELEGRAF:
-                self.print("delteted data-len:", int(len(self.logging_data)-NaoApp.STANDARD_DATAPERTELEGRAF))
+                self.print("delteted data-len: " + str(int(len(self.logging_data)-NaoApp.STANDARD_DATAPERTELEGRAF)))
                 self.logging_data[int(len(self.logging_data)-NaoApp.STANDARD_DATAPERTELEGRAF):]
             try:
                 if self.logging_data != []:
@@ -242,12 +221,12 @@ class NaoApp(Param):
                         self.logging_data = []
                         self.logging_data_add = self.logging_data.extend
                     elif status ==500:
-                        self.print("ERROR: nao.status=", status)
+                        self.print("ERROR: nao.status=" + str(status))
                         self._loginNao()
                     else:
-                        self.print("ERROR: nao.status=", status)
+                        self.print("ERROR: nao.status=" + str(status))
             except Exception as e:
-                self.print("ERROR-Nao:", e)
+                self.print("ERROR-Nao:" + str(e))
                 sleep(self.transfer_config[NaoApp.ERRORSLEEP])
                 self.DataForListener.refreshConnection()
             if self.sending_counter > 10000:

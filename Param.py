@@ -23,7 +23,7 @@ class Param():
     NAME_PAYLOAD = "payload"
     NAME_TYPE = "type"
     NAME_CHANNEL = "channel"
-    NAME_TRANSFERCHANNELS = "connection"
+    NAME_TRANSFERCHANNELS = "transfer_channels"
     NAME_POINT = "point"
     NAME_ASSET = "asset"
     NAME_INSTANCE = "instance"
