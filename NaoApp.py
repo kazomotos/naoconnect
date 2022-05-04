@@ -176,6 +176,12 @@ class NaoApp(Param):
             try:    
                 data = self.DataFromDb.getTelegrafData(max_data_len=self.transfer_config[NaoApp.DATAPERTELEGRAF])
                 data_len = len(data)
+            except TimeoutError:
+                data = []
+                self.print("ERROR-FromDb: TimeoutError")
+                sleep(self.transfer_config[NaoApp.ERRORSLEEP])
+                self.DataFromDb.refreshConnection()
+                continue
             except Exception as e:
                 data = []
                 self.print("ERROR-FromDb:" + str(e))
@@ -274,7 +280,7 @@ class NaoApp(Param):
             number = number[0][NaoApp.NAME_COUNT]
         return(number)
 
-    def _loginNao(self):    
+    def _loginNao(self):        
         self.print(NaoApp.MESSAGELOGIN)
         self.__conneciton = http.client.HTTPSConnection(self.auth[NaoApp.NAME_HOST])
         self.__conneciton.request(NaoApp.NAME_POST, NaoApp.URLLOGIN, self.auth[NaoApp.NAME_PAYLOAD], NaoApp.LOGINHEADER)
