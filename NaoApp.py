@@ -192,11 +192,12 @@ class NaoApp(Param):
                 if status == 204:
                     self.DataFromDb.confirmTransfer()
                     self.sending_counter += data_len
-                elif status ==500:
+                elif status == 500:
                     self.print("ERROR: nao.status=" + str(status))
                     self._loginNao()
                 else:
                     self.print("ERROR: nao.status=" + str(status))
+                    self._loginNao()
             except Exception as e:
                 self.print("ERROR-Nao:" + str(e))
                 sleep(self.transfer_config[NaoApp.ERRORSLEEP])

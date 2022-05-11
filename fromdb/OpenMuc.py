@@ -3,6 +3,7 @@ import http.client
 from base64 import b64encode
 from json import loads
 from time import time
+from random import random
 from copy import copy
 from naoconnect.TinyDb import TinyDb
 from naoconnect.Param import Param
@@ -20,8 +21,15 @@ class OpenMuc (Param):
     DEVICE = "device"
     DEVICEID = "deviceId"
     RECORDS = "records"
+    FLAG = "flag"
+    FLAG_NO_VALUE_YET = "NO_VALUE_RECEIVED_YET"
+    FLAG_NO_DEVICE_BUSY = 'DEVICE_OR_INTERFACE_BUSY'
+    FLAG_DRIVER_UNKNOW = 'DRIVER_THREW_UNKNOWN_EXCEPTION'
+    FLAG_LOGGING_NOT_ACTIVE = 'DATA_LOGGING_NOT_ACTIVE'
+    FLAG_VALID = "VALID"
     UNUSEDCHANNELS = "unused_channels"
-    LASTTIMESAVESEC = 1800
+    TIMEOUT = 90
+    LASTTIMESAVESEC = 120
     MILTONANO = 1000000
     SECTOMIL = 1000
     RESETTIME = 1600000000000
@@ -34,42 +42,70 @@ class OpenMuc (Param):
         self.transfere = self._getTransferChannels()
         self.lasttimestamps = self._getLastTimestamps()
         self.marker_timestamps = None
+        self.error_cannels = []
         self.confirm_time = time()
         self.headers = {OpenMuc.NAME_WEBAUTH: 'Basic '+b64encode(
             bytes(username+":"+password, OpenMuc.NAME_UTF8)
         ).decode("ascii")}
-        self.__connection = http.client.HTTPConnection(self.host, self.port)
+        self.__connection = None
+        self.refreshConnection()
 
     def getTelegrafData(self, max_data_len):
         ''' [ '<twin>,instance=<insatance>, <measurement>=<value> <timestamp>' ] '''
+        print("getTelegrafData")
         self.marker_timestamps = copy(self.lasttimestamps)
         data = []
         data_add = data.append
         count = 0
         for channelinfo in self.transfere:
+            if channelinfo["devices"] == "Wetterstation":
+                continue
+            print(channelinfo)
+            if channelinfo[OpenMuc.CHANNEL] in self.error_cannels:
+                if 0.02 < random():
+                    continue
             first_time = self.lasttimestamps[channelinfo[OpenMuc.CHANNEL]] + channelinfo[OpenMuc.NAME_INTERVAL]*0.5
-            last_time = self.lasttimestamps[channelinfo[OpenMuc.CHANNEL]] + channelinfo[OpenMuc.NAME_INTERVAL]*max_data_len
+            last_time = self.lasttimestamps[channelinfo[OpenMuc.CHANNEL]] + channelinfo[OpenMuc.NAME_INTERVAL]*max_data_len/3
             if last_time > (time()+3600)*OpenMuc.SECTOMIL:
                 last_time = (time()+3600)*OpenMuc.SECTOMIL
+            if first_time >= time()*OpenMuc.SECTOMIL:
+                continue
+            timeout = False
             while 1==1:
-                history = self._getChannelHistory(channelinfo[OpenMuc.CHANNEL],first_time,last_time)
+                try:
+                    history = self._getChannelHistory(channelinfo[OpenMuc.CHANNEL],first_time,last_time)
+                except TimeoutError:    
+                    self._disconnect()
+                    self.error_cannels.append(channelinfo[OpenMuc.CHANNEL])
+                    timeout = True
+                    history[OpenMuc.RECORDS] = None
+                    break
                 if history[OpenMuc.RECORDS] != []:
                     break 
-                elif last_time >= time()*OpenMuc.SECTOMIL:
-                    break
                 else:
                     last_time += channelinfo[OpenMuc.NAME_INTERVAL]*max_data_len
-                    if last_time > (time()+3600)*OpenMuc.SECTOMIL:
-                        last_time = (time()+3600)*OpenMuc.SECTOMIL
+                if last_time > (time()+3600)*OpenMuc.SECTOMIL:
+                    last_time = (time()+3600)*OpenMuc.SECTOMIL
+                if first_time >= time()*OpenMuc.SECTOMIL:
+                    break
             if history[OpenMuc.RECORDS] == []:
+                self.marker_timestamps[channelinfo[OpenMuc.CHANNEL]] = last_time
+                continue
+            if timeout:
                 continue
             self.marker_timestamps[channelinfo[OpenMuc.CHANNEL]] = history[OpenMuc.RECORDS][-1][OpenMuc.NAME_TIMESTAP]
             for data_set in history[OpenMuc.RECORDS]:
-                count += 1
-                data_add(OpenMuc.FORMAT_TELEGRAFFRAMESTRUCT % (
-                    channelinfo[OpenMuc.NAME_TELEGRAF][0], channelinfo[OpenMuc.NAME_TELEGRAF][1], channelinfo[OpenMuc.NAME_TELEGRAF][2],
-                    data_set[OpenMuc.NAME_VALUE], data_set[OpenMuc.NAME_TIMESTAP]*OpenMuc.MILTONANO
-                ))
+                if data_set[OpenMuc.FLAG] == OpenMuc.FLAG_VALID:
+                    count += 1
+                    data_add(OpenMuc.FORMAT_TELEGRAFFRAMESTRUCT % (
+                        channelinfo[OpenMuc.NAME_TELEGRAF][0], channelinfo[OpenMuc.NAME_TELEGRAF][1], channelinfo[OpenMuc.NAME_TELEGRAF][2],
+                        data_set[OpenMuc.NAME_VALUE], data_set[OpenMuc.NAME_TIMESTAP]*OpenMuc.MILTONANO
+                    ))
+                else:
+                    self.error_cannels.append(channelinfo[OpenMuc.CHANNEL])
+                    print(channelinfo[OpenMuc.CHANNEL], "error")
+                    break
+            print(count)
             if count >= max_data_len: break
         self._disconnect()
         return(data) 
@@ -80,7 +116,7 @@ class OpenMuc (Param):
             self._putLastTimestamps()
 
     def refreshConnection(self):
-        self.__connection = http.client.HTTPConnection(self.host, self.port)
+        self.__connection = http.client.HTTPConnection(self.host, self.port, timeout=OpenMuc.TIMEOUT)
     
     def exit(self):
         self._disconnect()
