@@ -3,7 +3,8 @@ import http.client
 from logging.handlers import DatagramHandler
 from sqlite3 import DatabaseError
 from urllib.parse import quote
-from json import loads
+from copy import copy
+from json import loads, dumps
 from time import sleep, time
 from threading import Thread
 from naoconnect.TinyDb import TinyDb
@@ -13,6 +14,8 @@ from naoconnect.Param import Param
 class NaoApp(Param):
     URLLOGIN = "/api/nao/auth/login"
     URLTELEGRAF = "/api/telegraf/"
+    URL_INSTANCE = "/api/nao/instance"
+    HEADER_JSON = 'application/json'
     BEARER = "Bearer "
     TRANSFERCONFIG = "transfer_config"
     LOGINHEADER = {'Content-Type': 'application/x-www-form-urlencoded'}
@@ -68,7 +71,33 @@ class NaoApp(Param):
             status = self.__conneciton.getresponse().status
             self.__conneciton.close()
         return(status)
+
+    def _sendDataToNao(self, method, url, payload):
+        header = copy(self.headers)
+        header[NaoApp.NAME_CONTENT_HEADER] = NaoApp.HEADER_JSON
+        try:
+            self.__conneciton.request(method, url, dumps(payload), header)
+            data = self.__conneciton.getresponse().read()
+            self.__conneciton.close()
+        except:
+            self._loginNao()
+            header = copy(self.headers)
+            header[NaoApp.NAME_CONTENT_HEADER] = NaoApp.HEADER_JSON
+            self.__conneciton.request(method, url, dumps(payload), header)
+            data = self.__conneciton.getresponse().read()
+            self.__conneciton.close()
+        return(loads(data))
     
+    def sendNewInstance(self, asset, name, discription, geolocation=None):
+        data = {
+            NaoApp.NAME_NAME: name,
+            NaoApp.NAME_DESCRIPTION: discription,
+            NaoApp.NAME_ASSET_ID: asset
+        }
+        if geolocation != None:
+            data[NaoApp.NAME_GEOLOCATION] = geolocation
+        return(self._sendDataToNao(NaoApp.NAME_POST, NaoApp.URL_INSTANCE, data)[NaoApp.NAME_ID_ID])
+
     def startDataTransferFromDb(self):
         if not self.DataFromDb: 
             self.print("ERROR: no db in this class initialized")
@@ -93,11 +122,11 @@ class NaoApp(Param):
     def __transferInterrupt(self):
         start_time = time()
         while 1==1:
-            self.print("enter 'exit' for end data transfer to telegraf")
-            self.print("priode of transfer time: " + str(round((time() - start_time)/60,2)) + " min, total sent value: " + str(self.sending_counter))
+            print("enter 'exit' for end data transfer to telegraf")
+            print("priode of transfer time: " + str(round((time() - start_time)/60,2)) + " min, total sent value: " + str(self.sending_counter))
             input_str = input()
             if input_str == "exit" or input_str == "'exit'":
-                self.print("process will end soon")
+                print("process will end soon")
                 self.end_transfer = True
                 break
         while 1==1:
@@ -108,7 +137,7 @@ class NaoApp(Param):
 
     def exit(self):
         self._addAndUpdateTotalNumberOfSentData()
-        self.print("ending")
+        print("ending")
 
     def __DataTransferLogging(self):
         Thread(target=self.__DataTransferLoggingData, args=()).start()
@@ -119,7 +148,7 @@ class NaoApp(Param):
             self.logging_data = []
             self.logging_data_add = self.logging_data.extend
             Thread(target=self.__DataTransferLoggingBuffer, args=(data,)).start()
-            if time() - start > 3600:
+            if time() - start > 800:
                 self._addAndUpdateTotalNumberOfSentData()
                 start = time()
             if self.end_transfer:

@@ -58,36 +58,38 @@ class OpenMuc (Param):
         data_add = data.append
         count = 0
         for channelinfo in self.transfere:
-            if channelinfo["devices"] == "Wetterstation":
-                continue
+
             print(channelinfo)
             if channelinfo[OpenMuc.CHANNEL] in self.error_cannels:
                 if 0.02 < random():
                     continue
             first_time = self.lasttimestamps[channelinfo[OpenMuc.CHANNEL]] + channelinfo[OpenMuc.NAME_INTERVAL]*0.5
-            last_time = self.lasttimestamps[channelinfo[OpenMuc.CHANNEL]] + channelinfo[OpenMuc.NAME_INTERVAL]*max_data_len/3
-            if last_time > (time()+3600)*OpenMuc.SECTOMIL:
-                last_time = (time()+3600)*OpenMuc.SECTOMIL
+            last_time = self.lasttimestamps[channelinfo[OpenMuc.CHANNEL]] + channelinfo[OpenMuc.NAME_INTERVAL]*max_data_len/4
+            if last_time > (time())*OpenMuc.SECTOMIL:
+                last_time = (time())*OpenMuc.SECTOMIL
             if first_time >= time()*OpenMuc.SECTOMIL:
                 continue
             timeout = False
+            breaker = False
             while 1==1:
                 try:
                     history = self._getChannelHistory(channelinfo[OpenMuc.CHANNEL],first_time,last_time)
                 except TimeoutError:    
                     self._disconnect()
-                    self.error_cannels.append(channelinfo[OpenMuc.CHANNEL])
+                    self.error_cannels.append(channelinfo[OpenMuc.CHANNEL]+"_timeout")
                     timeout = True
                     history[OpenMuc.RECORDS] = None
+                    break
+                if breaker:
                     break
                 if history[OpenMuc.RECORDS] != []:
                     break 
                 else:
                     last_time += channelinfo[OpenMuc.NAME_INTERVAL]*max_data_len
-                if last_time > (time()+3600)*OpenMuc.SECTOMIL:
-                    last_time = (time()+3600)*OpenMuc.SECTOMIL
-                if first_time >= time()*OpenMuc.SECTOMIL:
-                    break
+                    first_time += channelinfo[OpenMuc.NAME_INTERVAL]*max_data_len
+                if last_time > (time())*OpenMuc.SECTOMIL:
+                    last_time = (time())*OpenMuc.SECTOMIL
+                    breaker = True
             if history[OpenMuc.RECORDS] == []:
                 self.marker_timestamps[channelinfo[OpenMuc.CHANNEL]] = last_time
                 continue
@@ -101,9 +103,14 @@ class OpenMuc (Param):
                         channelinfo[OpenMuc.NAME_TELEGRAF][0], channelinfo[OpenMuc.NAME_TELEGRAF][1], channelinfo[OpenMuc.NAME_TELEGRAF][2],
                         data_set[OpenMuc.NAME_VALUE], data_set[OpenMuc.NAME_TIMESTAP]*OpenMuc.MILTONANO
                     ))
-                else:
-                    self.error_cannels.append(channelinfo[OpenMuc.CHANNEL])
+                elif data_set[OpenMuc.FLAG] == OpenMuc.FLAG_DRIVER_UNKNOW or data_set[OpenMuc.FLAG] == OpenMuc.FLAG_NO_DEVICE_BUSY:
+                    self.error_cannels.append(channelinfo[OpenMuc.CHANNEL] + data_set[OpenMuc.FLAG] )
                     print(channelinfo[OpenMuc.CHANNEL], "error")
+                    break
+                elif data_set[OpenMuc.FLAG] == OpenMuc.FLAG_LOGGING_NOT_ACTIVE:
+                    continue
+                else:
+                    self.error_cannels.append(channelinfo[OpenMuc.CHANNEL] + data_set[OpenMuc.FLAG] )
                     break
             print(count)
             if count >= max_data_len: break
@@ -113,6 +120,7 @@ class OpenMuc (Param):
     def confirmTransfer(self):
         self.lasttimestamps = self.marker_timestamps
         if time()-self.confirm_time >= OpenMuc.LASTTIMESAVESEC:
+            self.confirm_time = time()
             self._putLastTimestamps()
 
     def refreshConnection(self):
