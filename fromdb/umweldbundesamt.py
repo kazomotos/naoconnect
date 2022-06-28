@@ -21,7 +21,7 @@ class UmweldbundesamtV2 (Param):
     TIMEOUT = 90
     LASTTIMESAVESEC = 120
     SECTONANO = 1000000000
-    RESETTIME = 1600000000000
+    RESETTIME = 772466975
     SECTOMIL = 1000
     MILTOSEC = 0.001
 
@@ -46,8 +46,13 @@ class UmweldbundesamtV2 (Param):
         data_add = data.append
         count = 0
         for index in range(len(self.transfere)):
-            first_time = self.lasttimestamps[str(index+1)] + self.transfere[index][UmweldbundesamtV2.NAME_INTERVAL]*0.5*UmweldbundesamtV2.MILTOSEC
-            last_time = self.lasttimestamps[str(index+1)] + self.transfere[index][UmweldbundesamtV2.NAME_INTERVAL]*max_data_len*UmweldbundesamtV2.MILTOSEC
+            try:
+                first_time = self.lasttimestamps[str(index+1)] + self.transfere[index][UmweldbundesamtV2.NAME_INTERVAL]*0.5
+            except:
+                self.marker_timestamps[str(index+1)] = UmweldbundesamtV2.RESETTIME
+                self.lasttimestamps[str(index+1)] = UmweldbundesamtV2.RESETTIME
+                first_time = self.lasttimestamps[str(index+1)] + self.transfere[index][UmweldbundesamtV2.NAME_INTERVAL]*0.5
+            last_time = self.lasttimestamps[str(index+1)] + self.transfere[index][UmweldbundesamtV2.NAME_INTERVAL]*max_data_len
             if last_time > (time()):
                 last_time = (time())
             if first_time >= time():
@@ -73,6 +78,8 @@ class UmweldbundesamtV2 (Param):
                 else:
                     last_time += self.transfere[index][UmweldbundesamtV2.NAME_INTERVAL]*max_data_len
                     first_time += self.transfere[index][UmweldbundesamtV2.NAME_INTERVAL]*max_data_len
+                if first_time > last_time:
+                    first_time = last_time
                 if last_time > (time()):
                     last_time = (time())
                     breaker = True
@@ -152,7 +159,12 @@ class UmweldbundesamtV2 (Param):
         self.__connection.close()
 
     def _GetRequest(self, method, url):
-        self.__connection.request(method, url, self.playload, self.headers)
+        try:
+            self.__connection.request(method, url, self.playload, self.headers)
+        except:
+            self._disconnect()
+            self.refreshConnection()
+            self.__connection.request(method, url, self.playload, self.headers)
         return(loads(self.__connection.getresponse().read().decode(UmweldbundesamtV2.NAME_UTF8)))
 
     def _getChannelHistory(self,station,component,scope,timestamp_first,timestamp_last):
@@ -172,17 +184,27 @@ class UmweldbundesamtV2 (Param):
 
     def _getTransferChannels(self):
         ''' 
-        [{
-            "device:" <device>, "channel" <channel>, 
-            "telegraf": [<twin>, <insatance>, <measurement>]
-            "interval": <sec>
-        }] 
+        [{}] 
         '''
         return(self.db.getTinyTables(UmweldbundesamtV2.NAME_TRANSFERCHANNELS))
 
+    def _putTransferChannel(self, station, component, scope, telegraf, interval):
+        data = {
+            UmweldbundesamtV2.STATION: station,
+            UmweldbundesamtV2.COMPONENT: component,
+            UmweldbundesamtV2.SCOPE: scope,
+            UmweldbundesamtV2.NAME_TELEGRAF: telegraf,
+            UmweldbundesamtV2.NAME_INTERVAL: interval
+        }
+        self.db.putTinyTables(UmweldbundesamtV2.NAME_TRANSFERCHANNELS, data)
+        self.transfere = self._getTransferChannels()
+
     def _getLastTimestamps(self):
         ''' {<id>: <timestamp>}'''
-        last_timestamps = self.db.getTinyTables(UmweldbundesamtV2.NAME_LASTTIME)[0]
+        try:
+            last_timestamps = self.db.getTinyTables(UmweldbundesamtV2.NAME_LASTTIME)[0]
+        except:
+            return({})
         return(last_timestamps)
 
 

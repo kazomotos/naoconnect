@@ -35,3 +35,5 @@ class Param():
     NAME_DESCRIPTION = "description"
     NAME_GEOLOCATION = "geolocation"
     NAME_ID_ID = "_id"
+    NAME_INPUT_ID = "_input"
+    NAME_RELATION_ID = "_relation"

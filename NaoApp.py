@@ -15,6 +15,8 @@ class NaoApp(Param):
     URLLOGIN = "/api/nao/auth/login"
     URLTELEGRAF = "/api/telegraf/"
     URL_INSTANCE = "/api/nao/instance"
+    URL_INPUT = "/api/nao/inputvalue"
+    URL_INPUTS = "/api/nao/inputvalue/many"
     HEADER_JSON = 'application/json'
     BEARER = "Bearer "
     TRANSFERCONFIG = "transfer_config"
@@ -72,7 +74,7 @@ class NaoApp(Param):
             self.__conneciton.close()
         return(status)
 
-    def _sendDataToNao(self, method, url, payload):
+    def _sendDataToNaoJson(self, method, url, payload):
         header = copy(self.headers)
         header[NaoApp.NAME_CONTENT_HEADER] = NaoApp.HEADER_JSON
         try:
@@ -96,7 +98,29 @@ class NaoApp(Param):
         }
         if geolocation != None:
             data[NaoApp.NAME_GEOLOCATION] = geolocation
-        return(self._sendDataToNao(NaoApp.NAME_POST, NaoApp.URL_INSTANCE, data)[NaoApp.NAME_ID_ID])
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_INSTANCE, data)[NaoApp.NAME_ID_ID])
+
+    def sendInstanceInputMany(self, data_list:list):
+        '''
+        [[<value>, <input_id>, <instance_id>], ...]
+        '''
+        data = []
+        data_add = data.append
+        for data_set in data_list:
+            data_add({
+            NaoApp.NAME_VALUE: data_set[0],
+            NaoApp.NAME_INPUT_ID: data_set[1],
+            NaoApp.NAME_RELATION_ID: data_set[2]
+            })
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_INPUTS, data))
+
+    def sendInstanceInput(self,value,input_id,instance_id):
+        data = {
+          NaoApp.NAME_VALUE: value,
+          NaoApp.NAME_INPUT_ID: input_id,
+          NaoApp.NAME_RELATION_ID: instance_id
+        }
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_INPUT, data))
 
     def startDataTransferFromDb(self):
         if not self.DataFromDb: 
