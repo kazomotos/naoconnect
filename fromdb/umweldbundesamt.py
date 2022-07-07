@@ -32,7 +32,6 @@ class UmweldbundesamtV2 (Param):
         self.transfere = self._getTransferChannels()
         self.confirm_time = time()
         self.lasttimestamps = self._getLastTimestamps()
-        self._putLastTimestamps()
         self.marker_timestamps = None
         self.headers = {}
         self.__connection = None

@@ -1,25 +1,42 @@
-import pyodbc
+# import pyodbc
+pyodbc = None
+from re import A
 import naoconnect.time2 as time2
 import calendar
 from copy import deepcopy
+from time import time
+from naoconnect.TinyDb import TinyDb
+from naoconnect.Param import Param
 
 # https://github.com/mkleehammer/pyodbc/wiki/Install
 
 
-class MServer():
+class Aquotec(Param):
+    NAME_RM360              = "RM360"
+    NAME_UG07               = "UG07"
+    NAME_WMZ                = "WMZ"
+    NAME_TABLENAME          = "tablename"
+    NAME_COLUMNNAME         = "columnname"
+    NAME_COLUMNS            = "columns"
+    NAME_STATION_TYPE       = "station_type"
+    RESET_TIME              = 1514761200
+    SECTONANO               = 1000000
 
-    def __init__ (self, host, port, user, password, database=None, tds_version=7.4, driver='{FreeTDS}',errorline=None):
+    def __init__ (self, host, port, user, password, database=None, tds_version=7.4, driver='{FreeTDS}', tiny_db_name="aqotec_meta.json"):
         self.host = host
         self.port = str(port)
         self.user = user
         self.password = password
         self.database = database
-        self.version = str(tds_version)   
+        self.version = str(tds_version)
+        self.lasttimestamps = self._getLastTimestamps()
+        self.marker_timestamps = None
+        self.transfere = self._getTransferChannels()
         self.driver = driver
-        self.errorline = errorline
         self.__con = None
         self.__cur = None
-        self.connectToDb()
+        self.db = TinyDb(tiny_db_name)
+        #self.connectToDb()
 
     def connectToDb(self):
         if self.database == None:
@@ -60,285 +77,135 @@ class MServer():
             print(e)
             return(None)
         return(ret_data)
+    
+    def _buildTelegrafFrameForm(self, twin, instance, series):
+        return(Aquotec.FORMAT_TELEGRAFFRAMESTRUCT2%(twin,instance,series)+"%f %.0f")
 
-    def getData(self, table_str, values_list_str, aftertime_int=None, maxtimerange=3600*24,time_column="DP_Zeitstempel"):
-        aftertimesql = str(tuple(time2.gmtime(float(aftertime_int))[0:6]))[0:-1] + ", 0, 0)"
-        aftertimesql2 = str(tuple(time2.gmtime(float(aftertime_int)+maxtimerange)[0:6]))[0:-1] + ", 0, 0)"
-        values = time_column
-        for i in values_list_str:
-            values += ", " + i 
+    def getTelegrafData(self, max_data_len=30000, maxtimerange=3600*24, time_column="DP_Zeitstempel"):
+        ''' [ '<twin>,instance=<insatance>, <measurement>=<value> <timestamp>' ] '''
+        ret_data = []
+        ret_data_add = ret_data.append
+        # sql cursor
         self.__buildCursor()
-        ret_data = [[],[]]
-        add_time = ret_data[0].append
-        add_value = ret_data[1].append
-        breaker = False
-        while 1==1:  
-            try:           
-                for row in self.__cur.execute(" SELECT " + values +
-                                        " FROM " + table_str +
-                                        " WHERE " + time_column + 
-                                        " > DATETIME2FROMPARTS" + aftertimesql + 
-                                        " AND  " + time_column + 
-                                        " < DATETIME2FROMPARTS" + aftertimesql2):
-                    add_time(calendar.timegm(row[0].utctimetuple()))
-                    add_value(list(row[1:]))
-            except pyodbc.ProgrammingError as e:
-                print(e)
-                if "Invalid column name" in str(e):
-                    columname = str(e).split("Invalid column name")[1].split("\'")[1]
-                    self.errorline("MS-Server ("+self.database+")", "Spaltenname '"+columname+"' existiert nicht in Tabelle: "+table_str)
-                    values = values.replace(", "+columname, "")
-                    continue
-                if "Invalid object name" in str(e):
-                    tablename = str(e).split("Invalid object name")[1].split("\'")[1]
-                    self.errorline("MS-Server ("+self.database+")", "Tabelle: '"+tablename+"' existiert nicht")
-                break
-            if ret_data != [[],[]]:
-                break
-            elif breaker or int(aftertime_int) > time2.time()-3600*24*2:
-                break
-            else:
-                new_aftertime = []
-                new_afteradd = new_aftertime.append
-                for row in self.__cur.execute(" SELECT " + values +
-                        " FROM " + table_str +
-                        " WHERE " + time_column + 
-                        " > DATETIME2FROMPARTS" + aftertimesql):
-                    new_afteradd(row[0].timestamp())
-                if new_aftertime == []:
-                    break
-                aftertimesql = str(tuple(time2.gmtime(min(new_aftertime)-10)[0:6]))[0:-1] + ", 0, 0)"
-                aftertimesql2 = str(tuple(time2.gmtime((min(new_aftertime)-10)+maxtimerange)[0:6]))[0:-1] + ", 0, 0)"
-                breaker = True
-        return(ret_data)
-        
-
-class Aquotec():
-    # -- constatn-class-variable
-    # substation type
-    NAME_RM360              = "RM360"
-    NAME_UG07               = "UG07"
-    NAME_WMZ                = "WMZ"
-
-
-    def __init__ (self,condition,struct_db_values,struct_db_keys,MsClass,limit=500,filter_dic=None):
-        '''
-        reading_tables:     {'type_number': meter_counter,'type_number': meter_counter, ...]
-        struct_db_values:   [table_typ1: {column1:[struct1, struct2], ...}, ...]
-        condition:          {typ:{table:condition},...} or {typ:{table:[condition,{table:sub_condition}]},...}
-        '''
-        self.condition           = condition
-        self.reading_tables      = {}
-        self.new_reading_tables  = {}
-        self.extra_check_tables  = {}
-        self.Ms                  = MsClass
-        self.struct_db_values    = struct_db_values
-        self.struct_db_keys      = struct_db_keys
-        self.limit               = limit
-        self.meter_count         = None
-        self.filter              = filter_dic
-
-
-    def setReadingTables(self, reading_tables):
-        self.reading_tables = reading_tables
-        if self.reading_tables == {}:
-            self.meter_count = 0
-        else: 
-            self.meter_count = max(self.reading_tables.values())
-
-
-    def setNewReadingTables(self, new_reading_tables):
-        self.new_reading_tables = new_reading_tables
-
-
-    def setExtraCeckinTables(self, extra_check_tables):
-        self.extra_check_tables = extra_check_tables
-
-
-    def getNewReadingTables(self):
-        return(self.new_reading_tables)
-
-
-    def getExtraCeckinTables(self):
-        return(self.extra_check_tables)
-
-
-    def buildNewSensorFrames(self):
-        '''
-        return: {table_type_number1: [[column1, column2, ...], [build_dict1, build_dict2, ...]], ...}
-        '''
-        sensors = {}
-        new_tables = self._checkNewTables()
-        for types in new_tables:
-            for table_number in new_tables[types]:
-                table_type_number = types + "_" + table_number
-                if table_type_number not in sensors:
-                    sensors[table_type_number] = [[],[]]
-                if table_number not in self.reading_tables:
-                    self.meter_count += 1
-                    count = self.meter_count
-                    self.reading_tables[table_number] = count
-                    self.new_reading_tables[table_number] = count
-                else:
-                    count = self.reading_tables[table_number]
-                for column in new_tables[types][table_number]:
-                    values = deepcopy(self.struct_db_values[types][column])
-                    values[2] = values[2][0] + str(count) + values[2][1]
-                    values[6] = values[6][0] + types + "_" + table_number + values[6][1]
-                    sensors[table_type_number][0].append(column)
-                    sensors[table_type_number][1].append(dict(zip(self.struct_db_keys,values)))
-        return(sensors)
-        
-
-    def _checkNewTables(self):
-        '''
-        Ms.getCheckDat(): [[val1, val2, val3, ...], [val1, ...], ...]
-        return: {typ1: {table_number2: [column1, column2, ...], table_number2: {... [...]}}, typ2: ...}
-        '''
-        new_tables = self._findNewTables()
-        online_numbers = []
-        online_columns = { # {typ1: {table_type_name1:[column1, column2, ...], ...}, ...}
-            Aquotec.NAME_RM360: {},
-            Aquotec.NAME_UG07:  {},
-            Aquotec.NAME_WMZ:   {}
-        } 
-        # RM_360
-        column_list = list(self.struct_db_values[Aquotec.NAME_RM360].keys())
-        for number in new_tables[Aquotec.NAME_RM360]:
-            data = self.Ms.getCheckData(
-                table_str=Aquotec.NAME_RM360+"_"+number,
-                values_list_str=column_list,
-                check_limit=self.limit
-            )
-            if data == []:
-                continue
-            online = self.__ceckOnlineValues(Aquotec.NAME_RM360, data, column_list)
-            if online != []:
-                online_numbers.append(number)
-                online_columns[Aquotec.NAME_RM360][number] =  online
-        # UG07
-        column_list = list(self.struct_db_values[Aquotec.NAME_UG07].keys())
-        for number in new_tables[Aquotec.NAME_UG07]:
-            if number not in online_numbers:
-                data = self.Ms.getCheckData(
-                    table_str=Aquotec.NAME_UG07+"_"+number,
-                    values_list_str=column_list,
-                    check_limit=self.limit
+        data_len = 0
+        self.marker_timestamps = deepcopy(self.lasttimestamps)
+        for index in self.transfere:
+            # set timesamp for new tables
+            if self.marker_timestamps.get(index) == None:
+                self.marker_timestamps[index] = Aquotec.RESET_TIME
+            # build sql time formate and set max timerange
+            aftertimesql = str(tuple(time2.gmtime(float(self.marker_timestamps.get(index)))[0:6]))[0:-1] + ", 0, 0)"
+            aftertimesql2 = str(tuple(time2.gmtime(float(self.marker_timestamps.get(index))+maxtimerange)[0:6]))[0:-1] + ", 0, 0)"
+            # build sql formated column list
+            values = time_column
+            telegraf_form_list = []
+            telegraf_form_list_add = telegraf_form_list.appen
+            for column_dic in self.transfere[index][Aquotec.NAME_COLUMNS]:
+                values += ", " + column_dic[Aquotec.NAME_COLUMNNAME]
+                # build telegraf frame formate
+                telegraf_form_list_add(
+                    twin=self._buildTelegrafFrameForm(column_dic[Aquotec.NAME_TELEGRAF][0]),
+                    instance=self._buildTelegrafFrameForm(column_dic[Aquotec.NAME_TELEGRAF][1]),
+                    series=self._buildTelegrafFrameForm(column_dic[Aquotec.NAME_TELEGRAF][2])
                 )
-                if data == []:
-                    continue
-                online = self.__ceckOnlineValues(Aquotec.NAME_UG07, data, column_list)
-                if online != []:
-                    online_numbers.append(number)
-                    online_columns[Aquotec.NAME_UG07][number] =  online
-        # WMZ
-        column_list = list(self.struct_db_values[Aquotec.NAME_WMZ].keys())
-        for number in new_tables[Aquotec.NAME_WMZ]:
-            data = self.Ms.getCheckData(
-                table_str=Aquotec.NAME_WMZ+"_"+number,
-                values_list_str=column_list,
-                check_limit=self.limit
-            )
-            if data == []:
-                continue
-            online = self.__ceckOnlineValues(Aquotec.NAME_WMZ, data, column_list)
-            if online != []:
-                if number not in online_numbers:
-                    online_numbers.append(number)
-                    online_columns[Aquotec.NAME_WMZ][number] =  online
-                    self.extra_check_tables[number] = online
+            breaker = False
+            while 1==1:  
+                try:
+                    # get data from db
+                    timestamp_list = []
+                    timestamp_list_add = timestamp_list.append
+                    for row in self.__cur.execute(" SELECT " + values +
+                                            " FROM " + self.transfere[index][Aquotec.NAME_TABLENAME] +
+                                            " WHERE " + time_column + 
+                                            " > DATETIME2FROMPARTS" + aftertimesql + 
+                                            " AND  " + time_column + 
+                                            " < DATETIME2FROMPARTS" + aftertimesql2):
+                        timestamp_sec = calendar.timegm(row[0].utctimetuple())
+                        timestamp_list_add(timestamp_sec)
+                        index_val = 0
+                        # form data for telegraf
+                        for col in list(row[1:]):
+                            ret_data_add(telegraf_form_list[index_val]%(timestamp_sec*Aquotec.SECTONANO,col))
+                            index_val += 1
+                            data_len += 1
+                    try:
+                        self.marker_timestamps[index] = max(timestamp_list)
+                    except:
+                        print("no_timestamp")
+                except pyodbc.ProgrammingError as e:
+                    print(e)
+                    if "Invalid column name"    in str(e):
+                        columname = str(e).split("Invalid column name")[1].split("\'")[1]
+                        values = values.replace(", "+columname, "")
+                        continue
+                    if "Invalid object name" in str(e):
+                        tablename = str(e).split("Invalid object name")[1].split("\'")[1]
+                        print(tablename)
+                    break
+                if ret_data != [[],[]]:
+                    break
+                elif breaker or int(self.marker_timestamps.get(index)) > time2.time()-3600*24*2:
+                    break
                 else:
-                    online_columns[Aquotec.NAME_WMZ][number] =  ["DP_21Wert"]
+                    # serach for first time stamp in database
+                    new_aftertime = []
+                    new_afteradd = new_aftertime.append
+                    for row in self.__cur.execute(" SELECT " + values +
+                            " FROM " + self.transfere[index][Aquotec.NAME_TABLENAME] +
+                            " WHERE " + time_column + 
+                            " > DATETIME2FROMPARTS" + aftertimesql):
+                        new_afteradd(row[0].timestamp())
+                    if new_aftertime == []:
+                        break
+                    aftertimesql = str(tuple(time2.gmtime(min(new_aftertime)-10)[0:6]))[0:-1] + ", 0, 0)"
+                    aftertimesql2 = str(tuple(time2.gmtime((min(new_aftertime)-10)+maxtimerange)[0:6]))[0:-1] + ", 0, 0)"
+                    breaker = True
+            if data_len >= max_data_len:
+                break
+        return(ret_data)
 
-        return(online_columns)
-        
-        
-    def _findNewTables(self):
+    def _getTransferChannels(self):
+        ''' 
+        [{}] 
         '''
-        ...
-        return: {typ1:[table_number, table_number, ...], typ2:[...], ...}
-        Ms.getTables(): [('table_type_number',),('table_type_number',),...]
-        '''
-        table_list = self.Ms.getTables() 
-        new_tables = {
-            Aquotec.NAME_RM360: [],
-            Aquotec.NAME_UG07:  [],
-            Aquotec.NAME_WMZ:   []
+        return(self.db.getTinyTables(Aquotec.NAME_TRANSFERCHANNELS))
+
+    def _putTransferChannel(self, tablename, columns_series_dict, instance, asset, station_type, interval):
+        columns = []
+        columns_add = columns.append
+        for column in columns_series_dict:
+            columns_add({
+                Aquotec.NAME_COLUMNNAME: column,
+                Aquotec.NAME_TELEGRAF: [
+                    asset,
+                    instance,
+                    columns_series_dict[column]
+                ]
+            })
+        data = {
+            Aquotec.NAME_TABLENAME: tablename,
+            Aquotec.NAME_COLUMNS: columns,
+            Aquotec.NAME_STATION_TYPE: station_type,
+            Aquotec.NAME_INTERVAL: interval
         }
-        for table in table_list:
-            name_split = table[0].split("_")
-            if len(name_split) == 2:
-                if name_split[1] not in self.reading_tables:
-                    if self.filter != None:
-                        try:
-                            number = int(name_split[1].split("R")[1])
-                        except:
-                            continue
-                        if number > self.filter["max"] or number < self.filter["min"]:
-                            continue
-                    if name_split[0] == Aquotec.NAME_RM360:
-                        new_tables[Aquotec.NAME_RM360].append(name_split[1])
-                    elif name_split[0] == Aquotec.NAME_UG07:
-                        new_tables[Aquotec.NAME_UG07].append(name_split[1])
-                    elif name_split[0] == Aquotec.NAME_WMZ:
-                        new_tables[Aquotec.NAME_WMZ].append(name_split[1])
-        return(new_tables)
+        self.db.putTinyTables(Aquotec.NAME_TRANSFERCHANNELS, data)
+        self.transfere = self._getTransferChannels()
 
 
-    def __ceckOnlineValues(self,table_type, data, column_list):
-        '''
-        ...
-        '''
-        online_column = []
-        for column in self.condition[table_type]:
-            if type(self.condition[table_type][column]) != list:
-                index_column = column_list.index(column)
-                condition = self.condition[table_type][column]
-                if self.__checkConditions(data,index_column,condition):
-                    online_column.append(column)
-            else:
-                index_column = column_list.index(column)
-                condition = self.condition[table_type][column][0]
-                if self.__checkConditions(data,index_column,condition):
-                    for sub_column in self.condition[table_type][column][1]:
-                        index_sub_column = column_list.index(sub_column)
-                        sub_condition = self.condition[table_type][column][1][sub_column]
-                        if self.__checkConditions(data,index_sub_column,sub_condition):
-                            online_column.append(sub_column)
-        return(online_column)
+    def _getLastTimestamps(self):
+        ''' {<id>: <timestamp>}'''
+        try:
+            last_timestamps = self.db.getTinyTables(Aquotec.NAME_LASTTIME)[0]
+        except:
+            return({})
+        return(last_timestamps)
 
+    def _putLastTimestamps(self):
+        ''' {<id>: <timestamp>}'''
+        self.db.updateSimpleTinyTables(Aquotec.NAME_LASTTIME, self.lasttimestamps)
 
-    def __checkConditions(self,data,index_column,sub_condition):
-        online = False
-        if sub_condition == 0:
-            for index_value in range(len(data)):
-                if data[index_value][index_column] != None:
-                    online = True
-                    break
-        elif sub_condition == 1:
-            for index_value in range(len(data)):
-                if data[index_value][index_column] != None and data[index_value][index_column] != 0:
-                    online = True
-                    break
-        elif sub_condition == 2:
-            for index_value in range(len(data)):
-                if data[index_value][index_column] != None and data[index_value][index_column] > 0 and data[index_value][index_column] < 250:
-                    online = True
-                    break
-        elif sub_condition == 3:
-            for index_value in range(len(data)):
-                if data[index_value][index_column] != None and data[index_value][index_column] > 0 and data[index_value][index_column] < 98:
-                    online = True
-                    break
-        elif sub_condition == 4:
-            for index_value in range(len(data)):
-                if data[index_value][index_column] != None and data[index_value][index_column] > 0 and data[index_value][index_column] < 120:
-                    online = True
-                    break
-        elif sub_condition == 5:
-            for index_value in range(len(data)):
-                if data[index_value][index_column] != None and data[index_value][index_column] > 0 and data[index_value][index_column] != 12.6:
-                    online = True
-                    break
-        return(online)
-
+    def confirmTransfer(self):
+        self.lasttimestamps = self.marker_timestamps
+        if time()-self.confirm_time >= Aquotec.LASTTIMESAVESEC:
+            self.confirm_time = time()
+            self._putLastTimestamps()

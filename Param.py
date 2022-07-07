@@ -3,6 +3,7 @@
 class Param():
     FORMAT_TELEGRAFFRAMESEPERATOR = "%s\n"
     FORMAT_TELEGRAFFRAMESTRUCT = "%s,instance=%s %s=%f %.0f"
+    FORMAT_TELEGRAFFRAMESTRUCT2 = "%s,instance=%s %s="
     NAME_GET = "GET"
     NAME_POST = "POST"
     NAME_RESULTS = "results"
