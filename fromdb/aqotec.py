@@ -1,5 +1,4 @@
-# import pyodbc
-pyodbc = None
+import pyodbc
 from re import A
 import naoconnect.time2 as time2
 import calendar
@@ -19,12 +18,14 @@ class Aquotec(Param):
     NAME_COLUMNNAME         = "columnname"
     NAME_COLUMNS            = "columns"
     NAME_STATION_TYPE       = "station_type"
+    LASTTIMESAVESEC         = 240
     RESET_TIME              = 1514761200
-    SECTONANO               = 1000000
+    SECTONANO               = 1000000000
 
     def __init__ (self, host, port, user, password, database=None, tds_version=7.4, driver='{FreeTDS}', tiny_db_name="aqotec_meta.json"):
         self.host = host
         self.port = str(port)
+        self.db = TinyDb(tiny_db_name)
         self.user = user
         self.password = password
         self.database = database
@@ -32,11 +33,11 @@ class Aquotec(Param):
         self.lasttimestamps = self._getLastTimestamps()
         self.marker_timestamps = None
         self.transfere = self._getTransferChannels()
+        self.confirm_time = time()
         self.driver = driver
         self.__con = None
         self.__cur = None
-        self.db = TinyDb(tiny_db_name)
-        #self.connectToDb()
+        self.connectToDb()
 
     def connectToDb(self):
         if self.database == None:
@@ -89,25 +90,27 @@ class Aquotec(Param):
         self.__buildCursor()
         data_len = 0
         self.marker_timestamps = deepcopy(self.lasttimestamps)
-        for index in self.transfere:
+        for index in range(len(self.transfere)):
             # set timesamp for new tables
-            if self.marker_timestamps.get(index) == None:
-                self.marker_timestamps[index] = Aquotec.RESET_TIME
+            if self.marker_timestamps == {}:
+                self.marker_timestamps[str(index)] = Aquotec.RESET_TIME
+            if self.marker_timestamps.get(str(index)) == None:
+                self.marker_timestamps[str(index)] = Aquotec.RESET_TIME
             # build sql time formate and set max timerange
-            aftertimesql = str(tuple(time2.gmtime(float(self.marker_timestamps.get(index)))[0:6]))[0:-1] + ", 0, 0)"
-            aftertimesql2 = str(tuple(time2.gmtime(float(self.marker_timestamps.get(index))+maxtimerange)[0:6]))[0:-1] + ", 0, 0)"
+            aftertimesql = str(tuple(time2.gmtime(float(self.marker_timestamps.get(str(index))))[0:6]))[0:-1] + ", 0, 0)"
+            aftertimesql2 = str(tuple(time2.gmtime(float(self.marker_timestamps.get(str(index)))+maxtimerange)[0:6]))[0:-1] + ", 0, 0)"
             # build sql formated column list
             values = time_column
             telegraf_form_list = []
-            telegraf_form_list_add = telegraf_form_list.appen
+            telegraf_form_list_add = telegraf_form_list.append
             for column_dic in self.transfere[index][Aquotec.NAME_COLUMNS]:
                 values += ", " + column_dic[Aquotec.NAME_COLUMNNAME]
                 # build telegraf frame formate
-                telegraf_form_list_add(
-                    twin=self._buildTelegrafFrameForm(column_dic[Aquotec.NAME_TELEGRAF][0]),
-                    instance=self._buildTelegrafFrameForm(column_dic[Aquotec.NAME_TELEGRAF][1]),
-                    series=self._buildTelegrafFrameForm(column_dic[Aquotec.NAME_TELEGRAF][2])
-                )
+                telegraf_form_list_add(self._buildTelegrafFrameForm(
+                    twin=column_dic[Aquotec.NAME_TELEGRAF][0],
+                    instance=column_dic[Aquotec.NAME_TELEGRAF][1],
+                    series=column_dic[Aquotec.NAME_TELEGRAF][2]
+                ))
             breaker = False
             while 1==1:  
                 try:
@@ -125,13 +128,14 @@ class Aquotec(Param):
                         index_val = 0
                         # form data for telegraf
                         for col in list(row[1:]):
-                            ret_data_add(telegraf_form_list[index_val]%(timestamp_sec*Aquotec.SECTONANO,col))
-                            index_val += 1
-                            data_len += 1
+                            if col != None:
+                                ret_data_add(telegraf_form_list[index_val]%(col, timestamp_sec*Aquotec.SECTONANO))
+                                index_val += 1
+                                data_len += 1
                     try:
-                        self.marker_timestamps[index] = max(timestamp_list)
+                        self.marker_timestamps[str(index)] = max(timestamp_list)
                     except:
-                        print("no_timestamp")
+                        print("no_timestamp", self.transfere[index][Aquotec.NAME_TABLENAME], aftertimesql)
                 except pyodbc.ProgrammingError as e:
                     print(e)
                     if "Invalid column name"    in str(e):
@@ -141,10 +145,9 @@ class Aquotec(Param):
                     if "Invalid object name" in str(e):
                         tablename = str(e).split("Invalid object name")[1].split("\'")[1]
                         print(tablename)
+                if timestamp_list != []:
                     break
-                if ret_data != [[],[]]:
-                    break
-                elif breaker or int(self.marker_timestamps.get(index)) > time2.time()-3600*24*2:
+                elif breaker or int(self.marker_timestamps.get(str(index))) > time2.time()-3600*24*2:
                     break
                 else:
                     # serach for first time stamp in database
@@ -197,7 +200,7 @@ class Aquotec(Param):
         try:
             last_timestamps = self.db.getTinyTables(Aquotec.NAME_LASTTIME)[0]
         except:
-            return({})
+            return(dict())
         return(last_timestamps)
 
     def _putLastTimestamps(self):
@@ -209,3 +212,14 @@ class Aquotec(Param):
         if time()-self.confirm_time >= Aquotec.LASTTIMESAVESEC:
             self.confirm_time = time()
             self._putLastTimestamps()
+
+    def exit(self):
+        self.disconnetToDb()
+        self._putLastTimestamps()
+
+    def refreshConnection(self):
+        try:
+            self.disconnetToDb()
+        except:
+            None
+        self.__connection = self.connectToDb
