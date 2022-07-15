@@ -88,7 +88,10 @@ class NaoApp(Param):
             self.__conneciton.request(method, url, dumps(payload), header)
             data = self.__conneciton.getresponse().read()
             self.__conneciton.close()
-        return(loads(data))
+        if data == b'':
+            return('')
+        else:
+            return(loads(data))
     
     def sendNewInstance(self, asset, name, discription, geolocation=None):
         data = {
@@ -237,20 +240,23 @@ class NaoApp(Param):
                 continue
             except Exception as e:
                 data = []
+                data_len = 0
                 self.print("ERROR-FromDb:" + str(e))
                 sleep(self.transfer_config[NaoApp.ERRORSLEEP])
                 self.DataFromDb.refreshConnection()
             try:
-                status = self.sendTelegrafData(data)    
-                if status == 204:
-                    self.DataFromDb.confirmTransfer()
-                    self.sending_counter += data_len
-                elif status == 500:
-                    self.print("ERROR: nao.status=" + str(status))
-                    self._loginNao()
-                else:
-                    self.print("ERROR: nao.status=" + str(status))
-                    self._loginNao()
+                if data != []:
+                    status = self.sendTelegrafData(data)
+                    print(data_len, " data sendet")
+                    if status == 204:
+                        self.DataFromDb.confirmTransfer()
+                        self.sending_counter += data_len
+                    elif status == 500:
+                        self.print("ERROR: nao.status=" + str(status))
+                        self._loginNao()
+                    else:
+                        self.print("ERROR: nao.status=" + str(status))
+                        self._loginNao()
             except Exception as e:
                 self.print("ERROR-Nao:" + str(e))
                 sleep(self.transfer_config[NaoApp.ERRORSLEEP])
