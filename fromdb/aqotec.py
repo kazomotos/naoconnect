@@ -130,8 +130,8 @@ class Aquotec(Param):
                         for col in list(row[1:]):
                             if col != None:
                                 ret_data_add(telegraf_form_list[index_val]%(col, timestamp_sec*Aquotec.SECTONANO))
-                                index_val += 1
                                 data_len += 1
+                            index_val += 1
                     try:
                         self.marker_timestamps[str(index)] = max(timestamp_list)
                     except:
