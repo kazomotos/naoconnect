@@ -17,6 +17,7 @@ class NaoApp(Param):
     URL_INSTANCE = "/api/nao/instance"
     URL_INPUT = "/api/nao/inputvalue"
     URL_INPUTS = "/api/nao/inputvalue/many"
+    URL_WORKSPACE = "api/nao/workspace"
     HEADER_JSON = 'application/json'
     BEARER = "Bearer "
     TRANSFERCONFIG = "transfer_config"
@@ -356,6 +357,18 @@ class NaoApp(Param):
             error_file.close()
         else:
             print(log)
+
+    def createWorkspace(self, name, avatar=None, tagitems=[None]):
+        payload = {
+            "name": name,
+            "_avatar": avatar,
+            "_tagitems": tagitems
+        }
+        return(Nao._sendDataToNaoJson("POST", NaoApp.URL_WORKSPACE, payload))
+
+
+
+
 
 if __name__ == "__main__":
     'test'
