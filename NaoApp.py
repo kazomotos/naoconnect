@@ -364,7 +364,7 @@ class NaoApp(Param):
             "_avatar": avatar,
             "_tagitems": tagitems
         }
-        return(Nao._sendDataToNaoJson("POST", NaoApp.URL_WORKSPACE, payload))
+        return(self._sendDataToNaoJson("POST", NaoApp.URL_WORKSPACE, payload))
 
 
 
