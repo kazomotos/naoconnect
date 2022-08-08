@@ -7,17 +7,22 @@ from copy import copy
 from json import loads, dumps
 from time import sleep, time
 from threading import Thread
+from pandas import isna
 from naoconnect.TinyDb import TinyDb
 from naoconnect.Param import Param
 
 
 class NaoApp(Param):
-    URLLOGIN = "/api/home/login"
+    URLLOGIN = "/api/user/auth/login"
     URLTELEGRAF = "/api/telegraf/"
     URL_INSTANCE = "/api/nao/instance"
     URL_INPUT = "/api/nao/inputvalue"
     URL_INPUTS = "/api/nao/inputvalue/many"
-    URL_WORKSPACE = "api/nao/workspace"
+    URL_WORKSPACE = "/api/nao/workspace"
+    URL_ASSET = "/api/nao/asset"
+    URL_PATH = "/api/nao/part"
+    URL_UNITS = "/api/nao/units"
+    URL_SERIES = "/api/nao/series/"
     HEADER_JSON = 'application/json'
     BEARER = "Bearer "
     TRANSFERCONFIG = "transfer_config"
@@ -358,20 +363,68 @@ class NaoApp(Param):
         else:
             print(log)
 
-    def createWorkspace(self, name, avatar=None, tagitems=[None]):
+    def createWorkspace(self, name, avatar=None, tagitems=[]):
         payload = {
-            "name": name,
-            "_avatar": avatar,
-            "_tagitems": tagitems
+            NaoApp.NAME_NAME: name,
+            NaoApp.NAME_AVATAR_ID: avatar,
+            NaoApp.NAME_TAGITEMS_ID: tagitems
         }
         return(self._sendDataToNaoJson("POST", NaoApp.URL_WORKSPACE, payload))
 
+    def createAsset(self, name, _workspace, description="", baseInterval="1m", useGeolocation=True, avatar=None, tagitems=[]):
+        payload = {
+            NaoApp.NAME_WORKSPACE_ID: _workspace,
+            NaoApp.NAME_NAME: name,
+            NaoApp.NAME_DESCRIPTION: description,
+            NaoApp.NAME_AVATAR_ID: avatar,
+            NaoApp.NAME_BASE_INTERVAL: baseInterval,
+            NaoApp.NAME_USE_GEOLOCATION: useGeolocation
+        }
+        return(self._sendDataToNaoJson("POST", NaoApp.URL_ASSET, payload))
 
+    def createPath(self, name, _asset, description="", color="#02c1de", _parent=None):
+        payload = {
+            NaoApp.NAME_ASSET_ID: _asset,
+            NaoApp.NAME_NAME: name,
+            NaoApp.NAME_DESCRIPTION: description,
+            NaoApp.NAME_COLOR: color,
+            NaoApp.NAME_PARENT_ID: _parent
+        }
+        return(self._sendDataToNaoJson("POST", NaoApp.URL_PATH, payload))
 
+    def createUnit(self, name):
+        payload = {
+            NaoApp.NAME_NAME: name
+        }
+        return(self._sendDataToNaoJson("POST", NaoApp.URL_UNITS, payload))
 
+    def createSeries(self, type, name, description, _asset, _part, _unit, max, min, fill, fillValue, color="#02c1de", _tagitems=None):
+        if isna(fill):
+            fill = "null"
+        if isna(fillValue):
+            fillValue = None
+        if isna(max):
+            max = None
+        if isna(min):
+            min = None
+        payload = {
+            NaoApp.NAME_COLOR: color,
+            NaoApp.NAME_DESCRIPTION: description,
+            NaoApp.NAME_FILL: fill,
+            NaoApp.NAME_FILL_VALUE: fillValue,
+            NaoApp.NAME_MAX_VALUE: max,
+            NaoApp.NAME_MIN_VALUE: min,
+            NaoApp.NAME_NAME: name,
+            NaoApp.NAME_ASSET_ID: _asset,
+            NaoApp.NAME_PART_ID: _part,
+            NaoApp.NAME_TAGITEMS_ID: _tagitems,
+            NaoApp.NAME_UNIT_ID: _unit
+        }
+        return(self._sendDataToNaoJson("POST", NaoApp.URL_SERIES + type, payload))
 
 if __name__ == "__main__":
     'test'
     Nao = NaoApp("nao-app.de", "???", "????")
     Nao.startDataTransferFromDb()
+
 
