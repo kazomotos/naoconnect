@@ -12,7 +12,7 @@ from naoconnect.Param import Param
 
 
 class NaoApp(Param):
-    URLLOGIN = "/api/nao/auth/login"
+    URLLOGIN = "/api/user/auth/login"
     URLTELEGRAF = "/api/telegraf/"
     URL_INSTANCE = "/api/nao/instance"
     URL_INPUT = "/api/nao/inputvalue"
