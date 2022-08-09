@@ -422,6 +422,16 @@ class NaoApp(Param):
         }
         return(self._sendDataToNaoJson("POST", NaoApp.URL_SERIES + type, payload))
 
+    def createInstance(self, name, description, _asset, geolocation=[], _tagitems=[]):
+        payload = {
+            NaoApp.NAME_NAME: name,
+            NaoApp.NAME_DESCRIPTION: description,
+            NaoApp.NAME_GEOLOCATION: geolocation,
+            NaoApp.NAME_ASSET_ID: _asset,
+            NaoApp.NAME_TAGITEMS_ID: _tagitems
+        }
+        return(self._sendDataToNaoJson("POST", NaoApp.URL_INSTANCE, payload))
+
 if __name__ == "__main__":
     'test'
     Nao = NaoApp("nao-app.de", "???", "????")
