@@ -23,6 +23,7 @@ class NaoApp(Param):
     URL_PATH = "/api/nao/part"
     URL_UNITS = "/api/nao/units"
     URL_SERIES = "/api/nao/series/"
+    QUERY_GET_ENDPOINT = "?query=_instance=%s,_point=%s"
     HEADER_JSON = 'application/json'
     BEARER = "Bearer "
     TRANSFERCONFIG = "transfer_config"
@@ -36,6 +37,8 @@ class NaoApp(Param):
     TOTALTRANSFER = "total_number_of_sent_data"
     MAXBUFFERTIME = "max_buffer_time_DDR"
     LOGGINGINTERVAL = "logging_interval"
+    NAME_ENDPOINT_ID = "_endpoint"
+    SERIES_TYPE = "series_type"
     STANDARD_MAXBUFFERTIME = 1800
     STANDARD_ERRORSLEEP = 120
     STANDARD_TRANSFERINTERVAL = 900
@@ -83,15 +86,17 @@ class NaoApp(Param):
     def _sendDataToNaoJson(self, method, url, payload):
         header = copy(self.headers)
         header[NaoApp.NAME_CONTENT_HEADER] = NaoApp.HEADER_JSON
+        if payload != None:
+            payload = dumps(payload)
         try:
-            self.__conneciton.request(method, url, dumps(payload), header)
+            self.__conneciton.request(method, url, payload, header)
             data = self.__conneciton.getresponse().read()
             self.__conneciton.close()
         except:
             self._loginNao()
             header = copy(self.headers)
             header[NaoApp.NAME_CONTENT_HEADER] = NaoApp.HEADER_JSON
-            self.__conneciton.request(method, url, dumps(payload), header)
+            self.__conneciton.request(method, url, payload, header)
             data = self.__conneciton.getresponse().read()
             self.__conneciton.close()
         if data == b'':
@@ -369,7 +374,7 @@ class NaoApp(Param):
             NaoApp.NAME_AVATAR_ID: avatar,
             NaoApp.NAME_TAGITEMS_ID: tagitems
         }
-        return(self._sendDataToNaoJson("POST", NaoApp.URL_WORKSPACE, payload))
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_WORKSPACE, payload))
 
     def createAsset(self, name, _workspace, description="", baseInterval="1m", useGeolocation=True, avatar=None, tagitems=[]):
         payload = {
@@ -380,7 +385,7 @@ class NaoApp(Param):
             NaoApp.NAME_BASE_INTERVAL: baseInterval,
             NaoApp.NAME_USE_GEOLOCATION: useGeolocation
         }
-        return(self._sendDataToNaoJson("POST", NaoApp.URL_ASSET, payload))
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_ASSET, payload))
 
     def createPath(self, name, _asset, description="", color="#02c1de", _parent=None):
         payload = {
@@ -390,13 +395,13 @@ class NaoApp(Param):
             NaoApp.NAME_COLOR: color,
             NaoApp.NAME_PARENT_ID: _parent
         }
-        return(self._sendDataToNaoJson("POST", NaoApp.URL_PATH, payload))
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_PATH, payload))
 
     def createUnit(self, name):
         payload = {
             NaoApp.NAME_NAME: name
         }
-        return(self._sendDataToNaoJson("POST", NaoApp.URL_UNITS, payload))
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_UNITS, payload))
 
     def createSeries(self, type, name, description, _asset, _part, _unit, max, min, fill, fillValue, color="#02c1de", _tagitems=None):
         if isna(fill):
@@ -420,7 +425,7 @@ class NaoApp(Param):
             NaoApp.NAME_TAGITEMS_ID: _tagitems,
             NaoApp.NAME_UNIT_ID: _unit
         }
-        return(self._sendDataToNaoJson("POST", NaoApp.URL_SERIES + type, payload))
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_SERIES + type, payload))
 
     def createInstance(self, name, description, _asset, geolocation=[], _tagitems=[]):
         payload = {
@@ -430,7 +435,38 @@ class NaoApp(Param):
             NaoApp.NAME_ASSET_ID: _asset,
             NaoApp.NAME_TAGITEMS_ID: _tagitems
         }
-        return(self._sendDataToNaoJson("POST", NaoApp.URL_INSTANCE, payload))
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_INSTANCE, payload))
+        
+    def patchEnpointConifg(self, conf:dict, _instance=None, _series=None, _asset=None, **args):
+        """
+        _asset (id), _instance (id) and _series (id) can be used as arguments \n
+        or \n
+        _endpoint (id) (actual instance-series) \n
+        -->\n
+        if no endpoint in NAO you can fix it with give args _asset, _instance, _series and series_type
+        --> series_type can be Meter, Sensor, Actor or Setpoint
+        """
+        if args.get(NaoApp.NAME_ENDPOINT_ID):
+            try:
+                return(self._sendDataToNaoJson("PATCH", NaoApp.URL_SERIES+args[NaoApp.NAME_ENDPOINT_ID], dumps(conf)))
+            except:
+                raise Exception("no _endpoint in NAO, fix with give args _asset, _instance, _series and series-type")
+        if _series == None and _instance == None:
+            raise Exception("_series, _instance (or _endpoint) is missing")
+        result = self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_SERIES+NaoApp.QUERY_GET_ENDPOINT%(_instance,_series), {})
+        if result[NaoApp.NAME_RESULTS] == []:
+            if _asset == None or args.get(NaoApp.NAME_POINT_MODEL):
+                raise Exception("_asset or series_type is missing")
+            return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_SERIES,{
+                NaoApp.NAME_INSTANCE_ID:_instance,
+                NaoApp.NAME_ASSET_ID:_asset,
+                NaoApp.NAME_POINT_ID:_series,
+                NaoApp.NAME_POINT_MODEL:args[NaoApp.SERIES_TYPE],
+                NaoApp.NAME_CONFIG:conf
+            })[NaoApp.NAME_ID_ID])
+        else:
+            return(self._sendDataToNaoJson("PATCH", NaoApp.URL_SERIES+result[NaoApp.NAME_RESULTS][0][NaoApp.NAME_ID_ID], conf))
+
 
 if __name__ == "__main__":
     'test'

@@ -6,6 +6,7 @@ class Param():
     FORMAT_TELEGRAFFRAMESTRUCT2 = "%s,instance=%s %s="
     NAME_GET = "GET"
     NAME_POST = "POST"
+    NAME_PATCH = "PATCH"
     NAME_RESULTS = "results"
     NAME_LASTTIME = "last_timestamp"
     NAME_INTERVAL = "interval"
@@ -28,9 +29,12 @@ class Param():
     NAME_UNIT = "unit"
     NAME_TRANSFERCHANNELS = "transfer_channels"
     NAME_POINT = "point"
+    NAME_POINT_ID = "_point"
     NAME_ASSET = "asset"
     NAME_INSTANCE = "instance"
+    NAME_INSTANCE_ID = "_instance"
     NAME_SERIES = "series"
+    NAME_SERIES_ID = "_series"
     NAME_CONTENT_HEADER = "Content-Type"
     NAME_ASSET_ID = "_asset"
     NAME_WORKSPACE = "workspace"
@@ -56,6 +60,8 @@ class Param():
     NAME_USE_GEOLOCATION = "useGeolocation"
     NAME_AVATAR_ID = "_avatar"
     NAME_COMPONENT = "component"
+    NAME_POINT_MODEL = "pointModel"
+    NAME_CONFIG = "config"
 
 
 class Labling():
