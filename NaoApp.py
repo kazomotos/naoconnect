@@ -24,6 +24,7 @@ class NaoApp(Param):
     URL_UNITS = "/api/nao/units"
     URL_SERIES = "/api/nao/series/"
     QUERY_GET_ENDPOINT = "?query=_instance=%s,_point=%s"
+    QUERY_GET = "?query="
     HEADER_JSON = 'application/json'
     BEARER = "Bearer "
     TRANSFERCONFIG = "transfer_config"
@@ -453,7 +454,7 @@ class NaoApp(Param):
                 raise Exception("no _endpoint in NAO, fix with give args _asset, _instance, _series and series-type")
         if _series == None and _instance == None:
             raise Exception("_series, _instance (or _endpoint) is missing")
-        result = self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_SERIES+NaoApp.QUERY_GET_ENDPOINT%(_instance,_series), {})
+        result = self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_SERIES+NaoApp.QUERY_GET_ENDPOINT%(_instance,_series), None)
         if result[NaoApp.NAME_RESULTS] == []:
             if _asset == None or args.get(NaoApp.NAME_POINT_MODEL):
                 raise Exception("_asset or series_type is missing")
@@ -467,6 +468,14 @@ class NaoApp(Param):
         else:
             return(self._sendDataToNaoJson("PATCH", NaoApp.URL_SERIES+result[NaoApp.NAME_RESULTS][0][NaoApp.NAME_ID_ID], conf))
 
+    def getEndpoints(self, **args):
+        if len(args) > 0:
+            query = NaoApp.QUERY_GET
+        else:
+            query = ""
+        for arg in args:
+            query += arg + "=" + args[arg] + ","
+        return(self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_SERIES+query, {}))
 
 if __name__ == "__main__":
     'test'
