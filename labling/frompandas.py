@@ -21,7 +21,6 @@ class FromPandasFrame():
         self.idx_row:int = None
         if self.data == None and args.get(FromPandasFrame.PATH_FILE_TABSTOPP_TEXT):
             self.data = self.readTabstoppText(args[FromPandasFrame.PATH_FILE_TABSTOPP_TEXT])
-        self.data["workspace"] += " (rupert)"
         
     def readTabstoppText(self, path_file):
         return(pd.read_csv(path_file, sep="\t", encoding="utf-16"))
