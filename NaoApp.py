@@ -477,6 +477,10 @@ class NaoApp(Param):
             query += arg + "=" + args[arg] + ","
         return(self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_SERIES+query, {}))
 
+    def deleteEndpoint(self, _endpoint):
+        self._sendDataToNaoJson(NaoApp.NAME_DELETE, NaoApp.URL_SERIES+_endpoint, {})
+        return(NaoApp.NAME_DELETE)
+
 if __name__ == "__main__":
     'test'
     Nao = NaoApp("nao-app.de", "???", "????")

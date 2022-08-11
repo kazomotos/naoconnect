@@ -7,6 +7,7 @@ class Param():
     NAME_GET = "GET"
     NAME_POST = "POST"
     NAME_PATCH = "PATCH"
+    NAME_DELETE = "DELETE"
     NAME_RESULTS = "results"
     NAME_LASTTIME = "last_timestamp"
     NAME_INTERVAL = "interval"
