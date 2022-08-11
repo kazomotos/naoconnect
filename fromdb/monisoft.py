@@ -55,7 +55,7 @@ class Monisoft(Param):
     def _buildTelegrafFrameForm(self, twin, instance, series):
         return(Monisoft.FORMAT_TELEGRAFFRAMESTRUCT2%(twin,instance,series)+"%f %.0f")
 
-    def getTelegrafData(self, max_data_len=30000, maxtimerange=3600*24):
+    def getTelegrafData(self, max_data_len=30000, maxtimerange=None): #{'monisoft_id': '1000500',  'interval': 60}
         ''' [ '<twin>,instance=<insatance>, <measurement>=<value> <timestamp>' ] '''
         ret_data = []
         ret_data_add = ret_data.append
@@ -64,6 +64,10 @@ class Monisoft(Param):
         data_len = 0
         self.marker_timestamps = deepcopy(self.lasttimestamps)
         for index in range(len(self.transfere)):
+            if maxtimerange == None:
+                used_maxtimerange = self.transfere[index][Monisoft.NAME_INTERVAL] * (max_data_len+10-data_len)
+            else:
+                used_maxtimerange = maxtimerange
             # set timesamp for new tables
             if self.marker_timestamps == {}:
                 self.marker_timestamps[str(index)] = Monisoft.RESET_TIME
@@ -71,7 +75,7 @@ class Monisoft(Param):
                 self.marker_timestamps[str(index)] = Monisoft.RESET_TIME
             # build sql time formate and set max timerange
             aftertimesql = self.marker_timestamps.get(str(index))
-            aftertimesql2 = self.marker_timestamps.get(str(index))+maxtimerange
+            aftertimesql2 = self.marker_timestamps.get(str(index))+used_maxtimerange
             # build sql formated format
             telegraf_form = self._buildTelegrafFrameForm(
                     twin=self.transfere[index][Monisoft.NAME_TELEGRAF][0],
@@ -95,17 +99,17 @@ class Monisoft(Param):
                 try:
                     self.marker_timestamps[str(index)] = max(timestamp_list)
                 except:
-                    print("no_timestamp", self.transfere[index][Monisoft.NAME_MONISOFT_ID], aftertimesql)
+                    None
                 if timestamp_list != []:
                     break
-                elif breaker or int(self.marker_timestamps.get(str(index))) > time.time()-3600*24*2:
+                elif breaker or int(self.marker_timestamps.get(str(index))) > time()-used_maxtimerange:
                     break
                 else:
                     # serach for first time stamp in database
                     self.__cur.execute("SELECT MIN("+Monisoft.COLUMN_TIME+") FROM "+Monisoft.TABLE_HISTORY+" WHERE "+Monisoft.COLUMN_ID+" = "+str(self.transfere[index][Monisoft.NAME_MONISOFT_ID]))
                     try:
                         aftertimesql = self.__cur.fetchall()[0][0]
-                        aftertimesql2 = aftertimesql+maxtimerange
+                        aftertimesql2 = aftertimesql+used_maxtimerange
                     except:
                         print("no data vor monisoft_id: ", self.transfere[index][Monisoft.NAME_MONISOFT_ID])
                         break

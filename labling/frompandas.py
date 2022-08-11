@@ -39,16 +39,22 @@ class FromPandasFrame():
     def lablingAll(self, list_endpoint_conf:list=None):
         self._checkLabling()
         for self.idx_row in range(len(self.data)):
-            if not self._checkLabling:
-                print("missing data for row,", self.idx_row)
-                continue
-            self._setWorkspace()
-            self._setAsset()
-            self._setComponent()
-            self._setSeries()
-            self._setInstance()
-            if list_endpoint_conf != None:
-                self._setEnpointConifg(list_endpoint_conf)
+            try:
+                if not self._checkLabling:
+                    print("missing data for row,", self.idx_row)
+                    continue
+                self._setWorkspace()
+                self._setUnit()
+                self._setAsset()
+                self._setComponent()
+                self._setSeries()
+                self._setInstance()
+                if list_endpoint_conf != None:
+                    self._setEnpointConifg(list_endpoint_conf)
+            except Exception as e:
+                self.writeLabling()
+                raise Exception(e)
+            self.writeLabling()
 
     def _ceckRow(self):
         if pd.isna(self.data[lab.WORKSPACE][self.idx_row]):
@@ -179,7 +185,7 @@ class FromPandasFrame():
         for conf in list_endpoint_conf:
             config[conf] = str(self.data[conf][self.idx_row])
         self.Nao.patchEnpointConifg(
-            conf={par.NAME_CONFIG: dumps(config)},
+            conf=config,
             _asset=self.asset[par.NAME_ID],
             _instance=self.instance[par.NAME_ID],
             _series=self.series[par.NAME_ID],

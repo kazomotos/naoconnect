@@ -195,7 +195,8 @@ class NaoApp(Param):
                 self.end_confirmation = True
                 break     
 
-    def __DataTransferLoggingData(self):    
+    def __DataTransferLoggingData(self):
+        update_time = time()  
         while 1==1:
             start = time()
             try:    
@@ -206,10 +207,13 @@ class NaoApp(Param):
                 ending = self.DataForLogging.refreshConnection()
                 if ending:
                     self.end_transfer = True
-            diff = time() - start
+            if time() - update_time > 800:
+                self._addAndUpdateTotalNumberOfSentData()
+                update_time = time()
             if self.end_transfer:
                 self.DataForLogging.exit()
                 break
+            diff = time() - start
             if diff < self.transfer_config[NaoApp.LOGGINGINTERVAL]:
                 sleep(self.transfer_config[NaoApp.LOGGINGINTERVAL]-diff)
 
@@ -449,7 +453,9 @@ class NaoApp(Param):
         """
         if args.get(NaoApp.NAME_ENDPOINT_ID):
             try:
-                return(self._sendDataToNaoJson("PATCH", NaoApp.URL_SERIES+args[NaoApp.NAME_ENDPOINT_ID], dumps(conf)))
+                return(self._sendDataToNaoJson("PATCH", NaoApp.URL_SERIES+args[NaoApp.NAME_ENDPOINT_ID], dumps(
+                    {NaoApp.NAME_CONFIG: dumps(conf)}
+                )))
             except:
                 raise Exception("no _endpoint in NAO, fix with give args _asset, _instance, _series and series-type")
         if _series == None and _instance == None:
@@ -463,10 +469,12 @@ class NaoApp(Param):
                 NaoApp.NAME_ASSET_ID:_asset,
                 NaoApp.NAME_POINT_ID:_series,
                 NaoApp.NAME_POINT_MODEL:args[NaoApp.SERIES_TYPE],
-                NaoApp.NAME_CONFIG:conf
+                NaoApp.NAME_CONFIG:dumps(conf)
             })[NaoApp.NAME_ID_ID])
         else:
-            return(self._sendDataToNaoJson("PATCH", NaoApp.URL_SERIES+result[NaoApp.NAME_RESULTS][0][NaoApp.NAME_ID_ID], conf))
+            return(self._sendDataToNaoJson("PATCH", NaoApp.URL_SERIES+result[NaoApp.NAME_RESULTS][0][NaoApp.NAME_ID_ID], dumps(
+                    {NaoApp.NAME_CONFIG: dumps(conf)}
+            )))
 
     def getEndpoints(self, **args):
         if len(args) > 0:
