@@ -105,15 +105,18 @@ class Monisoft(Param):
                 elif breaker or int(self.marker_timestamps.get(str(index))) > time()-used_maxtimerange:
                     break
                 else:
+                    if aftertimesql == Monisoft.RESET_TIME:
                     # serach for first time stamp in database
-                    self.__cur.execute("SELECT MIN("+Monisoft.COLUMN_TIME+") FROM "+Monisoft.TABLE_HISTORY+" WHERE "+Monisoft.COLUMN_ID+" = "+str(self.transfere[index][Monisoft.NAME_MONISOFT_ID]))
-                    try:
-                        aftertimesql = self.__cur.fetchall()[0][0]
-                        aftertimesql2 = aftertimesql+used_maxtimerange
-                    except:
-                        print("no data vor monisoft_id: ", self.transfere[index][Monisoft.NAME_MONISOFT_ID])
+                        self.__cur.execute("SELECT MIN("+Monisoft.COLUMN_TIME+") FROM "+Monisoft.TABLE_HISTORY+" WHERE "+Monisoft.COLUMN_ID+" = "+str(self.transfere[index][Monisoft.NAME_MONISOFT_ID]))
+                        try:
+                            aftertimesql = self.__cur.fetchall()[0][0]
+                            aftertimesql2 = aftertimesql+used_maxtimerange
+                        except:
+                            #print("no data vor monisoft_id: ", self.transfere[index][Monisoft.NAME_MONISOFT_ID])
+                            break
+                        breaker = True
+                    else:
                         break
-                    breaker = True
             if data_len >= max_data_len:
                 break
         return(ret_data)
