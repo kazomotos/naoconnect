@@ -111,7 +111,7 @@ class Monisoft(Param):
                         aftertimesql = self.__cur.fetchall()[0][0]
                         aftertimesql2 = aftertimesql+used_maxtimerange
                     except:
-                        print("no data vor monisoft_id: ", self.transfere[index][Monisoft.NAME_MONISOFT_ID])
+                        #print("no data vor monisoft_id: ", self.transfere[index][Monisoft.NAME_MONISOFT_ID])
                         break
                     breaker = True
             if data_len >= max_data_len:
