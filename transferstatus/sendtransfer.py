@@ -94,7 +94,7 @@ class ReportMailSsl(Param):
         self.html_input_title = open(path+ReportMailSsl.HTML_TITLE, "r").read()
         self.html_input_rows = open(path+ReportMailSsl.HTML_ROW, "r").read()
 
-    def _setInput(self, title:str, text, sub_title:list, sub_text:list):
+    def _setInput(self, title:str, text:str, sub_title:list, sub_text:list):
         html_input_title = self.html_input_title.replace(ReportMailSsl.POS_TITLE, title).replace(ReportMailSsl.POS_TEXT, text)
         html_sub = ""
         for index in range(len(sub_title)):
@@ -140,7 +140,7 @@ class ReportMailSsl(Param):
         # ----
         workspaces = self.Nao.getWorkspace()[ReportMailSsl.NAME_RESULTS]
         series_name_dict = {}
-        for dict_workspace in workspaces:
+        for dict_workspace in workspaces[:1]:
             time.sleep(20)
             organistation_id = dict_workspace[ReportMailSsl.NAME_ORGANIZATION_ID]
             workspace_name = dict_workspace[ReportMailSsl.NAME_NAME]
@@ -313,4 +313,9 @@ class ReportMailSsl(Param):
 
 
                 sub_text_add(ReportMailSsl.FORM_BASE_TEXT%(count_all,text_missing_all,count_30d,text_missing_30d,instance_text))
-            ReportMailSsl._setInput(title_workspace, text_workspace, sub_title_list, sub_text_list)
+            self._setInput(
+                title=title_workspace, 
+                text=text_workspace, 
+                sub_title=sub_title_list, 
+                sub_text=sub_text_list
+            )
