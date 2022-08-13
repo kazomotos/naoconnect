@@ -247,14 +247,11 @@ class NaoApp(Param):
             # TODO: hier könnte noch ein Buffer auf Festplatte gebaut werden
 
     def __dataTransferFromDb(self):
-        test_data = []
-        test_extend = test_data.extend
         while 1==1:
             start = time()
             try:    
                 data = self.DataFromDb.getTelegrafData(max_data_len=self.transfer_config[NaoApp.DATAPERTELEGRAF])
                 data_len = len(data)
-                test_extend(data)
             except TimeoutError:
                 data = []
                 self.print("ERROR-FromDb: TimeoutError")
