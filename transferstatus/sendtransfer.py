@@ -140,7 +140,7 @@ class ReportMailSsl(Param):
         # ----
         workspaces = self.Nao.getWorkspace()[ReportMailSsl.NAME_RESULTS]
         series_name_dict = {}
-        for dict_workspace in workspaces[:1]:
+        for dict_workspace in workspaces:
             time.sleep(20)
             organistation_id = dict_workspace[ReportMailSsl.NAME_ORGANIZATION_ID]
             workspace_name = dict_workspace[ReportMailSsl.NAME_NAME]
