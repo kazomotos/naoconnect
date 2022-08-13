@@ -11,7 +11,6 @@ from pandas import isna
 from naoconnect.TinyDb import TinyDb
 from naoconnect.Param import Param
 
-
 class NaoApp(Param):
     URLLOGIN = "/api/user/auth/login"
     URLTELEGRAF = "/api/telegraf/"
@@ -23,6 +22,7 @@ class NaoApp(Param):
     URL_PATH = "/api/nao/part"
     URL_UNITS = "/api/nao/units"
     URL_SERIES = "/api/nao/series/"
+    URL_SINGELVALUES = "/api/series/data/singlevalues"
     QUERY_GET_ENDPOINT = "?query=_instance=%s,_point=%s"
     QUERY_GET = "?query="
     HEADER_JSON = 'application/json'
@@ -40,6 +40,7 @@ class NaoApp(Param):
     LOGGINGINTERVAL = "logging_interval"
     NAME_ENDPOINT_ID = "_endpoint"
     SERIES_TYPE = "series_type"
+    CONSOLIDATE = "consolidate"
     STANDARD_MAXBUFFERTIME = 1800
     STANDARD_ERRORSLEEP = 120
     STANDARD_TRANSFERINTERVAL = 900
@@ -103,7 +104,10 @@ class NaoApp(Param):
         if data == b'':
             return('')
         else:
-            return(loads(data))
+            try:
+                return(loads(data))
+            except:
+                return(-1)
     
     def sendNewInstance(self, asset, name, discription, geolocation=None):
         data = {
@@ -488,6 +492,66 @@ class NaoApp(Param):
     def deleteEndpoint(self, _endpoint):
         self._sendDataToNaoJson(NaoApp.NAME_DELETE, NaoApp.URL_SERIES+_endpoint, {})
         return(NaoApp.NAME_DELETE)
+    
+    def getWorkspace(self, **args):
+        if len(args) > 0:
+            query = NaoApp.QUERY_GET
+        else:
+            query = ""
+        for arg in args:
+            query += arg + "=" + args[arg] + ","
+        return(self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_WORKSPACE+query, {}))
+    
+    def getAssets(self, **args):
+        if len(args) > 0:
+            query = NaoApp.QUERY_GET
+        else:
+            query = ""
+        for arg in args:
+            query += arg + "=" + args[arg] + ","
+        return(self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_ASSET+query, {}))
+
+    def getInstances(self, **args):
+        if len(args) > 0:
+            query = NaoApp.QUERY_GET
+        else:
+            query = ""
+        for arg in args:
+            query += arg + "=" + args[arg] + ","
+        return(self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_INSTANCE+query, {}))
+    
+    def getSeries(self, **args):
+        if len(args) > 0:
+            query = NaoApp.QUERY_GET
+        else:
+            query = ""
+        for arg in args:
+            query += arg + "=" + args[arg] + ","
+        return(self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_SERIES+NaoApp.CONSOLIDATE+query, {}))
+
+    def getSingelValues(self, organizationId, first_time="-365d", last_time="now()", points=[{"id":"all"}], validates=False, aggregate="mean"):
+        '''
+        points ->   {
+                        "id": str,
+                        "asset": str,
+                        "instance": str,
+                        "series": str,
+                    }
+        '''
+        payload = {
+            NaoApp.NAME_SELECT:{
+                NaoApp.NAME_ORGANIZATIONID:organizationId,
+                NaoApp.NAME_POINTS:points,
+                NaoApp.NAME_RANGE: {
+                    NaoApp.NAME_START:first_time,
+                    NaoApp.NAME_STOP:last_time
+                },
+                NaoApp.NAME_VALIDATES:validates,
+            },
+            NaoApp.NAME_AGGREGATE:aggregate
+        }
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_SINGELVALUES, payload=payload))
+
 
 if __name__ == "__main__":
     'test'

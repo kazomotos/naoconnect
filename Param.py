@@ -9,6 +9,7 @@ class Param():
     NAME_PATCH = "PATCH"
     NAME_DELETE = "DELETE"
     NAME_RESULTS = "results"
+    NAME_RESULT = "result"
     NAME_LASTTIME = "last_timestamp"
     NAME_INTERVAL = "interval"
     NAME_VALUE = "value"
@@ -63,7 +64,16 @@ class Param():
     NAME_COMPONENT = "component"
     NAME_POINT_MODEL = "pointModel"
     NAME_CONFIG = "config"
-
+    NAME_SELECT = "select"
+    NAME_POINTS = "points"
+    NAME_RANGE = "range"
+    NAME_VALIDATES = "validates"
+    NAME_AGGREGATE = "aggregate"
+    NAME_START = "start"
+    NAME_STOP = "stop"
+    NAME_ORGANIZATIONID = "organizationId"
+    NAME_ORGANIZATION_ID = "_organization"
+    NAME_TIME = "time"
 
 class Labling():
     ASSET = "asset"
