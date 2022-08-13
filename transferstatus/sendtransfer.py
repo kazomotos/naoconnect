@@ -77,7 +77,7 @@ class ReportMailSsl(Param):
 
     def sendNaoReport(self, subject="Report Datenerfassung"):
         self._getNaoData()
-        self._getNaoHtmlModel()
+        self._getNaoHtmlModel(title=subject)
         self._setHtmlInputs()
         self.sendHtmlMsg(subject=subject,message=self._buildHtmlMsg(), filename="nao_long_report.csv", filecontent=self.data_frame.to_csv(index=False))
 
