@@ -29,7 +29,9 @@ class ReportMailSsl(Param):
     LAST_30d = "last_30d"
     COUNT_30d = "count_30d"
     FORM_WORCSPACE_TITLE = "Workspace&nbsp;&ndash;&nbsp;%s"
-    FORM_BASE_TEXT = "gesmater Zeitraum&nbsp;&ndash;&nbsp;Messwerte: %s,&nbsp;&nbsp;%s<br />letzen 30 Tage&nbsp;&ndash;&nbsp;Messwerte: %s,&nbsp;&nbsp;%s%s"
+    FORM_BASE_TEXT = '''gesmater Zeitraum&nbsp;&ndash;&nbsp;Messwerte: %s,&nbsp;&nbsp;%s<br />
+                        letzen 30 Tage&nbsp;&ndash;&nbsp;Messwerte: %s,&nbsp;&nbsp;%s<br />
+                        letze erfolgreiche Übertragung&nbsp;&ndash;&nbsp;Zeitpunkt: %s%s'''
     FORM_MISSING_SENSORS = "%s Messpunkte liefern keine Messwerte"
     FORM_ASSET_TITLE = "Asset&nbsp;&ndash;&nbsp;%s"
     FORM_INSTANCE_TEXT_LAST = "<br />Instance&nbsp;&ndash;&nbsp;%s: seit %s werden keine Messwerte mehr geliefert"
@@ -73,9 +75,9 @@ class ReportMailSsl(Param):
             self.client.sendmail(self.from_mail, email, msg.as_string())
         self.client.close()
 
-    def sendNaoReport(self, subject="Report Datenerfassung", message=""):
+    def sendNaoReport(self, subject="Report Datenerfassung"):
         self._getNaoData()
-        self._getNaoHtmlModel()
+        self._getNaoHtmlModel(title=subject)
         self._setHtmlInputs()
         self.sendHtmlMsg(subject=subject,message=self._buildHtmlMsg(), filename="nao_long_report.csv", filecontent=self.data_frame.to_csv(index=False))
 
@@ -181,57 +183,58 @@ class ReportMailSsl(Param):
             dict_all = {}
             dict_30d = {}
             # count all
-            if len(select_points) > 250:
-                count_all = []
-                count_all_add = count_all.extend
-                for index in range(int(len(select_points)/250)):
-                    count_all_add(self.Nao.getSingelValues(organistation_id, points=select_points[index*250:(index+1)*250], aggregate="count",first_time="-6000d")[ReportMailSsl.NAME_RESULT])
-                    last_index = (index+1)*250
-                count_all_add(self.Nao.getSingelValues(organistation_id, points=select_points[last_index:], aggregate="count",first_time="-6000d")[ReportMailSsl.NAME_RESULT])
-            else:
-                count_all = self.Nao.getSingelValues(organistation_id, points=select_points, aggregate="count",first_time="-6000d")[ReportMailSsl.NAME_RESULT]
-            for dic in count_all:
-                dict_all[dic[ReportMailSsl.NAME_ID]] = {ReportMailSsl.NAME_COUNT:dic[ReportMailSsl.NAME_VALUE]}
-            del count_all
-            #  last all
-            if len(select_points) > 250:
-                last_all = []
-                last_all_add = last_all.extend
-                for index in range(int(len(select_points)/250)):
-                    last_all_add(self.Nao.getSingelValues(organistation_id, points=select_points[index*250:(index+1)*250], aggregate="last",first_time="-6000d")[ReportMailSsl.NAME_RESULT])
-                    last_index = (index+1)*250
-                last_all_add(self.Nao.getSingelValues(organistation_id, points=select_points[last_index:], aggregate="last",first_time="-6000d")[ReportMailSsl.NAME_RESULT])
-            else:
-                last_all = self.Nao.getSingelValues(organistation_id, points=select_points, aggregate="last",first_time="-6000d")[ReportMailSsl.NAME_RESULT]
-            for dic in last_all:
-                dict_all[dic[ReportMailSsl.NAME_ID]][ReportMailSsl.NAME_TIME] = dic[ReportMailSsl.NAME_TIME]
-            del last_all
-            # count 30d
-            if len(select_points) > 250:
-                count_30d = []
-                count_30d_add = count_30d.extend
-                for index in range(int(len(select_points)/250)):
-                    count_30d_add(self.Nao.getSingelValues(organistation_id, points=select_points[index*250:(index+1)*250], aggregate="count",first_time="-30d")[ReportMailSsl.NAME_RESULT])
-                    last_index = (index+1)*250
-                count_30d_add(self.Nao.getSingelValues(organistation_id, points=select_points[last_index:], aggregate="count",first_time="-30d")[ReportMailSsl.NAME_RESULT])
-            else:
-                count_30d = self.Nao.getSingelValues(organistation_id, points=select_points, aggregate="count",first_time="-30d")[ReportMailSsl.NAME_RESULT]
-            for dic in count_30d:
-                dict_30d[dic[ReportMailSsl.NAME_ID]] = {ReportMailSsl.NAME_COUNT:dic[ReportMailSsl.NAME_VALUE]}
-            del count_30d
-            # last 30d
-            if len(select_points) > 250:
-                last_30d = []
-                last_30d_add = last_30d.extend
-                for index in range(int(len(select_points)/250)):
-                    last_30d_add(self.Nao.getSingelValues(organistation_id, points=select_points[index*250:(index+1)*250], aggregate="last",first_time="-30d")[ReportMailSsl.NAME_RESULT])
-                    last_index = (index+1)*250
-                last_30d_add(self.Nao.getSingelValues(organistation_id, points=select_points[last_index:], aggregate="last",first_time="-30d")[ReportMailSsl.NAME_RESULT])
-            else:
-                last_30d = self.Nao.getSingelValues(organistation_id, points=select_points, aggregate="last",first_time="-30d")[ReportMailSsl.NAME_RESULT]
-            for dic in last_30d:
-                dict_30d[dic[ReportMailSsl.NAME_ID]][ReportMailSsl.NAME_TIME] = dic[ReportMailSsl.NAME_TIME]
-            del last_30d
+            if select_points != []:
+                if len(select_points) > 250:
+                    count_all = []
+                    count_all_add = count_all.extend
+                    for index in range(int(len(select_points)/250)):
+                        count_all_add(self.Nao.getSingelValues(organistation_id, points=select_points[index*250:(index+1)*250], aggregate="count",first_time="-6000d")[ReportMailSsl.NAME_RESULT])
+                        last_index = (index+1)*250
+                    count_all_add(self.Nao.getSingelValues(organistation_id, points=select_points[last_index:], aggregate="count",first_time="-6000d")[ReportMailSsl.NAME_RESULT])
+                else:
+                    count_all = self.Nao.getSingelValues(organistation_id, points=select_points, aggregate="count",first_time="-6000d")[ReportMailSsl.NAME_RESULT]
+                for dic in count_all:
+                    dict_all[dic[ReportMailSsl.NAME_ID]] = {ReportMailSsl.NAME_COUNT:dic[ReportMailSsl.NAME_VALUE]}
+                del count_all
+                #  last all
+                if len(select_points) > 250:
+                    last_all = []
+                    last_all_add = last_all.extend
+                    for index in range(int(len(select_points)/250)):
+                        last_all_add(self.Nao.getSingelValues(organistation_id, points=select_points[index*250:(index+1)*250], aggregate="last",first_time="-6000d")[ReportMailSsl.NAME_RESULT])
+                        last_index = (index+1)*250
+                    last_all_add(self.Nao.getSingelValues(organistation_id, points=select_points[last_index:], aggregate="last",first_time="-6000d")[ReportMailSsl.NAME_RESULT])
+                else:
+                    last_all = self.Nao.getSingelValues(organistation_id, points=select_points, aggregate="last",first_time="-6000d")[ReportMailSsl.NAME_RESULT]
+                for dic in last_all:
+                    dict_all[dic[ReportMailSsl.NAME_ID]][ReportMailSsl.NAME_TIME] = dic[ReportMailSsl.NAME_TIME]
+                del last_all
+                # count 30d
+                if len(select_points) > 250:
+                    count_30d = []
+                    count_30d_add = count_30d.extend
+                    for index in range(int(len(select_points)/250)):
+                        count_30d_add(self.Nao.getSingelValues(organistation_id, points=select_points[index*250:(index+1)*250], aggregate="count",first_time="-30d")[ReportMailSsl.NAME_RESULT])
+                        last_index = (index+1)*250
+                    count_30d_add(self.Nao.getSingelValues(organistation_id, points=select_points[last_index:], aggregate="count",first_time="-30d")[ReportMailSsl.NAME_RESULT])
+                else:
+                    count_30d = self.Nao.getSingelValues(organistation_id, points=select_points, aggregate="count",first_time="-30d")[ReportMailSsl.NAME_RESULT]
+                for dic in count_30d:
+                    dict_30d[dic[ReportMailSsl.NAME_ID]] = {ReportMailSsl.NAME_COUNT:dic[ReportMailSsl.NAME_VALUE]}
+                del count_30d
+                # last 30d
+                if len(select_points) > 250:
+                    last_30d = []
+                    last_30d_add = last_30d.extend
+                    for index in range(int(len(select_points)/250)):
+                        last_30d_add(self.Nao.getSingelValues(organistation_id, points=select_points[index*250:(index+1)*250], aggregate="last",first_time="-30d")[ReportMailSsl.NAME_RESULT])
+                        last_index = (index+1)*250
+                    last_30d_add(self.Nao.getSingelValues(organistation_id, points=select_points[last_index:], aggregate="last",first_time="-30d")[ReportMailSsl.NAME_RESULT])
+                else:
+                    last_30d = self.Nao.getSingelValues(organistation_id, points=select_points, aggregate="last",first_time="-30d")[ReportMailSsl.NAME_RESULT]
+                for dic in last_30d:
+                    dict_30d[dic[ReportMailSsl.NAME_ID]][ReportMailSsl.NAME_TIME] = dic[ReportMailSsl.NAME_TIME]
+                del last_30d
             for id_endpoint in dict_all:
                 add_worcspace(add_dict[id_endpoint][0])
                 add_worcspace_id(add_dict[id_endpoint][1])
@@ -275,7 +278,14 @@ class ReportMailSsl(Param):
                 text_missing_30d = ""
             count_all = self._formatCount(workspace_frame[ReportMailSsl.COUNT_ALL].sum())
             count_30d = self._formatCount(workspace_frame[ReportMailSsl.COUNT_30d].sum())
-            text_workspace = ReportMailSsl.FORM_BASE_TEXT%(count_all,text_missing_all,count_30d,text_missing_30d,"")
+            text_workspace = ReportMailSsl.FORM_BASE_TEXT%(
+                count_all,
+                text_missing_all,
+                count_30d,
+                text_missing_30d,
+                str(workspace_frame[ReportMailSsl.LAST_ALL].max()).split("+")[0],
+                ""
+            )
             # asset
             grouped_asset = workspace_frame.groupby(ReportMailSsl.NAME_ASSET_ID)
             asset_list_id = list(grouped_asset.groups.keys())
@@ -310,9 +320,14 @@ class ReportMailSsl(Param):
                     count_30d = instance_frame[ReportMailSsl.COUNT_30d].sum()
                     if count_30d == 0:
                         instance_text += ReportMailSsl.FORM_INSTANCE_TEXT_LAST %(instance_name, str(instance_frame[ReportMailSsl.LAST_ALL].max()).split("+")[0])
-
-
-                sub_text_add(ReportMailSsl.FORM_BASE_TEXT%(count_all,text_missing_all,count_30d,text_missing_30d,instance_text))
+                sub_text_add(ReportMailSsl.FORM_BASE_TEXT%(
+                    self._formatCount(count_all),
+                    text_missing_all,
+                    self._formatCount(count_30d),
+                    text_missing_30d,
+                    str(asset_frame[ReportMailSsl.LAST_ALL].max()).split("+")[0],
+                    instance_text
+                ))
             self._setInput(
                 title=title_workspace, 
                 text=text_workspace, 
