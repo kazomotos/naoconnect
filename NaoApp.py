@@ -3,6 +3,7 @@ import http.client
 from logging.handlers import DatagramHandler
 from sqlite3 import DatabaseError
 from urllib.parse import quote
+from datetime import datetime
 from copy import copy
 from json import loads, dumps
 from time import sleep, time
@@ -361,7 +362,7 @@ class NaoApp(Param):
         return(number)
 
     def _loginNao(self):        
-        self.print(NaoApp.MESSAGELOGIN)
+        print(NaoApp.MESSAGELOGIN)
         self.__conneciton = http.client.HTTPSConnection(self.auth[NaoApp.NAME_HOST])
         self.__conneciton.request(NaoApp.NAME_POST, NaoApp.URLLOGIN, self.auth[NaoApp.NAME_PAYLOAD], NaoApp.LOGINHEADER)
         res = self.__conneciton.getresponse()
@@ -372,7 +373,7 @@ class NaoApp(Param):
     def print(self, log:str):
         if self.error_log:
             error_file = open(self.error_log, "a")
-            error_file.writelines(log+'\n')
+            error_file.writelines(str(datetime.now()) + log+'\n')
             error_file.close()
         else:
             print(log)

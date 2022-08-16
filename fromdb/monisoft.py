@@ -28,7 +28,7 @@ class Monisoft(Param):
         self.transfere = self._getTransferChannels()
         self.confirm_time = time()
         self.__con = None
-        self.__cur = None
+        self.cur = None
         self.connectToDb()
 
     def connectToDb(self):
@@ -37,19 +37,20 @@ class Monisoft(Param):
             user=self.user,
             password=self.password,
             database=self.database,
-            port=self.port
+            port=self.port,
+            connect_timeout=1
         )
     
     def disconnetToDb(self):
         self.__con.close()
 
-    def __buildCursor(self):
-        self.__cur = self.__con.cursor()
+    def _buildCursor(self):
+        self.cur = self.__con.cursor()
 
     def getTables(self):
-        self.__buildCursor()
-        self.__cur.execute("SELECT TABLE_NAME FROM information_schema.tables")
-        fetch = self.__cur.fetchall()
+        self._buildCursor()
+        self.cur.execute("SELECT TABLE_NAME FROM information_schema.tables")
+        fetch = self.cur.fetchall()
         return(fetch)
     
     def _buildTelegrafFrameForm(self, twin, instance, series):
@@ -60,7 +61,7 @@ class Monisoft(Param):
         ret_data = []
         ret_data_add = ret_data.append
         # sql cursor
-        self.__buildCursor()
+        self._buildCursor()
         data_len = 0
         self.marker_timestamps = deepcopy(self.lasttimestamps)
         for index in range(len(self.transfere)):
@@ -88,8 +89,8 @@ class Monisoft(Param):
                 timestamp_list = []
                 timestamp_list_add = timestamp_list.append
                 query = self._buildQuery(aftertimesql, aftertimesql2, self.transfere[index][Monisoft.NAME_MONISOFT_ID])
-                self.__cur.execute(query)
-                result_sql = self.__cur.fetchall()
+                self.cur.execute(query)
+                result_sql = self.cur.fetchall()
                 for row in result_sql:
                     timestamp_list_add(row[Monisoft.POSITION_TIME])
                     # form data for telegraf
@@ -107,9 +108,9 @@ class Monisoft(Param):
                 else:
                     if aftertimesql == Monisoft.RESET_TIME:
                     # serach for first time stamp in database
-                        self.__cur.execute("SELECT MIN("+Monisoft.COLUMN_TIME+") FROM "+Monisoft.TABLE_HISTORY+" WHERE "+Monisoft.COLUMN_ID+" = "+str(self.transfere[index][Monisoft.NAME_MONISOFT_ID]))
+                        self.cur.execute("SELECT MIN("+Monisoft.COLUMN_TIME+") FROM "+Monisoft.TABLE_HISTORY+" WHERE "+Monisoft.COLUMN_ID+" = "+str(self.transfere[index][Monisoft.NAME_MONISOFT_ID]))
                         try:
-                            aftertimesql = self.__cur.fetchall()[0][0]
+                            aftertimesql = self.cur.fetchall()[0][0]
                             aftertimesql2 = aftertimesql+used_maxtimerange
                         except:
                             #print("no data vor monisoft_id: ", self.transfere[index][Monisoft.NAME_MONISOFT_ID])
@@ -121,8 +122,8 @@ class Monisoft(Param):
                 break
         return(ret_data)
 
-    def _buildQuery(self, time1, time2, monisoft_id):
-        return(" SELECT * FROM "+Monisoft.TABLE_HISTORY+" WHERE "+Monisoft.COLUMN_TIME+" > "+str(time1)+" AND  "+Monisoft.COLUMN_TIME+" < "+str(time2)+" AND "+Monisoft.COLUMN_ID+" = "+str(monisoft_id))
+    def _buildQuery(self,time1, time2, monisoft_id):
+        return(" SELECT * FROM "+Monisoft.TABLE_HISTORY+" WHERE "+Monisoft.COLUMN_TIME+" > "+str(time1)+" AND  "+Monisoft.COLUMN_TIME+" < "+str(time2)+" AND "+Monisoft.COLUMN_ID+" = "+str(monisoft_id)+";")
                                         
 
     def _getTransferChannels(self):
@@ -172,4 +173,4 @@ class Monisoft(Param):
             self.disconnetToDb()
         except:
             None
-        self.__connection = self.connectToDb
+        self.connectToDb()
