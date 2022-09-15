@@ -29,7 +29,6 @@ class Monisoft(Param):
         self.confirm_time = time()
         self.__con = None
         self.cur = None
-        self.connectToDb()
 
     def connectToDb(self):
         self.__con = mysql.connector.connect(
@@ -40,7 +39,7 @@ class Monisoft(Param):
             port=self.port,
             connect_timeout=1
         )
-    
+        
     def disconnetToDb(self):
         self.__con.close()
 
@@ -48,9 +47,12 @@ class Monisoft(Param):
         self.cur = self.__con.cursor()
 
     def getTables(self):
+        self.connectToDb()
         self._buildCursor()
         self.cur.execute("SELECT TABLE_NAME FROM information_schema.tables")
         fetch = self.cur.fetchall()
+        self.cur.close()
+        self.disconnetToDb()
         return(fetch)
     
     def _buildTelegrafFrameForm(self, twin, instance, series):
@@ -58,68 +60,74 @@ class Monisoft(Param):
 
     def getTelegrafData(self, max_data_len=30000, maxtimerange=None): #{'monisoft_id': '1000500',  'interval': 60}
         ''' [ '<twin>,instance=<insatance>, <measurement>=<value> <timestamp>' ] '''
-        ret_data = []
-        ret_data_add = ret_data.append
-        # sql cursor
-        self._buildCursor()
-        data_len = 0
-        self.marker_timestamps = deepcopy(self.lasttimestamps)
-        for index in range(len(self.transfere)):
-            if maxtimerange == None:
-                used_maxtimerange = self.transfere[index][Monisoft.NAME_INTERVAL] * (max_data_len+10-data_len)
-            else:
-                used_maxtimerange = maxtimerange
-            # set timesamp for new tables
-            if self.marker_timestamps == {}:
-                self.marker_timestamps[str(index)] = Monisoft.RESET_TIME
-            if self.marker_timestamps.get(str(index)) == None:
-                self.marker_timestamps[str(index)] = Monisoft.RESET_TIME
-            # build sql time formate and set max timerange
-            aftertimesql = self.marker_timestamps.get(str(index))
-            aftertimesql2 = self.marker_timestamps.get(str(index))+used_maxtimerange
-            # build sql formated format
-            telegraf_form = self._buildTelegrafFrameForm(
-                    twin=self.transfere[index][Monisoft.NAME_TELEGRAF][0],
-                    instance=self.transfere[index][Monisoft.NAME_TELEGRAF][1],
-                    series=self.transfere[index][Monisoft.NAME_TELEGRAF][2]
-            )
-            breaker = False
-            while 1==1:  
-                # get data from db
-                timestamp_list = []
-                timestamp_list_add = timestamp_list.append
-                query = self._buildQuery(aftertimesql, aftertimesql2, self.transfere[index][Monisoft.NAME_MONISOFT_ID])
-                self.cur.execute(query)
-                result_sql = self.cur.fetchall()
-                for row in result_sql:
-                    timestamp_list_add(row[Monisoft.POSITION_TIME])
-                    # form data for telegraf
-                    if row[Monisoft.POSITION_VALUE] != None:
-                        ret_data_add(telegraf_form%(float(row[Monisoft.POSITION_VALUE]), row[Monisoft.POSITION_TIME]*Monisoft.SECTONANO))
-                        data_len += 1
-                try:
-                    self.marker_timestamps[str(index)] = max(timestamp_list)
-                except:
-                    None
-                if timestamp_list != []:
-                    break
-                elif breaker or int(self.marker_timestamps.get(str(index))) > time()-used_maxtimerange:
-                    break
+        try:
+            ret_data = []
+            ret_data_add = ret_data.append
+            # sql cursor
+            self.connectToDb()
+            self._buildCursor()
+            data_len = 0
+            self.marker_timestamps = deepcopy(self.lasttimestamps)
+            for index in range(len(self.transfere)):
+                if maxtimerange == None:
+                    used_maxtimerange = self.transfere[index][Monisoft.NAME_INTERVAL] * (max_data_len+10-data_len)
                 else:
-                    if aftertimesql == Monisoft.RESET_TIME:
-                    # serach for first time stamp in database
-                        self.cur.execute("SELECT MIN("+Monisoft.COLUMN_TIME+") FROM "+Monisoft.TABLE_HISTORY+" WHERE "+Monisoft.COLUMN_ID+" = "+str(self.transfere[index][Monisoft.NAME_MONISOFT_ID]))
-                        try:
-                            aftertimesql = self.cur.fetchall()[0][0]
-                            aftertimesql2 = aftertimesql+used_maxtimerange
-                        except:
-                            #print("no data vor monisoft_id: ", self.transfere[index][Monisoft.NAME_MONISOFT_ID])
-                            break
-                        breaker = True
-                    else:
+                    used_maxtimerange = maxtimerange
+                # set timesamp for new tables
+                if self.marker_timestamps == {}:
+                    self.marker_timestamps[str(index)] = Monisoft.RESET_TIME
+                if self.marker_timestamps.get(str(index)) == None:
+                    self.marker_timestamps[str(index)] = Monisoft.RESET_TIME
+                # build sql time formate and set max timerange
+                aftertimesql = self.marker_timestamps.get(str(index))
+                aftertimesql2 = self.marker_timestamps.get(str(index))+used_maxtimerange
+                # build sql formated format
+                telegraf_form = self._buildTelegrafFrameForm(
+                        twin=self.transfere[index][Monisoft.NAME_TELEGRAF][0],
+                        instance=self.transfere[index][Monisoft.NAME_TELEGRAF][1],
+                        series=self.transfere[index][Monisoft.NAME_TELEGRAF][2]
+                )
+                breaker = False
+                while 1==1:  
+                    # get data from db
+                    timestamp_list = []
+                    timestamp_list_add = timestamp_list.append
+                    query = self._buildQuery(aftertimesql, aftertimesql2, self.transfere[index][Monisoft.NAME_MONISOFT_ID])
+                    self.cur.execute(query)
+                    result_sql = self.cur.fetchall()
+                    for row in result_sql:
+                        timestamp_list_add(row[Monisoft.POSITION_TIME])
+                        # form data for telegraf
+                        if row[Monisoft.POSITION_VALUE] != None:
+                            ret_data_add(telegraf_form%(float(row[Monisoft.POSITION_VALUE]), row[Monisoft.POSITION_TIME]*Monisoft.SECTONANO))
+                            data_len += 1
+                    try:
+                        self.marker_timestamps[str(index)] = max(timestamp_list)
+                    except:
+                        None
+                    if timestamp_list != []:
                         break
-            if data_len >= max_data_len:
-                break
+                    elif breaker or int(self.marker_timestamps.get(str(index))) > time()-used_maxtimerange:
+                        break
+                    else:
+                        if aftertimesql == Monisoft.RESET_TIME:
+                        # serach for first time stamp in database
+                            self.cur.execute("SELECT MIN("+Monisoft.COLUMN_TIME+") FROM "+Monisoft.TABLE_HISTORY+" WHERE "+Monisoft.COLUMN_ID+" = "+str(self.transfere[index][Monisoft.NAME_MONISOFT_ID]))
+                            try:
+                                aftertimesql = self.cur.fetchall()[0][0]
+                                aftertimesql2 = aftertimesql+used_maxtimerange
+                            except:
+                                #print("no data vor monisoft_id: ", self.transfere[index][Monisoft.NAME_MONISOFT_ID])
+                                break
+                            breaker = True
+                        else:
+                            break
+                if data_len >= max_data_len:
+                    break
+        except:
+            pass
+        self.cur.close()
+        self.disconnetToDb()
         return(ret_data)
 
     def _buildQuery(self,time1, time2, monisoft_id):
@@ -174,3 +182,5 @@ class Monisoft(Param):
         except:
             None
         self.connectToDb()
+
+

@@ -53,18 +53,24 @@ class Aquotec(Param):
                                     ";TDS_Version=" + self.version + ";")
     
     def disconnetToDb(self):
-        self.__con.close()
+        try:
+            self.__con.close()
+        except:
+            pass
 
     def __buildCursor(self):
         self.__cur = self.__con.cursor()
 
     def getTables(self):
+        self.connectToDb()
         self.__buildCursor()
         self.__cur.execute("SELECT TABLE_NAME FROM information_schema.tables")
         fetch = self.__cur.fetchall()
+        self.disconnetToDb()
         return(fetch)
 
     def getCheckData(self, table_str, values_list_str, check_limit=5,time_column="DP_Zeitstempel"):
+        self.connectToDb()
         values = time_column
         for i in values_list_str:
             values += ", " + i 
@@ -77,13 +83,15 @@ class Aquotec(Param):
         except pyodbc.ProgrammingError as e:
             print(e)
             return(None)
+        self.disconnetToDb()
         return(ret_data)
     
     def _buildTelegrafFrameForm(self, twin, instance, series):
         return(Aquotec.FORMAT_TELEGRAFFRAMESTRUCT2%(twin,instance,series)+"%f %.0f")
 
-    def getTelegrafData(self, max_data_len=30000, maxtimerange=3600*24, time_column="DP_Zeitstempel"):
+    def getTelegrafData(self, max_data_len=30000, maxtimerange=3600*24*5, time_column="DP_Zeitstempel"):
         ''' [ '<twin>,instance=<insatance>, <measurement>=<value> <timestamp>' ] '''
+        self.connectToDb()
         ret_data = []
         ret_data_add = ret_data.append
         # sql cursor
@@ -165,6 +173,7 @@ class Aquotec(Param):
                     breaker = True
             if data_len >= max_data_len:
                 break
+        self.disconnetToDb()
         return(ret_data)
 
     def _getTransferChannels(self):
@@ -218,8 +227,9 @@ class Aquotec(Param):
         self._putLastTimestamps()
 
     def refreshConnection(self):
+        print("refreshConnection aqotec")
         try:
             self.disconnetToDb()
         except:
             None
-        self.__connection = self.connectToDb
+        self.__con = self.connectToDb()

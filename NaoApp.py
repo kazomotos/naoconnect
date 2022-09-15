@@ -3,12 +3,12 @@ import http.client
 from logging.handlers import DatagramHandler
 from sqlite3 import DatabaseError
 from urllib.parse import quote
-from datetime import datetime
 from copy import copy
 from json import loads, dumps
 from time import sleep, time
 from threading import Thread
 from pandas import isna
+import datetime
 from naoconnect.TinyDb import TinyDb
 from naoconnect.Param import Param
 
@@ -48,7 +48,7 @@ class NaoApp(Param):
     STANDARD_LOGGINGINTERVAL = 60
     STANDARD_DATAPERTELEGRAF = 200000
 
-    def __init__(self, host, email, password, DataFromDb=False, DataForLogging=False, DataForListener=False, tiny_db_name="nao.json", error_log=False):
+    def __init__(self, host, email, password, DataFromDb=False, DataForLogging=False, DataForListener=False, tiny_db_name="nao.json", error_log=False, break_hour:datetime.time=datetime.time(hour=23)):
         self.auth = {
             NaoApp.NAME_HOST:host,
             NaoApp.NAME_PAYLOAD:NaoApp.NAME_EMAIL+"="+quote(email)+"&"+NaoApp.NAME_PASSWD+"="+quote(password)
@@ -66,6 +66,7 @@ class NaoApp(Param):
         self.sending_counter = 0
         self.logging_data = []
         self.logging_data_add = self.logging_data.extend
+        self.exit_hour = break_hour
 
     def sendTelegrafData(self, payload):
         ''' 
@@ -164,19 +165,20 @@ class NaoApp(Param):
         self.__transferInterrupt()
 
     def __transferInterrupt(self):
-        start_time = time()
+        start_time = datetime.datetime.now()
+        self.print(" START process")
         while 1==1:
-            print("enter 'exit' for end data transfer to telegraf")
-            print("priode of transfer time: " + str(round((time() - start_time)/60,2)) + " min, total sent value: " + str(self.sending_counter))
-            input_str = input()
-            if input_str == "exit" or input_str == "'exit'":
+            if datetime.datetime.now().hour >= self.exit_hour.hour and datetime.datetime.now().day != start_time.day:
                 print("process will end soon")
                 self.end_transfer = True
                 break
+            sleep(60)
         while 1==1:
             if self.end_confirmation:
                 break
             sleep(10)
+        self.print(" EXIT process " + str(datetime.datetime.now()))
+        sleep(2)
         self.exit()     
 
     def exit(self):
@@ -373,7 +375,7 @@ class NaoApp(Param):
     def print(self, log:str):
         if self.error_log:
             error_file = open(self.error_log, "a")
-            error_file.writelines(str(datetime.now()) + log+'\n')
+            error_file.writelines(str(datetime.datetime.now()) + log+'\n')
             error_file.close()
         else:
             print(log)
