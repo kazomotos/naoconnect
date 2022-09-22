@@ -7,7 +7,6 @@ from copy import copy
 from json import loads, dumps
 from time import sleep, time
 from threading import Thread
-from pandas import isna
 import datetime
 from naoconnect.TinyDb import TinyDb
 from naoconnect.Param import Param
@@ -416,13 +415,13 @@ class NaoApp(Param):
         return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_UNITS, payload))
 
     def createSeries(self, type, name, description, _asset, _part, _unit, max, min, fill, fillValue, color="#02c1de", _tagitems=None):
-        if isna(fill):
+        if not isinstance(fill, (float, int)):
             fill = "null"
-        if isna(fillValue):
+        if not isinstance(fillValue, (float, int)):
             fillValue = None
-        if isna(max):
+        if not isinstance(max, (float, int)):
             max = None
-        if isna(min):
+        if not isinstance(min, (float, int)):
             min = None
         payload = {
             NaoApp.NAME_COLOR: color,
