@@ -1,7 +1,6 @@
 'Autor: Rupert Wieser -- Naotilus -- 20220219'
 import http.client
 from logging.handlers import DatagramHandler
-from sqlite3 import DatabaseError
 from urllib.parse import quote
 from copy import copy
 from json import loads, dumps
