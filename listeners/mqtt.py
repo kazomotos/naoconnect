@@ -24,10 +24,10 @@ class Mqtt(Param):
         self.add_data = self.data.append
         self.error_log=error_log
         self.stop_add_data = False
-        if start_on_init:
-            self.startListenersFromConf()
         if self.username != "":
             self.Client.username_pw_set(username=self.username, password=self.password)
+        if start_on_init:
+            self.startListenersFromConf()
 
     def getTelegrafData(self):
         self.stop_add_data = True
@@ -53,7 +53,6 @@ class Mqtt(Param):
     def startListenersFromConf(self):
         self.Client.connect(host=self.broker)
         self._subscribeFromConf()
-
         Thread(target=self.Client.loop_start, args=()).start()
 
     def startListener(self):
