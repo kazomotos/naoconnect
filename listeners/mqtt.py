@@ -4,6 +4,7 @@ from naoconnect.Param import Param
 from datetime import datetime
 from time import sleep, time
 from threading import Thread
+from json import loads
 from paho.mqtt.client import Client
 import paho.mqtt.subscribe as subscribe
 
@@ -118,12 +119,16 @@ class Mqtt(Param):
         else:
             print(log)
  
+
 class MqttHelp(Param):
 
-    def __init__ (self, broker, password="", username=""):
+    def __init__ (self, broker="localhost", password="", username="",  tiny_db_name="mqtt.json", labling_json_file="labling.json"):
         self.password = password
         self.username = username        
         self.Client = Client()
+        self.db = TinyDb(tiny_db_name)
+        self.transfere = self._getTransferChannels()
+        self.labling_file = labling_json_file
         self.Client.on_message = self.__on_message
         self.Client.on_connect = self.__on_connect
         self.Client.on_disconnect = self.__on_disconnect
@@ -132,6 +137,9 @@ class MqttHelp(Param):
         self.add_topic = self.topic_set.add
         if self.username != "":
             self.Client.username_pw_set(username=self.username, password=self.password)
+        labling = open(self.labling_file, "r")
+        self.labling = loads(labling.read())
+        labling.close()
 
     def subscribeOneTopic(self, topic):
         self.Client.subscribe(topic)
@@ -165,3 +173,26 @@ class MqttHelp(Param):
 
     def disconnect(self):
         self.Client.disconnect()  
+
+    def _getTransferChannels(self):
+        ''' 
+        {
+            <channel>:  [<twin>, <insatance>, <measurement>]
+        }
+        '''
+        channels = self.db.getTinyTables(Mqtt.NAME_TRANSFERCHANNELS)
+        result = {}
+        for channel in channels:
+            result[channel[Mqtt.NAME_CHANNEL]] = channel[Mqtt.NAME_TELEGRAF]
+        return(result)
+    
+    def _putTransferChannels(self, value):
+        ''' 
+        [{
+            "channel": <channel>, 
+            "telegraf": [<twin>, <insatance>, <measurement>]
+        }] 
+        '''
+        for val in value:
+            self.db.putTinyTables(Mqtt.NAME_TRANSFERCHANNELS, val)
+        self.transfere = value
