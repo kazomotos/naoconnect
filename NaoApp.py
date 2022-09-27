@@ -481,6 +481,17 @@ class NaoApp(Param):
                     {NaoApp.NAME_CONFIG: dumps(conf)}
             )))
 
+    def postEnpointConifg(self, conf:dict, _instance=None, _series=None, _asset=None):
+        """
+        _asset (id), _instance (id) and _series (id) can be used as arguments \n
+        """
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_SERIES,{
+            NaoApp.NAME_INSTANCE_ID:_instance,
+            NaoApp.NAME_ASSET_ID:_asset,
+            NaoApp.NAME_POINT_ID:_series,
+            NaoApp.NAME_CONFIG:dumps(conf)
+        })[NaoApp.NAME_ID_ID])
+
     def getEndpoints(self, **args):
         if len(args) > 0:
             query = NaoApp.QUERY_GET
