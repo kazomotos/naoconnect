@@ -75,10 +75,14 @@ class Param():
     NAME_ORGANIZATION_ID = "_organization"
     NAME_TIME = "time"
 
-class Labling():
+class Labling(Param):
     ASSET = "asset"
+    LABLING_SERIES = "labling_series"
+    NAO_INSTANCE = "instance_in_nao"
+    LABLING_INPUT = "labling_input"
     WORKSPACE = "workspace"
     INSTANCE = "instance"
+    DISCRIPTION = "discription"
     DESCRIPTION = "description"
     UNIT = "unit"
     COMPONENT_0 = "component_0"
@@ -96,3 +100,4 @@ class Labling():
     CONFIG =  "config"
     NAME = "name"
     ID = "id"
+    CHANNELS_IN_NAO = "channels_in_nao"

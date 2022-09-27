@@ -1,10 +1,9 @@
 from http import client
 from naoconnect.TinyDb import TinyDb
-from naoconnect.Param import Param
+from naoconnect.Param import Param, Labling
 from datetime import datetime
 from time import sleep, time
 from threading import Thread
-from json import loads
 from paho.mqtt.client import Client
 import paho.mqtt.subscribe as subscribe
 
@@ -119,15 +118,14 @@ class Mqtt(Param):
             print(log)
  
 
-class MqttHelp(Param):
+class MqttHelp(Labling):
 
-    def __init__ (self, broker="localhost", password="", username="",  tiny_db_name="mqtt.json", labling_json_file="labling.json"):
+    def __init__ (self, broker="localhost", password="", username="", tiny_db_name="mqtt.json"):
         self.password = password
         self.username = username        
         self.Client = Client()
         self.db = TinyDb(tiny_db_name)
         self.transfere = self._getTransferChannels()
-        self.labling_file = labling_json_file
         self.Client.on_message = self.__on_message
         self.Client.on_connect = self.__on_connect
         self.Client.on_disconnect = self.__on_disconnect
@@ -136,9 +134,6 @@ class MqttHelp(Param):
         self.add_topic = self.topic_set.add
         if self.username != "":
             self.Client.username_pw_set(username=self.username, password=self.password)
-        labling = open(self.labling_file, "r")
-        self.labling = loads(labling.read())
-        labling.close()
 
     def subscribeOneTopic(self, topic):
         self.Client.subscribe(topic)
@@ -194,4 +189,7 @@ class MqttHelp(Param):
         '''
         for val in value:
             self.db.putTinyTables(Mqtt.NAME_TRANSFERCHANNELS, val)
-        self.transfere = value
+        self.transfere = self._getTransferChannels()
+
+    def getNewTopics(self, labled_cannels):
+        return(self.topic_set.difference(labled_cannels))
