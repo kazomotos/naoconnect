@@ -86,7 +86,7 @@ class Mqtt(Param):
             else:
                 payload = loads(msg.payload)
                 value = payload[self.value_name]
-                timestamp = int(datetime.fromisoformat(payload[self.timestamp_name]).replace(tzinfo=timezone.utc).timestamp()*Mqtt.SECTONANO)
+                timestamp = int(datetime.fromisoformat(payload[self.timestamp_name]).timestamp()*Mqtt.SECTONANO)
             self.add_data(Mqtt.FORMAT_TELEGRAFFRAMESTRUCT % (
                     self.transfere[msg.topic][0], 
                     self.transfere[msg.topic][1], 
