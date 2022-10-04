@@ -307,11 +307,9 @@ class NaoApp(Param):
                         del self.logging_data
                         self.logging_data = []
                         self.logging_data_add = self.logging_data.extend
-                    elif status ==500:
-                        self.print("ERROR: nao.status=" + str(status))
-                        self._loginNao()
                     else:
                         self.print("ERROR: nao.status=" + str(status))
+                        self._loginNao()
             except Exception as e:
                 self.print("ERROR-Nao:" + str(e))
                 sleep(self.transfer_config[NaoApp.ERRORSLEEP])
