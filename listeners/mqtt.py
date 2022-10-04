@@ -1,8 +1,9 @@
 from http import client
 from naoconnect.TinyDb import TinyDb
 from naoconnect.Param import Param, Labling
-from datetime import datetime
+from datetime import datetime, timezone
 from time import sleep, time
+from json import loads
 from threading import Thread
 from paho.mqtt.client import Client
 import paho.mqtt.subscribe as subscribe
@@ -10,9 +11,11 @@ import paho.mqtt.subscribe as subscribe
 class Mqtt(Param):
     SECTONANO = 1000000000
 
-    def __init__ (self, broker, tiny_db_name="mqtt.json", error_log=False, start_on_init=True, password="", username=""):
+    def __init__ (self, broker, tiny_db_name="mqtt.json", error_log=False, start_on_init=True, password="", username="", value_name=False, timestamp_name=False):
         self.password = password
         self.username = username
+        self.value_name = value_name
+        self.timestamp_name = timestamp_name
         self.db = TinyDb(tiny_db_name)
         self.Client = Client()
         self.Client.on_message = self.__on_message
@@ -24,8 +27,6 @@ class Mqtt(Param):
         self.add_data = self.data.append
         self.error_log=error_log
         self.stop_add_data = False
-        if self.username != "":
-            self.Client.username_pw_set(username=self.username, password=self.password)
         if start_on_init:
             self.startListenersFromConf()
 
@@ -42,7 +43,7 @@ class Mqtt(Param):
         try:
             self.Client.loop_stop()
         except:
-            None
+            pass
         self.Client.disconnect()
         self.startListenersFromConf()
     
@@ -51,11 +52,15 @@ class Mqtt(Param):
         return(-1)        
 
     def startListenersFromConf(self):
+        if self.username != "":
+            self.Client.username_pw_set(username=self.username, password=self.password)
         self.Client.connect(host=self.broker)
-        self._subscribeFromConf()
         Thread(target=self.Client.loop_start, args=()).start()
+        self._subscribeFromConf()
 
     def startListener(self):
+        if self.username != "":
+            self.Client.username_pw_set(username=self.username, password=self.password)
         self.Client.connect(host=self.broker)
         Thread(target=self.Client.loop_start, args=()).start()
 
@@ -75,12 +80,19 @@ class Mqtt(Param):
     def __on_message(self, client, userdata, msg):
         try:
             while self.stop_add_data: sleep(1)
+            if not self.value_name:
+                value = float(msg.payload)
+                timestamp = int(round(datetime.timestamp(datetime.utcnow()),0)*Mqtt.SECTONANO)
+            else:
+                payload = loads(msg.payload)
+                value = payload[self.value_name]
+                timestamp = int(datetime.fromisocalendar(payload[self.timestamp_name]).timestamp()*Mqtt.SECTONANO)
             self.add_data(Mqtt.FORMAT_TELEGRAFFRAMESTRUCT % (
                     self.transfere[msg.topic][0], 
                     self.transfere[msg.topic][1], 
                     self.transfere[msg.topic][2],
-                    float(msg.payload),
-                    int(round(datetime.timestamp(datetime.utcnow()),0)*Mqtt.SECTONANO)
+                    value,
+                    timestamp
             ))
         except Exception as e:
             self.print(str(e))
@@ -147,12 +159,16 @@ class MqttHelp(Labling):
 
     def topicToTxt(self, file):
         data = open(file, "w")
+        topics = []
+        for val in list(self.topic_set):
+            value = val+"\n"
+            topics.append(value)
         data.writelines(self.topic_set)
         data.close()
 
     def __on_message(self, client, userdata, msg):
         self.add_topic(
-            str(msg.topic) + "\n"
+            str(msg.topic)
         )
         if len(self.topic_set) >= self.max_data:
             self.disconnect()
@@ -192,4 +208,5 @@ class MqttHelp(Labling):
         self.transfere = self._getTransferChannels()
 
     def getNewTopics(self, labled_cannels):
+        self.topic_set = self.topic_set.union(self.topic_set.difference(labled_cannels))
         return(self.topic_set.difference(labled_cannels))
