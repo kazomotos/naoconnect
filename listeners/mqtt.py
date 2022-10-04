@@ -144,8 +144,6 @@ class MqttHelp(Labling):
         self.broker = broker
         self.topic_set = set()
         self.add_topic = self.topic_set.add
-        if self.username != "":
-            self.Client.username_pw_set(username=self.username, password=self.password)
 
     def subscribeOneTopic(self, topic):
         self.Client.subscribe(topic)
@@ -154,6 +152,8 @@ class MqttHelp(Labling):
         self.start_time = time()
         self.max_data = max_data
         self.max_time = max_time
+        if self.username != "":
+            self.Client.username_pw_set(username=self.username, password=self.password)
         self.Client.connect(host=self.broker)
         Thread(target=self.Client.loop_start, args=()).start()
 
