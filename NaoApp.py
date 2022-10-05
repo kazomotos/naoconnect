@@ -314,6 +314,7 @@ class NaoApp(Param):
                 self.print("ERROR-Nao:" + str(e))
                 sleep(self.transfer_config[NaoApp.ERRORSLEEP])
                 self.DataForListener.refreshConnection()
+                self._loginNao()
             if self.sending_counter > 10000:
                 self._addAndUpdateTotalNumberOfSentData()
             diff = time() - start
