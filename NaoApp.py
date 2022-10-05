@@ -327,6 +327,8 @@ class NaoApp(Param):
                     sleep(self.transfer_config[NaoApp.TRANSFERINTERVAL]-diff)
             except Exception as e:
                 self.print("ERROR-Unknow (329):" + str(e))
+                self._loginNao()
+                self.DataForListener.refreshConnection()
 
     def _getTransferCofnig(self):
         config = self.db.getTinyTables(NaoApp.TRANSFERCONFIG)
