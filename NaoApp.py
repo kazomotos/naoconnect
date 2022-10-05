@@ -292,38 +292,41 @@ class NaoApp(Param):
 
     def __dataTransferFromListener(self):
         while 1==1:
-            start = time() 
-            data = self.DataForListener.getTelegrafData()
-            data_len = len(data)
-            self.logging_data_add(data)
-            if (len(self.logging_data)) > NaoApp.STANDARD_DATAPERTELEGRAF:
-                self.print("delteted data-len: " + str(int(len(self.logging_data)-NaoApp.STANDARD_DATAPERTELEGRAF)))
-                self.logging_data[int(len(self.logging_data)-NaoApp.STANDARD_DATAPERTELEGRAF):]
-            try:
-                if self.logging_data != []:
-                    status = self.sendTelegrafData(self.logging_data)    
-                    if status == 204:
-                        self.sending_counter += data_len
-                        del self.logging_data
-                        self.logging_data = []
-                        self.logging_data_add = self.logging_data.extend
-                    else:
-                        self.print("ERROR: nao.status=" + str(status))
-                        self._loginNao()
+            try: 
+                start = time() 
+                data = self.DataForListener.getTelegrafData()
+                data_len = len(data)
+                self.logging_data_add(data)
+                if (len(self.logging_data)) > NaoApp.STANDARD_DATAPERTELEGRAF:
+                    self.print("delteted data-len: " + str(int(len(self.logging_data)-NaoApp.STANDARD_DATAPERTELEGRAF)))
+                    self.logging_data[int(len(self.logging_data)-NaoApp.STANDARD_DATAPERTELEGRAF):]
+                try:
+                    if self.logging_data != []:
+                        status = self.sendTelegrafData(self.logging_data)    
+                        if status == 204:
+                            self.sending_counter += data_len
+                            del self.logging_data
+                            self.logging_data = []
+                            self.logging_data_add = self.logging_data.extend
+                        else:
+                            self.print("ERROR: nao.status=" + str(status))
+                            self._loginNao()
+                except Exception as e:
+                    self.print("ERROR-Nao:" + str(e))
+                    sleep(self.transfer_config[NaoApp.ERRORSLEEP])
+                    self.DataForListener.refreshConnection()
+                    self._loginNao()
+                if self.sending_counter > 10000:
+                    self._addAndUpdateTotalNumberOfSentData()
+                diff = time() - start
+                if self.end_transfer:
+                    self.DataForListener.exit()
+                    self.end_confirmation = True
+                    break
+                if diff < self.transfer_config[NaoApp.TRANSFERINTERVAL]:
+                    sleep(self.transfer_config[NaoApp.TRANSFERINTERVAL]-diff)
             except Exception as e:
-                self.print("ERROR-Nao:" + str(e))
-                sleep(self.transfer_config[NaoApp.ERRORSLEEP])
-                self.DataForListener.refreshConnection()
-                self._loginNao()
-            if self.sending_counter > 10000:
-                self._addAndUpdateTotalNumberOfSentData()
-            diff = time() - start
-            if self.end_transfer:
-                self.DataForListener.exit()
-                self.end_confirmation = True
-                break
-            if diff < self.transfer_config[NaoApp.TRANSFERINTERVAL]:
-                sleep(self.transfer_config[NaoApp.TRANSFERINTERVAL]-diff)
+                self.print("ERROR-Unknow (329):" + str(e))
 
     def _getTransferCofnig(self):
         config = self.db.getTinyTables(NaoApp.TRANSFERCONFIG)
