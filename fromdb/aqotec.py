@@ -231,5 +231,5 @@ class Aquotec(Param):
         try:
             self.disconnetToDb()
         except:
-            None
+            pass
         self.__con = self.connectToDb()
