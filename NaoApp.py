@@ -371,7 +371,7 @@ class NaoApp(Param):
         return(number)
 
     def _loginNao(self):        
-        print(NaoApp.MESSAGELOGIN)
+        self.print(NaoApp.MESSAGELOGIN)
         self.__conneciton = http.client.HTTPSConnection(self.auth[NaoApp.NAME_HOST])
         self.__conneciton.request(NaoApp.NAME_POST, NaoApp.URLLOGIN, self.auth[NaoApp.NAME_PAYLOAD], NaoApp.LOGINHEADER)
         res = self.__conneciton.getresponse()
