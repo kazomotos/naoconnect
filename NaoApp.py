@@ -572,6 +572,8 @@ class NaoApp(Param):
         }
         return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_SINGELVALUES, payload=payload))
 
+    def getPlotformatetTimeseries(self, select):
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_PLOTTIMESERIES, payload=select))
 
 if __name__ == "__main__":
     'test'
