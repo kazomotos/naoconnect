@@ -22,6 +22,7 @@ class NaoApp(Param):
     URL_UNITS = "/api/nao/units"
     URL_SERIES = "/api/nao/series/"
     URL_SINGELVALUES = "/api/series/data/singlevalues"
+    URL_PLOTTIMESERIES = "/api/series/data/plot"
     QUERY_GET_ENDPOINT = "?query=_instance=%s,_point=%s"
     QUERY_GET = "?query="
     HEADER_JSON = 'application/json'
