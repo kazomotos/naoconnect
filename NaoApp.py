@@ -370,13 +370,32 @@ class NaoApp(Param):
             number = number[0][NaoApp.NAME_COUNT]
         return(number)
 
-    def _loginNao(self):        
-        self.print(NaoApp.MESSAGELOGIN)
-        self.__conneciton = http.client.HTTPSConnection(self.auth[NaoApp.NAME_HOST])
-        self.__conneciton.request(NaoApp.NAME_POST, NaoApp.URLLOGIN, self.auth[NaoApp.NAME_PAYLOAD], NaoApp.LOGINHEADER)
-        res = self.__conneciton.getresponse()
-        data = loads(res.read().decode(NaoApp.NAME_UTF8))
-        self.headers[NaoApp.NAME_WEBAUTH] = NaoApp.BEARER + data[NaoApp.NAME_TOKENAC]
+    def _loginNao(self):
+        try:
+            self.print(NaoApp.MESSAGELOGIN)
+            self.__conneciton = http.client.HTTPSConnection(self.auth[NaoApp.NAME_HOST])
+            self.__conneciton.request(NaoApp.NAME_POST, NaoApp.URLLOGIN, self.auth[NaoApp.NAME_PAYLOAD], NaoApp.LOGINHEADER)
+            res = self.__conneciton.getresponse()
+            data = loads(res.read().decode(NaoApp.NAME_UTF8))
+            self.headers[NaoApp.NAME_WEBAUTH] = NaoApp.BEARER + data[NaoApp.NAME_TOKENAC]
+        except:
+            try:
+                sleep(self.transfer_config[NaoApp.ERRORSLEEP])
+                self.print(NaoApp.MESSAGELOGIN)
+                self.__conneciton = http.client.HTTPSConnection(self.auth[NaoApp.NAME_HOST])
+                self.__conneciton.request(NaoApp.NAME_POST, NaoApp.URLLOGIN, self.auth[NaoApp.NAME_PAYLOAD], NaoApp.LOGINHEADER)
+                res = self.__conneciton.getresponse()
+                data = loads(res.read().decode(NaoApp.NAME_UTF8))
+                self.headers[NaoApp.NAME_WEBAUTH] = NaoApp.BEARER + data[NaoApp.NAME_TOKENAC]
+            except:
+                self.__conneciton = http.client.HTTPSConnection(self.auth[NaoApp.NAME_HOST])
+                self.__conneciton.request(NaoApp.NAME_POST, NaoApp.URLLOGIN, self.auth[NaoApp.NAME_PAYLOAD], NaoApp.LOGINHEADER)
+                res = self.__conneciton.getresponse()
+                data = res.read().decode(NaoApp.NAME_UTF8)
+                self.print("ERROR login, data: " + str(data))
+                exit()
+        
+
         # self.headers[NaoApp.NAME_COOKIE] = NaoApp.NAME_TOKENRE + data[NaoApp.NAME_TOKENRE]
 
     def print(self, log:str):
