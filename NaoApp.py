@@ -66,6 +66,7 @@ class NaoApp(Param):
         self.logging_data = []
         self.logging_data_add = self.logging_data.extend
         self.exit_hour = break_hour
+        self.endwithexit = False
 
     def sendTelegrafData(self, payload):
         ''' 
@@ -171,10 +172,12 @@ class NaoApp(Param):
                 print("process will end soon")
                 self.end_transfer = True
                 break
-            sleep(60)
-        while 1==1:
             if self.end_confirmation:
                 break
+            if self.endwithexit:
+                self._addAndUpdateTotalNumberOfSentData()
+                self.print("ERROR-Unknow: end process with exit()")
+                exit()
             sleep(10)
         self.print(" EXIT process " + str(datetime.datetime.now()))
         sleep(2)
@@ -332,8 +335,7 @@ class NaoApp(Param):
                     self._loginNao()
                     self.DataForListener.refreshConnection()
                 except:
-                    self.print("ERROR-Unknow: end process with exit()")
-                    exit()
+                    self.endwithexit = True
 
     def _getTransferCofnig(self):
         config = self.db.getTinyTables(NaoApp.TRANSFERCONFIG)
@@ -393,7 +395,7 @@ class NaoApp(Param):
                 res = self.__conneciton.getresponse()
                 data = res.read().decode(NaoApp.NAME_UTF8)
                 self.print("ERROR login, data: " + str(data))
-                exit()
+                self.endwithexit = True
 
     def print(self, log:str):
         if self.error_log:
