@@ -394,9 +394,6 @@ class NaoApp(Param):
                 data = res.read().decode(NaoApp.NAME_UTF8)
                 self.print("ERROR login, data: " + str(data))
                 exit()
-        
-
-        # self.headers[NaoApp.NAME_COOKIE] = NaoApp.NAME_TOKENRE + data[NaoApp.NAME_TOKENRE]
 
     def print(self, log:str):
         if self.error_log:
