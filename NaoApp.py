@@ -7,14 +7,18 @@ from json import loads, dumps
 from time import sleep, time
 from threading import Thread
 import datetime
+from time import time_ns
 from naoconnect.TinyDb import TinyDb
 from naoconnect.Param import Param
+from random import random
 
 class NaoApp(Param):
     URLLOGIN = "/api/user/auth/login"
     URLTELEGRAF = "/api/telegraf/"
     URL_INSTANCE = "/api/nao/instance"
     URL_INPUT = "/api/nao/inputvalue"
+    URL_INPUT_DESC = "/api/nao/input"
+    URL_INPUTCONTAINER = "/api/nao/inputcontainer"
     URL_INPUTS = "/api/nao/inputvalue/many"
     URL_WORKSPACE = "/api/nao/workspace"
     URL_ASSET = "/api/nao/asset"
@@ -87,7 +91,7 @@ class NaoApp(Param):
             self.__conneciton.close()
         return(status)
 
-    def _sendDataToNaoJson(self, method, url, payload):
+    def _sendDataToNaoJson(self, method, url, payload) -> dict:
         header = copy(self.headers)
         header[NaoApp.NAME_CONTENT_HEADER] = NaoApp.HEADER_JSON
         if payload != None:
@@ -434,6 +438,35 @@ class NaoApp(Param):
         }
         return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_PATH, payload))
 
+    def createInputcontainer(self, name, _asset, description="", color="#02c1de"):
+        payload = {
+            NaoApp.NAME_RELATION_ID: _asset,
+            NaoApp.NAME_NAME: name,
+            NaoApp.NAME_DESCRIPTION: description,
+            NaoApp.NAME_COLOR: color
+        }
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_INPUTCONTAINER, payload))
+
+    def patchIpuntsInputcontainer(self, _inputcontainer, _inputs):
+        payload = {
+            NaoApp.NAME_INPUTS_ID: _inputs
+        }
+        return(self._sendDataToNaoJson(NaoApp.NAME_PATCH, NaoApp.URL_INPUTCONTAINER+"/"+_inputcontainer, payload))
+
+    def createInput(self, name, _asset, value="", description="", component="input-text-field", props={}, rules={}):
+        payload = {
+            NaoApp.NAME_RELATION_ID: _asset,
+            NaoApp.NAME_COMPONENT: component,
+            NaoApp.NAME_VALUE: value,
+            NaoApp.NAME_NAME: name,
+            NaoApp.NAME_DESCRIPTION: description,
+            NaoApp.NAME_PROPS: props,
+            NaoApp.NAME_RULES: rules,
+            NaoApp.NAME_FIELD: "8ee"+str(time_ns())[-5:]+"-513b-11ed-98eb-5dac241cd04e"
+        }
+        sleep(0.01)
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_INPUT_DESC, payload))
+
     def createUnit(self, name):
         payload = {
             NaoApp.NAME_NAME: name
@@ -567,6 +600,15 @@ class NaoApp(Param):
         for arg in args:
             query += arg + "=" + args[arg] + ","
         return(self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_SERIES+NaoApp.CONSOLIDATE+query, {}))
+
+    def getUnits(self, **args):
+        if len(args) > 0:
+            query = NaoApp.QUERY_GET
+        else:
+            query = ""
+        for arg in args:
+            query += arg + "=" + args[arg] + ","
+        return(self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_UNITS+query, {}))
 
     def getSingelValues(self, organizationId, first_time="-365d", last_time="now()", points=[{"id":"all"}], validates=False, aggregate="mean"):
         '''
