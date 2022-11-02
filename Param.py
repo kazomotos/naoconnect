@@ -78,6 +78,8 @@ class Param():
     NAME_ORGANIZATIONID = "organizationId"
     NAME_ORGANIZATION_ID = "_organization"
     NAME_TIME = "time"
+    NAME_CNFIG = "config"
+    NAME_INPUT = "input"
 
 class Labling(Param):
     ASSET = "asset"

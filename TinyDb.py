@@ -9,7 +9,7 @@ class TinyDb ():
         self.db = TinyDB(db_name)
         self.query = Query()
 
-    def getTinyTables(self, table_name):
+    def getTinyTables(self, table_name) -> list: 
         table = self.db.table(table_name)
         return(table.all())
 
