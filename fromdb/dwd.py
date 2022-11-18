@@ -7,11 +7,12 @@ from html.parser import HTMLParser
 from io import BytesIO
 from json import dumps, loads
 from time import sleep
+from numpy import nan, isnan
 
 import pandas as pd
 
 from naoconnect.NaoApp import NaoApp
-from naoconnect.Param import Labling, Param
+from naoconnect.Param import Param
 from naoconnect.TinyDb import TinyDb
 
 
@@ -209,11 +210,19 @@ class ParamDWD():
     DWD_10MIN_SENSOR = "10min_sensor"
     DWD_GRADTAG = "gradtag"
     URL_10MIN_CLIMATE = "/climate_environment/CDC/observations_germany/climate/10_minutes"
+    URL_HOUR_CLIMATE = "/climate_environment/CDC/observations_germany/climate/hourly"
+    URLS_META_NO_FOUND = [
+        "/climate_environment/CDC/observations_germany/climate/monthly/more_precip/historical/",
+        "/climate_environment/CDC/observations_germany/climate/hourly/wind/recent/"
+    ]
     SUB_URLS_CLIMATE = [ "/wind", "/solar", "/air_temperature", "/precipitation" ]
     SUB_URL_HISTORICAL = "/historical"
+    SUB_URL_RECENT = "/recent"
+    SUB_URL_NOW = "/now"
     SUB_URLS_GRADTAG = ["/climate_environment/CDC/derived_germany/techn/daily/heating_degreedays/hdd_3807/"]
     NAME_NAME = "name"
     NAME_URL = "url"
+    TIME_FORMAT = "%Y%m%d%H%M"
 
 class _StructDWDHTMLContext(Param):
     default_time_format_struct_file_infos = "%d-%b-%Y %H:%M"
@@ -291,6 +300,7 @@ class DWDData(Param, ParamDWD):
         self.new_stat = []
         self.Nao:NaoApp = NaoAppLabling # type: ignore
         self.get_history = True
+        self._lablingNaoStation10m(DWDData.SUB_URL_RECENT)
 
     def connect(self):
         self.con = http.client.HTTPSConnection(self.host)
@@ -308,6 +318,9 @@ class DWDData(Param, ParamDWD):
         self.last_time = self.last_time_hold
         self._putLastTimestamps()
 
+    def exit(self):
+        pass
+
     def getOpenDataFileInfo(self, url):
         self.connect()
         self.con.request(DWDData.NAME_GET, url) # type: ignore
@@ -316,21 +329,35 @@ class DWDData(Param, ParamDWD):
         self.disconnect()
         return(StructDWDHTMLContext.getStationData())
 
+    def convertDatetime(self, time_str):
+        return(datetime.strptime(time_str, DWDData.TIME_FORMAT))
+
+    def convertFloat(self, dat) -> float:
+        try:
+            return(float(dat))
+        except:
+            return(nan)
+
     def getDataFrameFromZIP(self, url):
         self.connect()
         self.con.request(DWDData.NAME_GET, url)
         data = self.con.getresponse().read()
         self.disconnect()
         data = zipfile.ZipFile(BytesIO(data),"r")
-        data = pd.read_csv(BytesIO(data.open(data.infolist()[0].filename).read()), sep=DWDData.SEP)
-        data.index = pd.DatetimeIndex(pd.to_datetime(data[DWDData.DATETIME_COLUMN].astype("string"))) # type: ignore
+        data = pd.read_csv(
+            BytesIO(data.open(data.infolist()[0].filename).read()), 
+            sep=DWDData.SEP,  
+            converters={DWDData.DATETIME_COLUMN: self.convertDatetime}, 
+            index_col=DWDData.DATETIME_COLUMN, 
+            na_values='######'
+        )
         return(data)
 
     def getMetaDataFrame(self, url):
-        self.connect
+        self.connect()
         self.con.request(DWDData.NAME_GET, url)
         data = re.sub("  +", ";", self.con.getresponse().read().decode("iso-8859-1")).replace("-", "").split("\r\n")
-        self.disconnect
+        self.disconnect()
         keynames = data[0].replace(" ", ";").split(";")
         ret = {}
         for key in keynames: ret[key] = []
@@ -351,16 +378,16 @@ class DWDData(Param, ParamDWD):
         except:
             return({})
 
-    def getTelegrafData(self):
+    def getTelegrafData(self, max_data_len:int=200000):
         self.last_time_hold = deepcopy(self.last_time)
         if self.labling[DWDData.NAME_INSTANCE] == {}:
             if self.auto_labling:
                 self._lablingNaoStation10m(DWDData.SUB_URL_HISTORICAL)
             else:
                 return([])
-        return(self._get10MinDWDTelegrafData())
+        return(self._get10MinDWDTelegrafData(max_data=max_data_len))
 
-    def _get10MinDWDTelegrafData(self, max_data:int=200000):
+    def _get10MinDWDTelegrafData(self, max_data:int):
         data_return = []
         ext_data = data_return.extend
         for sub_url2 in self.last_time_hold[DWDData.DWD_10MIN_SENSOR]:
@@ -369,11 +396,16 @@ class DWDData(Param, ParamDWD):
             info_recent = {}
             info_now = {}
             for station_id in timestamps[sub_url2]:
+                if station_id == DWDData.NAME_DESCRIPTION:
+                    continue
                 if len(data_return) > max_data:
                     return(data_return)
-                if timestamps[sub_url2][station_id] == 100000:
+                if timestamps[sub_url2][station_id][0] == 100000:
                     if len(info_history) == 0:
                         info_history = self.getOpenDataFileInfo(url=DWDData.URL_10MIN_CLIMATE+sub_url2+DWDData.SUB_URL_HISTORICAL+"/")
+                    if info_history.get(station_id) == None:
+                        timestamps[sub_url2][station_id][0] = 1111111
+                        continue
                     data = self.getDataFrameFromZIP(
                         url=DWDData.URL_10MIN_CLIMATE+sub_url2+DWDData.SUB_URL_HISTORICAL+"/"+info_history[station_id][DWDData.NAME_NAME]
                     )
@@ -382,24 +414,67 @@ class DWDData(Param, ParamDWD):
                         sub_url=DWDData.DWD_10MIN_SENSOR,
                         sub_url2=sub_url2,
                         station_id=station_id
-                    ))
-                    timestamps[sub_url2][station_id] = max(data.index).timestamp()     
+                    ))  
+                    timestamps[sub_url2][station_id][0] = max(data.index).timestamp()
+                # elif  datetime.utcnow().timestamp() - timestamps[sub_url2][station_id][0] > 79200:
+                #     if len(info_recent) == 0:
+                #         info_recent = self.getOpenDataFileInfo(url=DWDData.URL_10MIN_CLIMATE+sub_url2+DWDData.SUB_URL_RECENT+"/")
+                #     if info_recent.get(station_id) == None:
+                #         continue
+                #     if timestamps[sub_url2][station_id][1] == info_recent[station_id][DWDData.NAME_TIME].timestamp():
+                #         continue
+                # TODO hier muss data von last time aus genommen werden 
+                #     data = self.getDataFrameFromZIP(
+                #         url=DWDData.URL_10MIN_CLIMATE+sub_url2+DWDData.SUB_URL_RECENT+"/"+info_recent[station_id][DWDData.NAME_NAME]
+                #     )
+                #     ext_data(self._getTelegrafDataFromFrame(
+                #         data=data,
+                #         sub_url=DWDData.DWD_10MIN_SENSOR,
+                #         sub_url2=sub_url2,
+                #         station_id=station_id
+                #     ))  
+                #     timestamps[sub_url2][station_id][0] = max(data.index).timestamp()
+                #     timestamps[sub_url2][station_id][1] = info_recent[station_id][DWDData.NAME_TIME].timestamp()
+                # else:
+                #     if len(info_now) == 0:
+                #         info_now = self.getOpenDataFileInfo(url=DWDData.URL_10MIN_CLIMATE+sub_url2+DWDData.SUB_URL_NOW+"/")
+                #     if info_now.get(station_id) == None:
+                #         continue
+                #     if timestamps[sub_url2][station_id][1] == info_now[station_id][DWDData.NAME_TIME].timestamp():
+                #         continue
+                # TODO hier muss data von last time aus genommen werden 
+                #     data = self.getDataFrameFromZIP(
+                #         url=DWDData.URL_10MIN_CLIMATE+sub_url2+DWDData.SUB_URL_NOW+"/"+info_now[station_id][DWDData.NAME_NAME]
+                #     )
+                #     ext_data(self._getTelegrafDataFromFrame(
+                #         data=data,
+                #         sub_url=DWDData.DWD_10MIN_SENSOR,
+                #         sub_url2=sub_url2,
+                #         station_id=station_id
+                #     ))  
+                #     timestamps[sub_url2][station_id][0] = max(data.index).timestamp()
+                #     timestamps[sub_url2][station_id][1] = info_now[station_id][DWDData.NAME_TIME].timestamp()
         return(data_return)
 
     def _getTelegrafDataFromFrame(self, data:pd.DataFrame, sub_url, sub_url2, station_id):
         data_return = []
         add_data = data_return.append
         asset = self.labling[DWDData.NAME_ASSET]
-        instance = self.labling[DWDData.NAME_INSTANCE][station_id]
+        try:
+            instance = self.labling[DWDData.NAME_INSTANCE][station_id]
+        except:
+            self._lablingOneNaoStation10mFromNotInMeta(station_id,sub_url2)
+            instance = self.labling[DWDData.NAME_INSTANCE][station_id]
         for sensor in self.labling[sub_url][sub_url2][DWDData.DWD_SENSOR]:
             for timestamp_d in data.index:
-                add_data(self._buildTelegrafFrameForm(
-                    twin=asset,
-                    instance=instance,
-                    series=self.labling[sub_url][sub_url2][DWDData.DWD_SENSOR][sensor][DWDData.NAME_SERIES],
-                    value=data[sensor][timestamp_d],
-                    timestamp=timestamp_d.timestamp()*DWDData.SEC_TO_NANO
-                ))  
+                if not isnan(data[sensor][timestamp_d]):
+                    add_data(self._buildTelegrafFrameForm(
+                        twin=asset,
+                        instance=instance,
+                        series=self.labling[sub_url][sub_url2][DWDData.DWD_SENSOR][sensor][DWDData.NAME_SERIES],
+                        value=data[sensor][timestamp_d],
+                        timestamp=timestamp_d.timestamp()*DWDData.SEC_TO_NANO
+                    ))  
         return(data_return)
 
     def _buildTelegrafFrameForm(self, twin, instance, series, value,timestamp):
@@ -418,8 +493,24 @@ class DWDData(Param, ParamDWD):
             endpoints_to_create = stations_ids_meta.difference(set(self.labling[DWDData.DWD_10MIN_SENSOR][sub_url2][DWDData.NAME_INSTANCE]))
             if len(endpoints_to_create) != 0:
                 self._createEndpoints(endpoints_to_create, sub_url2, DWDData.DWD_10MIN_SENSOR)
-        self._setDefaultTime10m()
+        self._setDefaultTime10m(DWDData.SUB_URL_HISTORICAL)
     
+    def _lablingOneNaoStation10mFromNotInMeta(self, station, sub_url2):
+        for url in DWDData.URLS_META_NO_FOUND:
+            info = self.getOpenDataFileInfo(url=url)
+            meta = self.getMetaDataFrame(url=url+info[DWDData.NAME_DESCRIPTION])
+            meta = meta.set_index(DWDData.META_STATION_ID_NAME)
+            if meta[DWDData.META_STATION_NAME].get(station):
+                break
+        stations_ids_meta = set([station])
+        stations_to_create = stations_ids_meta.difference(set(self.labling[DWDData.NAME_INSTANCE].keys()))
+        if len(stations_to_create) != 0:
+            self._createInstancesInNao(meta, stations_to_create, self.labling[DWDData.NAME_ASSET]) # type: ignore
+        endpoints_to_create = stations_ids_meta.difference(set(self.labling[DWDData.DWD_10MIN_SENSOR][sub_url2][DWDData.NAME_INSTANCE]))
+        if len(endpoints_to_create) != 0:
+            self._createEndpoints(endpoints_to_create, sub_url2, DWDData.DWD_10MIN_SENSOR)
+        self._setDefaultTime10m(DWDData.SUB_URL_HISTORICAL)
+
     def _createEndpoints(self, instances, sub_url, types):
         for instance in instances:
             try:
@@ -437,12 +528,16 @@ class DWDData(Param, ParamDWD):
                 raise(e)
         self._saveLabling()
 
-    def _setDefaultTime10m(self):
-        for station_id in self.labling[DWDData.NAME_INSTANCE]:
-            for sub_url2 in self.last_time[DWDData.DWD_10MIN_SENSOR]:
+    def _setDefaultTime10m(self, sub_url):
+        set_time = False
+        for sub_url2 in DWDData.SUB_URLS_CLIMATE:
+            info_recent = self.getOpenDataFileInfo(url=DWDData.URL_10MIN_CLIMATE+sub_url2+sub_url+"/")
+            for station_id in info_recent:
                 if self.last_time[DWDData.DWD_10MIN_SENSOR][sub_url2].get(station_id) == None:
-                    self.last_time[DWDData.DWD_10MIN_SENSOR][sub_url2][station_id] = 100000
-        self._putLastTimestamps()
+                    set_time = True
+                    self.last_time[DWDData.DWD_10MIN_SENSOR][sub_url2][station_id] = [100000,100000]
+        if set_time:
+            self._putLastTimestamps()
 
     def _createInstancesInNao(self, meta_data, station_ids, asset):
         for id_station in station_ids:
@@ -505,21 +600,6 @@ class DWDData(Param, ParamDWD):
         self.db.updateSimpleTinyTables(DWDData.NAME_TIME, self.last_time)
 
     def _getTransferChannels(self):
-        # // "1": {
-        # //     "name": "station_id",
-        # //     "path1" : {
-        # //         "columns": [
-        # //             {
-        # //                 "column": "sensor_id",
-        # //                 "telegraf": [
-        # //                     "asset",
-        # //                     "instance",
-        # //                     "series"
-        # //                 ]
-        # //             }
-        # //         ]
-        # //     }
-        # // }
         conf_r = self.db.getTinyTables(DWDData.NAME_CONFIG)
         conf = {}
         for idx in conf_r:

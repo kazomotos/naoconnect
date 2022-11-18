@@ -1,16 +1,19 @@
 'Autor: Rupert Wieser -- Naotilus -- 20220219'
-import http.client
-from logging.handlers import DatagramHandler
-from urllib.parse import quote
-from copy import copy
-from json import loads, dumps
-from time import sleep, time
-from threading import Thread
 import datetime
-from time import time_ns
-from naoconnect.TinyDb import TinyDb
-from naoconnect.Param import Param
+import http.client
+from math import ceil
+from copy import copy
+from json import dumps, loads
+from logging.handlers import DatagramHandler
 from random import random
+from threading import Thread
+from time import sleep, time, time_ns
+from typing import Union
+from urllib.parse import quote
+
+from naoconnect.Param import Param
+from naoconnect.TinyDb import TinyDb
+
 
 class NaoApp(Param):
     URLLOGIN = "/api/user/auth/login"
@@ -51,13 +54,13 @@ class NaoApp(Param):
     STANDARD_LOGGINGINTERVAL = 60
     STANDARD_DATAPERTELEGRAF = 200000
 
-    def __init__(self, host, email, password, DataFromDb=False, DataForLogging=False, DataForListener=False, tiny_db_name="nao.json", error_log=False, break_hour:datetime.time=datetime.time(hour=23)):
+    def __init__(self, host, email, password, DataFromDb=False, DataForLogging=False, DataForListener=False, tiny_db_name="nao.json", error_log=False, break_hour:datetime.time=datetime.time(hour=23)): # type: ignore
         self.auth = {
             NaoApp.NAME_HOST:host,
             NaoApp.NAME_PAYLOAD:NaoApp.NAME_EMAIL+"="+quote(email)+"&"+NaoApp.NAME_PASSWD+"="+quote(password)
         }
         self.error_log = error_log
-        self.__conneciton = None
+        self.__conneciton = None # type: ignore
         self.headers = NaoApp.TRANSFERHEADER
         self.db = TinyDb(tiny_db_name)
         self.DataFromDb = DataFromDb
@@ -81,14 +84,14 @@ class NaoApp(Param):
         if type(payload) == list:
             payload = NaoApp.FORMAT_TELEGRAFFRAMESEPERATOR*len(payload) % tuple(payload)
         try:
-            self.__conneciton.request(NaoApp.NAME_POST, NaoApp.URLTELEGRAF, payload, self.headers)
-            status = self.__conneciton.getresponse().status
-            self.__conneciton.close()
+            self.__conneciton.request(NaoApp.NAME_POST, NaoApp.URLTELEGRAF, payload, self.headers) # type: ignore
+            status = self.__conneciton.getresponse().status # type: ignore
+            self.__conneciton.close() # type: ignore
         except:
             self._loginNao()
-            self.__conneciton.request(NaoApp.NAME_POST, NaoApp.URLTELEGRAF, payload, self.headers)
-            status = self.__conneciton.getresponse().status
-            self.__conneciton.close()
+            self.__conneciton.request(NaoApp.NAME_POST, NaoApp.URLTELEGRAF, payload, self.headers) # type: ignore
+            status = self.__conneciton.getresponse().status # type: ignore
+            self.__conneciton.close() # type: ignore
         return(status)
 
     def _sendDataToNaoJson(self, method, url, payload) -> dict:
@@ -97,23 +100,23 @@ class NaoApp(Param):
         if payload != None:
             payload = dumps(payload)
         try:
-            self.__conneciton.request(method, url, payload, header)
-            data = self.__conneciton.getresponse().read()
-            self.__conneciton.close()
+            self.__conneciton.request(method, url, payload, header) # type: ignore
+            data = self.__conneciton.getresponse().read() # type: ignore
+            self.__conneciton.close() # type: ignore
         except:
             self._loginNao()
             header = copy(self.headers)
             header[NaoApp.NAME_CONTENT_HEADER] = NaoApp.HEADER_JSON
-            self.__conneciton.request(method, url, payload, header)
-            data = self.__conneciton.getresponse().read()
-            self.__conneciton.close()
+            self.__conneciton.request(method, url, payload, header) # type: ignore
+            data = self.__conneciton.getresponse().read() # type: ignore
+            self.__conneciton.close() # type: ignore
         if data == b'':
-            return('')
+            return('') # type: ignore
         else:
             try:
                 return(loads(data))
             except:
-                return(-1)
+                return(-1) # type: ignore
     
     def sendNewInstance(self, asset, name, discription, geolocation=None):
         data = {
@@ -195,7 +198,7 @@ class NaoApp(Param):
         Thread(target=self.__DataTransferLoggingData, args=()).start()
         start = time()
         while 1==1:
-            sleep(self.transfer_config[NaoApp.TRANSFERINTERVAL])
+            sleep(self.transfer_config[NaoApp.TRANSFERINTERVAL]) # type: ignore
             data = self.logging_data
             self.logging_data = []
             self.logging_data_add = self.logging_data.extend
@@ -204,7 +207,7 @@ class NaoApp(Param):
                 self._addAndUpdateTotalNumberOfSentData()
                 start = time()
             if self.end_transfer:
-                sleep(self.transfer_config[NaoApp.TRANSFERINTERVAL])
+                sleep(self.transfer_config[NaoApp.TRANSFERINTERVAL]) # type: ignore
                 self.end_confirmation = True
                 break     
 
@@ -213,22 +216,22 @@ class NaoApp(Param):
         while 1==1:
             start = time()
             try:    
-                self.logging_data_add(self.DataForLogging.getTelegrafData())
+                self.logging_data_add(self.DataForLogging.getTelegrafData()) # type: ignore
             except Exception as e:
                 self.print("ERROR-FromDb: "+  str(e))
-                sleep(self.transfer_config[NaoApp.ERRORSLEEPLOGGER])
-                ending = self.DataForLogging.refreshConnection()
+                sleep(self.transfer_config[NaoApp.ERRORSLEEPLOGGER]) # type: ignore
+                ending = self.DataForLogging.refreshConnection() # type: ignore
                 if ending:
                     self.end_transfer = True
             if time() - update_time > 800:
                 self._addAndUpdateTotalNumberOfSentData()
                 update_time = time()
             if self.end_transfer:
-                self.DataForLogging.exit()
+                self.DataForLogging.exit() # type: ignore
                 break
             diff = time() - start
-            if diff < self.transfer_config[NaoApp.LOGGINGINTERVAL]:
-                sleep(self.transfer_config[NaoApp.LOGGINGINTERVAL]-diff)
+            if diff < self.transfer_config[NaoApp.LOGGINGINTERVAL]: # type: ignore
+                sleep(self.transfer_config[NaoApp.LOGGINGINTERVAL]-diff) # type: ignore
 
     def __DataTransferLoggingBuffer(self, data):
         start = time()
@@ -241,16 +244,16 @@ class NaoApp(Param):
                     break
                 elif status == 500:
                     self.print("ERROR: nao.status=" + str(status))
-                    sleep(self.transfer_config[NaoApp.ERRORSLEEP])
+                    sleep(self.transfer_config[NaoApp.ERRORSLEEP]) # type: ignore
                     self._loginNao()
                 else:
                     self.print("ERROR: nao.status=" + str(status))
-                    sleep(self.transfer_config[NaoApp.ERRORSLEEP])
+                    sleep(self.transfer_config[NaoApp.ERRORSLEEP]) # type: ignore
             except Exception as e:
                 self.print("ERROR-Nao:" + str(e))
-                sleep(self.transfer_config[NaoApp.ERRORSLEEP])
+                sleep(self.transfer_config[NaoApp.ERRORSLEEP]) # type: ignore
             if self.end_transfer: break
-            if time() - start > self.transfer_config[NaoApp.MAXBUFFERTIME]: 
+            if time() - start > self.transfer_config[NaoApp.MAXBUFFERTIME]:  # type: ignore
                 self.print("WARNING:" + str(len(data)) + " datasets destroyed")
                 break 
             # TODO: hier könnte noch ein Buffer auf Festplatte gebaut werden
@@ -259,50 +262,62 @@ class NaoApp(Param):
         while 1==1:
             start = time()
             try:    
-                data = self.DataFromDb.getTelegrafData(max_data_len=self.transfer_config[NaoApp.DATAPERTELEGRAF])
-                data_len = len(data)
+                data = self.DataFromDb.getTelegrafData(max_data_len=self.transfer_config[NaoApp.DATAPERTELEGRAF]) # type: ignore
+                data_len = len(data) 
             except TimeoutError:
                 data = []
                 self.print("ERROR-FromDb: TimeoutError")
-                sleep(self.transfer_config[NaoApp.ERRORSLEEP])
-                self.DataFromDb.refreshConnection()
+                sleep(self.transfer_config[NaoApp.ERRORSLEEP]) # type: ignore
+                self.DataFromDb.refreshConnection() # type: ignore
                 continue
             except Exception as e:
                 data = []
                 data_len = 0
                 self.print("ERROR-FromDb:" + str(e))
-                sleep(self.transfer_config[NaoApp.ERRORSLEEP])
-                self.DataFromDb.refreshConnection()
+                sleep(self.transfer_config[NaoApp.ERRORSLEEP]) # type: ignore
+                self.DataFromDb.refreshConnection() # type: ignore
             try:
                 if data != []:
-                    status = self.sendTelegrafData(data)
-                    print(data_len, " data sendet")
-                    if status == 204:
-                        self.DataFromDb.confirmTransfer()
-                        self.sending_counter += data_len
-                    elif status == 500:
-                        self.print("ERROR: nao.status=" + str(status))
-                        self._loginNao()
+                    if len(data) > 200000:
+                        breaker = False
+                        last_idx = 0
+                        for idx in range(int(ceil(len(data)/200000))-1):
+                            last_idx = idx
+                            status = self.sendTelegrafData(data[int(idx*200000):int(idx*200000)+200000])
+                            if status != 204:
+                                breaker = True
+                                break
+                        if not breaker:
+                            status = self.sendTelegrafData(data[int(last_idx*200000):])
                     else:
-                        self.print("ERROR: nao.status=" + str(status))
+                        status = self.sendTelegrafData(data)
+                    print(data_len, " data sendet")
+                    if status == 204: # type: ignore
+                        self.DataFromDb.confirmTransfer() # type: ignore
+                        self.sending_counter += data_len
+                    elif status == 500: # type: ignore
+                        self.print("ERROR: nao.status=" + str(status)) # type: ignore
+                        self._loginNao()
+                    else: 
+                        self.print("ERROR: nao.status=" + str(status)) # type: ignore
                         self._loginNao()
             except Exception as e:
                 self.print("ERROR-Nao:" + str(e))
-                sleep(self.transfer_config[NaoApp.ERRORSLEEP])
-                self.DataFromDb.refreshConnection()
+                sleep(self.transfer_config[NaoApp.ERRORSLEEP]) # type: ignore
+                self.DataFromDb.refreshConnection() # type: ignore
             diff = time() - start
             if self.end_transfer:
-                self.DataFromDb.exit()
+                self.DataFromDb.exit() # type: ignore
                 self.end_confirmation = True
                 break
-            if diff < self.transfer_config[NaoApp.TRANSFERINTERVAL]:
-                sleep(self.transfer_config[NaoApp.TRANSFERINTERVAL]-diff)
+            if diff < self.transfer_config[NaoApp.TRANSFERINTERVAL]: # type: ignore
+                sleep(self.transfer_config[NaoApp.TRANSFERINTERVAL]-diff) # type: ignore
 
     def __dataTransferFromListener(self):
         while 1==1:
             try: 
                 start = time() 
-                data = self.DataForListener.getTelegrafData()
+                data = self.DataForListener.getTelegrafData() # type: ignore
                 data_len = len(data)
                 self.logging_data_add(data)
                 if (len(self.logging_data)) > NaoApp.STANDARD_DATAPERTELEGRAF:
@@ -321,23 +336,23 @@ class NaoApp(Param):
                             self._loginNao()
                 except Exception as e:
                     self.print("ERROR-Nao:" + str(e))
-                    sleep(self.transfer_config[NaoApp.ERRORSLEEP])
-                    self.DataForListener.refreshConnection()
+                    sleep(self.transfer_config[NaoApp.ERRORSLEEP]) # type: ignore
+                    self.DataForListener.refreshConnection() # type: ignore
                     self._loginNao()
                 if self.sending_counter > 10000:
                     self._addAndUpdateTotalNumberOfSentData()
                 diff = time() - start
                 if self.end_transfer:
-                    self.DataForListener.exit()
+                    self.DataForListener.exit() # type: ignore
                     self.end_confirmation = True
                     break
-                if diff < self.transfer_config[NaoApp.TRANSFERINTERVAL]:
-                    sleep(self.transfer_config[NaoApp.TRANSFERINTERVAL]-diff)
+                if diff < self.transfer_config[NaoApp.TRANSFERINTERVAL]: # type: ignore
+                    sleep(self.transfer_config[NaoApp.TRANSFERINTERVAL]-diff) # type: ignore
             except Exception as e:
                 try:
                     self.print("ERROR-Unknow (329):" + str(e))
                     self._loginNao()
-                    self.DataForListener.refreshConnection()
+                    self.DataForListener.refreshConnection() # type: ignore
                 except:
                     self.endwithexit = True
 
@@ -386,7 +401,7 @@ class NaoApp(Param):
             self.headers[NaoApp.NAME_WEBAUTH] = NaoApp.BEARER + data[NaoApp.NAME_TOKENAC]
         except:
             try:
-                sleep(self.transfer_config[NaoApp.ERRORSLEEP])
+                sleep(self.transfer_config[NaoApp.ERRORSLEEP]) # type: ignore
                 self.print(NaoApp.MESSAGELOGIN)
                 self.__conneciton = http.client.HTTPSConnection(self.auth[NaoApp.NAME_HOST])
                 self.__conneciton.request(NaoApp.NAME_POST, NaoApp.URLLOGIN, self.auth[NaoApp.NAME_PAYLOAD], NaoApp.LOGINHEADER)
