@@ -47,14 +47,14 @@ class NaoApp(Param):
     LOGGINGINTERVAL = "logging_interval"
     NAME_ENDPOINT_ID = "_endpoint"
     SERIES_TYPE = "series_type"
-    CONSOLIDATE = "consolidate"
+    CONSOLIDATE = "template"
     STANDARD_MAXBUFFERTIME = 1800
     STANDARD_ERRORSLEEP = 120
     STANDARD_TRANSFERINTERVAL = 900
     STANDARD_LOGGINGINTERVAL = 60
     STANDARD_DATAPERTELEGRAF = 200000
 
-    def __init__(self, host, email, password, DataFromDb=False, DataForLogging=False, DataForListener=False, tiny_db_name="nao.json", error_log=False, break_hour:datetime.time=datetime.time(hour=23)): # type: ignore
+    def __init__(self, host, email, password, DataFromDb=False, DataForLogging=False, DataForListener=False, tiny_db_name="nao.json", error_log=False, break_hour:datetime.time=datetime.time(hour=23), local=False): # type: ignore
         self.auth = {
             NaoApp.NAME_HOST:host,
             NaoApp.NAME_PAYLOAD:NaoApp.NAME_EMAIL+"="+quote(email)+"&"+NaoApp.NAME_PASSWD+"="+quote(password)
@@ -63,6 +63,7 @@ class NaoApp(Param):
         self.__conneciton = None # type: ignore
         self.headers = NaoApp.TRANSFERHEADER
         self.db = TinyDb(tiny_db_name)
+        self.local=local
         self.DataFromDb = DataFromDb
         self.DataForLogging = DataForLogging
         self.DataForListener = DataForListener
@@ -391,7 +392,32 @@ class NaoApp(Param):
             number = number[0][NaoApp.NAME_COUNT]
         return(number)
 
-    def _loginNao(self):
+    def _loginNaoLocal(self):
+        try:
+            self.print(NaoApp.MESSAGELOGIN)
+            self.__conneciton = http.client.HTTPConnection(self.auth[NaoApp.NAME_HOST])
+            self.__conneciton.request(NaoApp.NAME_POST, NaoApp.URLLOGIN, self.auth[NaoApp.NAME_PAYLOAD], NaoApp.LOGINHEADER)
+            res = self.__conneciton.getresponse()
+            data = loads(res.read().decode(NaoApp.NAME_UTF8))
+            self.headers[NaoApp.NAME_WEBAUTH] = NaoApp.BEARER + data[NaoApp.NAME_TOKENAC]
+        except:
+            try:
+                sleep(self.transfer_config[NaoApp.ERRORSLEEP]) # type: ignore
+                self.print(NaoApp.MESSAGELOGIN)
+                self.__conneciton = http.client.HTTPConnection(self.auth[NaoApp.NAME_HOST])
+                self.__conneciton.request(NaoApp.NAME_POST, NaoApp.URLLOGIN, self.auth[NaoApp.NAME_PAYLOAD], NaoApp.LOGINHEADER)
+                res = self.__conneciton.getresponse()
+                data = loads(res.read().decode(NaoApp.NAME_UTF8))
+                self.headers[NaoApp.NAME_WEBAUTH] = NaoApp.BEARER + data[NaoApp.NAME_TOKENAC]
+            except:
+                self.__conneciton = http.client.HTTPConnection(self.auth[NaoApp.NAME_HOST])
+                self.__conneciton.request(NaoApp.NAME_POST, NaoApp.URLLOGIN, self.auth[NaoApp.NAME_PAYLOAD], NaoApp.LOGINHEADER)
+                res = self.__conneciton.getresponse()
+                data = res.read().decode(NaoApp.NAME_UTF8)
+                self.print("ERROR login, data: " + str(data))
+                self.endwithexit = True
+
+    def _loginNaoCloud(self):
         try:
             self.print(NaoApp.MESSAGELOGIN)
             self.__conneciton = http.client.HTTPSConnection(self.auth[NaoApp.NAME_HOST])
@@ -415,6 +441,12 @@ class NaoApp(Param):
                 data = res.read().decode(NaoApp.NAME_UTF8)
                 self.print("ERROR login, data: " + str(data))
                 self.endwithexit = True
+
+    def _loginNao(self):
+        if self.local:
+            self._loginNaoLocal()
+        else:
+            self._loginNaoCloud()
 
     def print(self, log:str):
         if self.error_log:
