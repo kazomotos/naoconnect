@@ -2,7 +2,7 @@ import http.client
 import re
 import zipfile
 from copy import copy, deepcopy
-from datetime import datetime
+from datetime import datetime, timedelta
 from html.parser import HTMLParser
 from io import BytesIO
 from json import dumps, loads
@@ -416,44 +416,44 @@ class DWDData(Param, ParamDWD):
                         station_id=station_id
                     ))  
                     timestamps[sub_url2][station_id][0] = max(data.index).timestamp()
-                # elif  datetime.utcnow().timestamp() - timestamps[sub_url2][station_id][0] > 79200:
-                #     if len(info_recent) == 0:
-                #         info_recent = self.getOpenDataFileInfo(url=DWDData.URL_10MIN_CLIMATE+sub_url2+DWDData.SUB_URL_RECENT+"/")
-                #     if info_recent.get(station_id) == None:
-                #         continue
-                #     if timestamps[sub_url2][station_id][1] == info_recent[station_id][DWDData.NAME_TIME].timestamp():
-                #         continue
-                # TODO hier muss data von last time aus genommen werden 
-                #     data = self.getDataFrameFromZIP(
-                #         url=DWDData.URL_10MIN_CLIMATE+sub_url2+DWDData.SUB_URL_RECENT+"/"+info_recent[station_id][DWDData.NAME_NAME]
-                #     )
-                #     ext_data(self._getTelegrafDataFromFrame(
-                #         data=data,
-                #         sub_url=DWDData.DWD_10MIN_SENSOR,
-                #         sub_url2=sub_url2,
-                #         station_id=station_id
-                #     ))  
-                #     timestamps[sub_url2][station_id][0] = max(data.index).timestamp()
-                #     timestamps[sub_url2][station_id][1] = info_recent[station_id][DWDData.NAME_TIME].timestamp()
-                # else:
-                #     if len(info_now) == 0:
-                #         info_now = self.getOpenDataFileInfo(url=DWDData.URL_10MIN_CLIMATE+sub_url2+DWDData.SUB_URL_NOW+"/")
-                #     if info_now.get(station_id) == None:
-                #         continue
-                #     if timestamps[sub_url2][station_id][1] == info_now[station_id][DWDData.NAME_TIME].timestamp():
-                #         continue
-                # TODO hier muss data von last time aus genommen werden 
-                #     data = self.getDataFrameFromZIP(
-                #         url=DWDData.URL_10MIN_CLIMATE+sub_url2+DWDData.SUB_URL_NOW+"/"+info_now[station_id][DWDData.NAME_NAME]
-                #     )
-                #     ext_data(self._getTelegrafDataFromFrame(
-                #         data=data,
-                #         sub_url=DWDData.DWD_10MIN_SENSOR,
-                #         sub_url2=sub_url2,
-                #         station_id=station_id
-                #     ))  
-                #     timestamps[sub_url2][station_id][0] = max(data.index).timestamp()
-                #     timestamps[sub_url2][station_id][1] = info_now[station_id][DWDData.NAME_TIME].timestamp()
+                elif  datetime.utcnow().timestamp() - timestamps[sub_url2][station_id][0] > 79200:
+                    if len(info_recent) == 0:
+                        info_recent = self.getOpenDataFileInfo(url=DWDData.URL_10MIN_CLIMATE+sub_url2+DWDData.SUB_URL_RECENT+"/")
+                    if info_recent.get(station_id) == None:
+                        continue
+                    if timestamps[sub_url2][station_id][1] == info_recent[station_id][DWDData.NAME_TIME].timestamp():
+                        continue
+                    data = self.getDataFrameFromZIP(
+                        url=DWDData.URL_10MIN_CLIMATE+sub_url2+DWDData.SUB_URL_RECENT+"/"+info_recent[station_id][DWDData.NAME_NAME]
+                    )
+                    data = data[datetime.fromtimestamp(timestamps[sub_url2][station_id][0])+timedelta(minutes=5):]
+                    ext_data(self._getTelegrafDataFromFrame(
+                        data=data,
+                        sub_url=DWDData.DWD_10MIN_SENSOR,
+                        sub_url2=sub_url2,
+                        station_id=station_id
+                    ))  
+                    timestamps[sub_url2][station_id][0] = max(data.index).timestamp()
+                    timestamps[sub_url2][station_id][1] = info_recent[station_id][DWDData.NAME_TIME].timestamp()
+                else:
+                    if len(info_now) == 0:
+                        info_now = self.getOpenDataFileInfo(url=DWDData.URL_10MIN_CLIMATE+sub_url2+DWDData.SUB_URL_NOW+"/")
+                    if info_now.get(station_id) == None:
+                        continue
+                    if timestamps[sub_url2][station_id][1] == info_now[station_id][DWDData.NAME_TIME].timestamp():
+                        continue
+                    data = self.getDataFrameFromZIP(
+                        url=DWDData.URL_10MIN_CLIMATE+sub_url2+DWDData.SUB_URL_NOW+"/"+info_now[station_id][DWDData.NAME_NAME]
+                    )
+                    data = data[datetime.fromtimestamp(timestamps[sub_url2][station_id][0])+timedelta(minutes=5):]
+                    ext_data(self._getTelegrafDataFromFrame(
+                        data=data,
+                        sub_url=DWDData.DWD_10MIN_SENSOR,
+                        sub_url2=sub_url2,
+                        station_id=station_id
+                    ))  
+                    timestamps[sub_url2][station_id][0] = max(data.index).timestamp()
+                    timestamps[sub_url2][station_id][1] = info_now[station_id][DWDData.NAME_TIME].timestamp()
         return(data_return)
 
     def _getTelegrafDataFromFrame(self, data:pd.DataFrame, sub_url, sub_url2, station_id):

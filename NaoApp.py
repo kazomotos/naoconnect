@@ -47,7 +47,7 @@ class NaoApp(Param):
     LOGGINGINTERVAL = "logging_interval"
     NAME_ENDPOINT_ID = "_endpoint"
     SERIES_TYPE = "series_type"
-    CONSOLIDATE = "consolidate"
+    CONSOLIDATE = "template"
     STANDARD_MAXBUFFERTIME = 1800
     STANDARD_ERRORSLEEP = 120
     STANDARD_TRANSFERINTERVAL = 900
