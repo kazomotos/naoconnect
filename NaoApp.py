@@ -83,6 +83,22 @@ class NaoApp(Param):
                                       or
           '<twin>,instance=<insatance>, <measurement>=<value> <timestamp>'
         '''
+        if type(payload) != list:
+            return(self._sendTelegrafData(payload=payload))
+        else:
+            if len(payload) > NaoApp.STADARTD_DATA_PER_TELEGRAF:
+                last_idx = 0
+                for idx in range(int(ceil(len(payload)/NaoApp.STADARTD_DATA_PER_TELEGRAF))-1):
+                    sleep(0.15)
+                    last_idx = idx
+                    sta = self._sendTelegrafData(payload[int(idx*NaoApp.STADARTD_DATA_PER_TELEGRAF):int(idx*NaoApp.STADARTD_DATA_PER_TELEGRAF)+NaoApp.STADARTD_DATA_PER_TELEGRAF])
+                    if sta != 204:
+                        return(sta)
+                return(self._sendTelegrafData(payload[int(last_idx*NaoApp.STADARTD_DATA_PER_TELEGRAF):]))
+            else:
+                return(self._sendTelegrafData(payload))
+
+    def _sendTelegrafData(self, payload):
         if type(payload) == list:
             payload = NaoApp.FORMAT_TELEGRAFFRAMESEPERATOR*len(payload) % tuple(payload)
         try:
@@ -280,20 +296,7 @@ class NaoApp(Param):
                 self.DataFromDb.refreshConnection() # type: ignore
             try:
                 if data != []:
-                    if len(data) > NaoApp.STADARTD_DATA_PER_TELEGRAF:
-                        breaker = False
-                        last_idx = 0
-                        for idx in range(int(ceil(len(data)/NaoApp.STADARTD_DATA_PER_TELEGRAF))-1):
-                            last_idx = idx
-                            status = self.sendTelegrafData(data[int(idx*NaoApp.STADARTD_DATA_PER_TELEGRAF):int(idx*NaoApp.STADARTD_DATA_PER_TELEGRAF)+NaoApp.STADARTD_DATA_PER_TELEGRAF])
-                            if status != 204:
-                                breaker = True
-                                break
-                            sleep(0.15)
-                        if not breaker:
-                            status = self.sendTelegrafData(data[int(last_idx*NaoApp.STADARTD_DATA_PER_TELEGRAF):])
-                    else:
-                        status = self.sendTelegrafData(data)
+                    status = self.sendTelegrafData(data)
                     print(data_len, " data sendet")
                     if status == 204: # type: ignore
                         self.DataFromDb.confirmTransfer() # type: ignore
