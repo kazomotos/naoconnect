@@ -279,17 +279,18 @@ class NaoApp(Param):
                 self.DataFromDb.refreshConnection() # type: ignore
             try:
                 if data != []:
-                    if len(data) > 200000:
+                    max_data = 50000
+                    if len(data) > max_data:
                         breaker = False
                         last_idx = 0
-                        for idx in range(int(ceil(len(data)/200000))-1):
+                        for idx in range(int(ceil(len(data)/max_data))-1):
                             last_idx = idx
-                            status = self.sendTelegrafData(data[int(idx*200000):int(idx*200000)+200000])
+                            status = self.sendTelegrafData(data[int(idx*max_data):int(idx*max_data)+max_data])
                             if status != 204:
                                 breaker = True
                                 break
                         if not breaker:
-                            status = self.sendTelegrafData(data[int(last_idx*200000):])
+                            status = self.sendTelegrafData(data[int(last_idx*max_data):])
                     else:
                         status = self.sendTelegrafData(data)
                     print(data_len, " data sendet")

@@ -241,7 +241,10 @@ class _StructDWDHTMLContext(Param):
             for num in numbers:
                 if len(num) == 5:
                     self.last_station = num
-                    self.station_data[self.last_station] = {_StructDWDHTMLContext.NAME_NAME: data}
+                    if not self.station_data.get(self.last_station):
+                        self.station_data[self.last_station] = {_StructDWDHTMLContext.NAME_NAME: [data]}
+                    else:
+                        self.station_data[self.last_station][_StructDWDHTMLContext.NAME_NAME].append(data)
                     break
         elif _StructDWDHTMLContext.description_station in data:
             self.station_data[_StructDWDHTMLContext.NAME_DESCRIPTION] = data
@@ -406,15 +409,19 @@ class DWDData(Param, ParamDWD):
                     if info_history.get(station_id) == None:
                         timestamps[sub_url2][station_id][0] = 1111111
                         continue
-                    data = self.getDataFrameFromZIP(
-                        url=DWDData.URL_10MIN_CLIMATE+sub_url2+DWDData.SUB_URL_HISTORICAL+"/"+info_history[station_id][DWDData.NAME_NAME]
-                    )
-                    ext_data(self._getTelegrafDataFromFrame(
-                        data=data,
-                        sub_url=DWDData.DWD_10MIN_SENSOR,
-                        sub_url2=sub_url2,
-                        station_id=station_id
-                    ))  
+                    data = []
+                    data_add = data.append
+                    for file_txt in info_history[station_id][DWDData.NAME_NAME]:
+                        data_add(self.getDataFrameFromZIP(
+                            url=DWDData.URL_10MIN_CLIMATE+sub_url2+DWDData.SUB_URL_HISTORICAL+"/"+file_txt
+                        ))
+                    for idx in range(len(data)):
+                        ext_data(self._getTelegrafDataFromFrame(
+                            data=data[idx],
+                            sub_url=DWDData.DWD_10MIN_SENSOR,
+                            sub_url2=sub_url2,
+                            station_id=station_id
+                        ))  
                     timestamps[sub_url2][station_id][0] = max(data.index).timestamp()
                 elif  datetime.utcnow().timestamp() - timestamps[sub_url2][station_id][0] > 79200:
                     if len(info_recent) == 0:
@@ -433,8 +440,12 @@ class DWDData(Param, ParamDWD):
                         sub_url2=sub_url2,
                         station_id=station_id
                     ))  
-                    timestamps[sub_url2][station_id][0] = max(data.index).timestamp()
-                    timestamps[sub_url2][station_id][1] = info_recent[station_id][DWDData.NAME_TIME].timestamp()
+                    if len(data) != 0:
+                        timestamps[sub_url2][station_id][0] = max(data.index).timestamp()
+                    try:
+                        timestamps[sub_url2][station_id][1] = info_recent[station_id][DWDData.NAME_TIME].timestamp()
+                    except:
+                        pass
                 else:
                     if len(info_now) == 0:
                         info_now = self.getOpenDataFileInfo(url=DWDData.URL_10MIN_CLIMATE+sub_url2+DWDData.SUB_URL_NOW+"/")
@@ -452,8 +463,12 @@ class DWDData(Param, ParamDWD):
                         sub_url2=sub_url2,
                         station_id=station_id
                     ))  
-                    timestamps[sub_url2][station_id][0] = max(data.index).timestamp()
-                    timestamps[sub_url2][station_id][1] = info_now[station_id][DWDData.NAME_TIME].timestamp()
+                    if len(data) != 0:
+                        timestamps[sub_url2][station_id][0] = max(data.index).timestamp()
+                    try:
+                        timestamps[sub_url2][station_id][1] = info_now[station_id][DWDData.NAME_TIME].timestamp()
+                    except:
+                        pass
         return(data_return)
 
     def _getTelegrafDataFromFrame(self, data:pd.DataFrame, sub_url, sub_url2, station_id):
