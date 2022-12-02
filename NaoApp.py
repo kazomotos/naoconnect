@@ -52,7 +52,8 @@ class NaoApp(Param):
     STANDARD_ERRORSLEEP = 120
     STANDARD_TRANSFERINTERVAL = 900
     STANDARD_LOGGINGINTERVAL = 60
-    STANDARD_DATAPERTELEGRAF = 200000
+    STANDARD_DATA_PER_FUNC_CALL = 200000
+    STADARTD_DATA_PER_TELEGRAF = 10000
 
     def __init__(self, host, email, password, DataFromDb=False, DataForLogging=False, DataForListener=False, tiny_db_name="nao.json", error_log=False, break_hour:datetime.time=datetime.time(hour=23), local=False): # type: ignore
         self.auth = {
@@ -279,18 +280,18 @@ class NaoApp(Param):
                 self.DataFromDb.refreshConnection() # type: ignore
             try:
                 if data != []:
-                    max_data = 50000
-                    if len(data) > max_data:
+                    if len(data) > NaoApp.STADARTD_DATA_PER_TELEGRAF:
                         breaker = False
                         last_idx = 0
-                        for idx in range(int(ceil(len(data)/max_data))-1):
+                        for idx in range(int(ceil(len(data)/NaoApp.STADARTD_DATA_PER_TELEGRAF))-1):
                             last_idx = idx
-                            status = self.sendTelegrafData(data[int(idx*max_data):int(idx*max_data)+max_data])
+                            status = self.sendTelegrafData(data[int(idx*NaoApp.STADARTD_DATA_PER_TELEGRAF):int(idx*NaoApp.STADARTD_DATA_PER_TELEGRAF)+NaoApp.STADARTD_DATA_PER_TELEGRAF])
                             if status != 204:
                                 breaker = True
                                 break
+                            sleep(0.15)
                         if not breaker:
-                            status = self.sendTelegrafData(data[int(last_idx*max_data):])
+                            status = self.sendTelegrafData(data[int(last_idx*NaoApp.STADARTD_DATA_PER_TELEGRAF):])
                     else:
                         status = self.sendTelegrafData(data)
                     print(data_len, " data sendet")
@@ -322,9 +323,9 @@ class NaoApp(Param):
                 data = self.DataForListener.getTelegrafData() # type: ignore
                 data_len = len(data)
                 self.logging_data_add(data)
-                if (len(self.logging_data)) > NaoApp.STANDARD_DATAPERTELEGRAF:
-                    self.print("delteted data-len: " + str(int(len(self.logging_data)-NaoApp.STANDARD_DATAPERTELEGRAF)))
-                    self.logging_data[int(len(self.logging_data)-NaoApp.STANDARD_DATAPERTELEGRAF):]
+                if (len(self.logging_data)) > NaoApp.STANDARD_DATA_PER_FUNC_CALL:
+                    self.print("delteted data-len: " + str(int(len(self.logging_data)-NaoApp.STANDARD_DATA_PER_FUNC_CALL)))
+                    self.logging_data[int(len(self.logging_data)-NaoApp.STANDARD_DATA_PER_FUNC_CALL):]
                 try:
                     if self.logging_data != []:
                         status = self.sendTelegrafData(self.logging_data)    
@@ -362,7 +363,7 @@ class NaoApp(Param):
         config = self.db.getTinyTables(NaoApp.TRANSFERCONFIG)
         if config == []:
             config = [{
-                NaoApp.DATAPERTELEGRAF: NaoApp.STANDARD_DATAPERTELEGRAF,
+                NaoApp.DATAPERTELEGRAF: NaoApp.STANDARD_DATA_PER_FUNC_CALL,
                 NaoApp.TRANSFERINTERVAL: NaoApp.STANDARD_TRANSFERINTERVAL,
                 NaoApp.ERRORSLEEP: NaoApp.STANDARD_ERRORSLEEP,
                 NaoApp.ERRORSLEEPLOGGER: NaoApp.STANDARD_ERRORSLEEP,
