@@ -89,11 +89,11 @@ class NaoApp(Param):
             if len(payload) > NaoApp.STADARTD_DATA_PER_TELEGRAF:
                 last_idx = 0
                 for idx in range(int(ceil(len(payload)/NaoApp.STADARTD_DATA_PER_TELEGRAF))-1):
-                    sleep(0.3)
                     last_idx = idx
                     sta = self._sendTelegrafData(payload[int(idx*NaoApp.STADARTD_DATA_PER_TELEGRAF):int(idx*NaoApp.STADARTD_DATA_PER_TELEGRAF)+NaoApp.STADARTD_DATA_PER_TELEGRAF])
                     if sta != 204:
                         return(sta)
+                    sleep(1+idx*0.07)
                 return(self._sendTelegrafData(payload[int(last_idx*NaoApp.STADARTD_DATA_PER_TELEGRAF):]))
             else:
                 return(self._sendTelegrafData(payload))

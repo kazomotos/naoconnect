@@ -3,6 +3,7 @@
 class Param():
     FORMAT_TELEGRAFFRAMESEPERATOR = "%s\n"
     FORMAT_TELEGRAFFRAMESTRUCT = "%s,instance=%s %s=%f %.0f"
+    FORMAT_TELEGRAFFRAMESTRUCT3 = ",instance="
     FORMAT_TELEGRAFFRAMESTRUCT2 = "%s,instance=%s %s="
     NAME_GET = "GET"
     NAME_POST = "POST"
@@ -80,6 +81,7 @@ class Param():
     NAME_TIME = "time"
     NAME_CNFIG = "config"
     NAME_INPUT = "input"
+    NAME_TIME = "time"
 
 class Labling(Param):
     ASSET = "asset"
