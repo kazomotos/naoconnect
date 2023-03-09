@@ -688,9 +688,84 @@ class NaoApp(Param):
     def getPlotformatetTimeseries(self, select):
         return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_PLOTTIMESERIES, payload=select))
 
-if __name__ == "__main__":
-    'test'
-    Nao = NaoApp("nao-app.de", "???", "????")
-    Nao.startDataTransferFromDb()
+#TODO refactoring BuildAssets
+class BuildAssets():
+    BASE_INTERVALL = "2m"
 
+    def __init__(self, NaoApp):
+        self.Nao = NaoApp
+    
+    def build(self, config_name, workspace, intervall=None):
+        if not intervall:
+            intervall=BuildAssets.BASE_INTERVALL
+        config = self.readConfig(config_name)
+        comp_color = config["component_color"]
+        description_asset = config["description_asset"]
+        sensors = config["sesnors"]
+        ret = {
+            "_asset": config["_asset"],
+            "_unit": config["_unit"]
+        } 
+        for sensor in sensors:
+            # ASSET
+            if sensor["asset"] not in ret["_asset"]:
+                data_asset = self.Nao.createAsset(
+                    name=sensor["asset"],
+                    _workspace=workspace,
+                    description=description_asset.get(sensor["asset"]), # type: ignore
+                    baseInterval=intervall
+                )
+                ret["_asset"][sensor["asset"]] = {"_id":data_asset["_id"], "component":{}}
+                asset = data_asset["_id"]
+            else:
+                asset = ret["_asset"][sensor["asset"]]["_id"]
+            sensor["_asset"] = asset
+            # COMONENT
+            if sensor["component"] not in ret["_asset"][sensor["asset"]]["component"]:
+                data_path = self.Nao.createPath(
+                    name=sensor["component"],
+                    _asset=asset,
+                    color=comp_color.get(sensor["component"]) # type: ignore
+                )
+                ret["_asset"][sensor["asset"]]["component"][sensor["component"]] = data_path["_id"]
+                component = data_path["_id"]
+            else:
+                component = ret["_asset"][sensor["asset"]]["component"][sensor["component"]]
+            sensor["_component"] = component
+            # UNIT
+            if sensor["unit"] not in ret["_unit"]:
+                data_unit = self.Nao.createUnit(
+                    name=sensor["unit"]
+                )
+                ret["_unit"][sensor["unit"]] = data_unit["_id"]
+                unit = data_unit["_id"]
+            else:
+                unit = ret["_unit"][sensor["unit"]]
+            sensor["_unit"] = unit
+            # SERIES
+            series_data = self.Nao.createSeries(
+                type=sensor["type"],
+                name=sensor["name"],
+                description=sensor["description"],
+                _asset=asset,
+                _part=component,
+                _unit=unit,
+                max=sensor["max"],
+                min=sensor["min"],
+                fill="null",
+                fillValue=None,
+                color=sensor["color"]
+            )
+            sensor["_series"] = series_data["_id"]
+            self.writeConfig("data.json", {"sensors":sensors, "_asset": ret["_asset"], "_unit":ret["_unit"], "component_color":comp_color,"description_asset":description_asset})
 
+    def writeConfig(self, name, conf):
+        file = open(name, "w")
+        file.writelines(dumps(conf))
+        file.close()
+
+    def readConfig(self, name):
+        file = open(name, "r")
+        conf = loads(file.read())
+        file.close()
+        return(conf)
