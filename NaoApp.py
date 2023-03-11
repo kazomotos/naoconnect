@@ -701,12 +701,14 @@ class BuildAssets():
         config = self.readConfig(config_name)
         comp_color = config["component_color"]
         description_asset = config["description_asset"]
-        sensors = config["sesnors"]
+        sensors = config["sensors"]
         ret = {
             "_asset": config["_asset"],
             "_unit": config["_unit"]
         } 
         for sensor in sensors:
+            if sensor.get("_asset"):
+                continue
             # ASSET
             if sensor["asset"] not in ret["_asset"]:
                 data_asset = self.Nao.createAsset(

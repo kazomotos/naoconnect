@@ -21,9 +21,11 @@ class Aquotec(Param):
     NAME_COLUMNNAME         = "columnname"
     NAME_COLUMNS            = "columns"
     NAME_STATION_TYPE       = "station_type"
+    NAME_DB_CUSTOMER        = "aqotec_Kunden"
+    NAME_TABLE_CUSTOMER     = "Tbl_Abnehmer"
     LASTTIMESAVESEC         = 240
     RESET_TIME              = 1514761200
-    SECTONoneO               = 1000000000
+    SECTONANO               = 1000000000
 
     def __init__ (self, host, port, user, password, database=None, tds_version=7.4, driver='{FreeTDS}', tiny_db_name="aqotec_meta.json"):
         self.host = host
@@ -89,6 +91,17 @@ class Aquotec(Param):
         self.disconnetToDb()
         return(ret_data)
     
+    def getStationsInfos(self):
+        self.connectToDb()
+        self.__buildCursor()
+        ret_data = {}
+        keys = ["AnID", "AnName", "AnImName", "AnAdresse", "AnTelefonnummer1", "AnkW_AP", "AnOrt", "AnDN"]
+        values = "AnID, AnName, AnImName, AnAdresse, AnTelefonnummer1, AnkW_AP, AnOrt, AnDN"  
+        for row in self.__cur.execute(" SELECT " + values +" FROM " + Aquotec.NAME_TABLE_CUSTOMER):
+            ret_data[str(row[0])] = dict(zip(keys, row))
+        self.disconnetToDb()
+        return(ret_data)
+
     def _buildTelegrafFrameForm(self, twin, instance, series):
         return(Aquotec.FORMAT_TELEGRAFFRAMESTRUCT2%(twin,instance,series)+"%f %.0f")
 
@@ -124,6 +137,7 @@ class Aquotec(Param):
                 ))
             breaker = False
             while 1==1:  
+                no_object = False
                 try:
                     # get data from db
                     timestamp_list = []
@@ -140,7 +154,7 @@ class Aquotec(Param):
                         # form data for telegraf
                         for col in list(row[1:]):
                             if col != None:
-                                ret_data_add(telegraf_form_list[index_val]%(col, timestamp_sec*Aquotec.SECTONoneO))
+                                ret_data_add(telegraf_form_list[index_val]%(col, timestamp_sec*Aquotec.SECTONANO))
                                 data_len += 1
                             index_val += 1
                     try:
@@ -155,8 +169,13 @@ class Aquotec(Param):
                         continue
                     if "Invalid object name" in str(e):
                         tablename = str(e).split("Invalid object name")[1].split("\'")[1]
+                        no_object=True
                         print(tablename)
-                if timestamp_list != []:
+                    if "Ungültiger Objektname" in str(e):
+                        tablename = str(e).split("Ungültiger Objektname")[1].split("\'")[1]
+                        no_object=True
+                        print(tablename)
+                if timestamp_list != [] or no_object:
                     break
                 elif breaker or int(self.marker_timestamps.get(str(index))) > time2.time()-3600*24*2:
                     break
