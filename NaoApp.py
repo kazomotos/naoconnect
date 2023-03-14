@@ -17,7 +17,7 @@ from naoconnect.TinyDb import TinyDb
 
 class NaoApp(Param):
     URLLOGIN = "/api/user/auth/login"
-    URLTELEGRAF = "/api/telegraf/"
+    URLTELEGRAF = "/api/telegraf"
     URL_INSTANCE = "/api/nao/instance"
     URL_INPUT = "/api/nao/inputvalue"
     URL_INPUT_DESC = "/api/nao/input"

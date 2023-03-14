@@ -23,11 +23,11 @@ class Aquotec(Param):
     NAME_STATION_TYPE       = "station_type"
     NAME_DB_CUSTOMER        = "aqotec_Kunden"
     NAME_TABLE_CUSTOMER     = "Tbl_Abnehmer"
-    LASTTIMESAVESEC         = 240
+    LASTTIMESAVESEC         = 30
     RESET_TIME              = 1514761200
     SECTONANO               = 1000000000
 
-    def __init__ (self, host, port, user, password, database=None, tds_version=7.4, driver='{FreeTDS}', tiny_db_name="aqotec_meta.json"):
+    def __init__ (self, host, port, user, password, database=None, tds_version=7.4, driver='{FreeTDS}', tiny_db_name="aqotec_meta.json", sinc=False):
         self.host = host
         self.port = str(port)
         self.db = TinyDb(tiny_db_name)
@@ -42,6 +42,8 @@ class Aquotec(Param):
         self.driver = driver
         self.__con = None
         self.__cur = None
+        self.pauser = []
+        self.sinc = sinc
         self.connectToDb()
 
     def connectToDb(self):
@@ -95,8 +97,8 @@ class Aquotec(Param):
         self.connectToDb()
         self.__buildCursor()
         ret_data = {}
-        keys = ["AnID", "AnName", "AnImName", "AnAdresse", "AnTelefonnummer1", "AnkW_AP", "AnOrt", "AnDN"]
-        values = "AnID, AnName, AnImName, AnAdresse, AnTelefonnummer1, AnkW_AP, AnOrt, AnDN"  
+        keys = ["AnID", "AnName", "AnImName", "AnAdresse", "AnTelefonummer1", "AnkW_VV", "AnOrt", "AnDN"]
+        values = "AnID, AnName, AnImName, AnAdresse, AnTelefonummer1, AnkW_VV, AnOrt, AnDN"  
         for row in self.__cur.execute(" SELECT " + values +" FROM " + Aquotec.NAME_TABLE_CUSTOMER):
             ret_data[str(row[0])] = dict(zip(keys, row))
         self.disconnetToDb()
@@ -115,6 +117,9 @@ class Aquotec(Param):
         data_len = 0
         self.marker_timestamps = deepcopy(self.lasttimestamps)
         for index in range(len(self.transfere)):
+            if self.sinc:
+                if self.transfere[index][Aquotec.NAME_TABLENAME] in self.pauser:
+                    continue
             # set timesamp for new tables
             if self.marker_timestamps == {}:
                 self.marker_timestamps[str(index)] = Aquotec.RESET_TIME
@@ -161,6 +166,8 @@ class Aquotec(Param):
                         self.marker_timestamps[str(index)] = max(timestamp_list)
                     except:
                         print("no_timestamp", self.transfere[index][Aquotec.NAME_TABLENAME], aftertimesql)
+                        if self.sinc:
+                            self.pauser.append(self.transfere[index][Aquotec.NAME_TABLENAME])
                 except pyodbc.ProgrammingError as e:
                     print(e)
                     if "Invalid column name"    in str(e):
