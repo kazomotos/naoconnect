@@ -644,6 +644,17 @@ class NaoApp(Param):
             query += arg + "=" + args[arg] + ","
         return(self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_INSTANCE+query, {}))
     
+    def getInput(self, input_id, instance_id, **args):
+        query = NaoApp.QUERY_GET
+        query += NaoApp.NAME_RELATION_ID+"="+instance_id+","+NaoApp.NAME_INPUT_ID+"="+input_id+","
+        for arg in args:
+            query += arg + "=" + args[arg] + ","
+        query = query[:-1]
+        return(self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_INPUT+query, {}))
+
+    def patchInstance(self, dict_instance, instance_id):
+        return(self._sendDataToNaoJson(NaoApp.NAME_PATCH, NaoApp.URL_INSTANCE+"/"+instance_id, dict_instance))
+    
     def getSeries(self, **args):
         if len(args) > 0:
             query = NaoApp.QUERY_GET
