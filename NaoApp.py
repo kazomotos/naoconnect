@@ -607,10 +607,11 @@ class NaoApp(Param):
     def getEndpoints(self, **args):
         if len(args) > 0:
             query = NaoApp.QUERY_GET
+            for arg in args:
+                query += arg + "=" + args[arg] + ","
+            query = query[:-1]
         else:
             query = ""
-        for arg in args:
-            query += arg + "=" + args[arg] + ","
         return(self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_SERIES+query, {}))
 
     def deleteEndpoint(self, _endpoint):
@@ -620,28 +621,31 @@ class NaoApp(Param):
     def getWorkspace(self, **args):
         if len(args) > 0:
             query = NaoApp.QUERY_GET
+            for arg in args:
+                query += arg + "=" + args[arg] + ","
+            query = query[:-1]
         else:
             query = ""
-        for arg in args:
-            query += arg + "=" + args[arg] + ","
         return(self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_WORKSPACE+query, {}))
     
     def getAssets(self, **args):
         if len(args) > 0:
             query = NaoApp.QUERY_GET
+            for arg in args:
+                query += arg + "=" + args[arg] + ","
+            query = query[:-1]
         else:
             query = ""
-        for arg in args:
-            query += arg + "=" + args[arg] + ","
         return(self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_ASSET+query, {}))
 
     def getInstances(self, **args):
         if len(args) > 0:
             query = NaoApp.QUERY_GET
+            for arg in args:
+                query += arg + "=" + args[arg] + ","
+            query = query[:-1]
         else:
             query = ""
-        for arg in args:
-            query += arg + "=" + args[arg] + ","
         return(self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_INSTANCE+query, {}))
     
     def getInput(self, input_id, instance_id, **args):
@@ -658,19 +662,21 @@ class NaoApp(Param):
     def getSeries(self, **args):
         if len(args) > 0:
             query = NaoApp.QUERY_GET
+            for arg in args:
+                query += arg + "=" + args[arg] + ","
+            query = query[:-1]
         else:
             query = ""
-        for arg in args:
-            query += arg + "=" + args[arg] + ","
         return(self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_SERIES+NaoApp.CONSOLIDATE+query, {}))
 
     def getUnits(self, **args):
         if len(args) > 0:
             query = NaoApp.QUERY_GET
+            for arg in args:
+                query += arg + "=" + args[arg] + ","
+            query = query[:-1]
         else:
             query = ""
-        for arg in args:
-            query += arg + "=" + args[arg] + ","
         return(self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_UNITS+query, {}))
 
     def getSingelValues(self, organizationId, first_time="-365d", last_time="now()", points=[{"id":"all"}], validates=False, aggregate="mean"):
