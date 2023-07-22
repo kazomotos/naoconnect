@@ -144,7 +144,7 @@ class NaoApp(Param):
         }
         if geolocation != None:
             data[NaoApp.NAME_GEOLOCATION] = geolocation
-        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_INSTANCE, data)[NaoApp.NAME_ID_ID])
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_INSTANCE, data))
 
     def sendInstanceInput(self, _instance, _input_group, value):
         data = {
