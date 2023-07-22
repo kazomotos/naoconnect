@@ -20,17 +20,17 @@ class NaoApp(Param):
     URLTELEGRAF = "/api/telegraf"
     URL_INSTANCE = "/api/nao/instance"
     URL_INPUT = "/api/nao/inputvalue"
-    URL_INPUT_DESC = "/api/nao/input"
-    URL_INPUTCONTAINER = "/api/nao/inputcontainer"
-    URL_INPUTS = "/api/nao/inputvalue/many"
+    URL_INPUT_DESC = "/api/nao/asset/%s/attributes"
+    URL_INPUTCONTAINER = "/api/nao/asset/%s/attributegroups"
+    URL_INPUTS_SINGLE = "/api/nao/instance/%s/attributevalues/%s"
     URL_WORKSPACE = "/api/nao/workspace"
     URL_ASSET = "/api/nao/asset"
-    URL_PATH = "/api/nao/part"
+    URL_PATH = "/api/nao/asset/%s/parts"
     URL_UNITS = "/api/nao/units"
-    URL_SERIES = "/api/nao/series/"
+    URL_SERIES = "/api/nao/asset/%s/%s"
+    URL_INSTANCE_DATAPOINTS = "/api/nao/instance/%s/datapoints"
     URL_SINGELVALUES = "/api/series/data/singlevalues"
     URL_PLOTTIMESERIES = "/api/series/data/plot"
-    QUERY_GET_ENDPOINT = "?query=_instance=%s,_point=%s"
     QUERY_GET = "?query="
     HEADER_JSON = 'application/json'
     BEARER = "Bearer "
@@ -45,7 +45,7 @@ class NaoApp(Param):
     TOTALTRANSFER = "total_number_of_sent_data"
     MAXBUFFERTIME = "max_buffer_time_DDR"
     LOGGINGINTERVAL = "logging_interval"
-    NAME_ENDPOINT_ID = "_endpoint"
+    INPUT_GROUP = "_attributegroup"
     SERIES_TYPE = "series_type"
     CONSOLIDATE = "template"
     STANDARD_MAXBUFFERTIME = 1800
@@ -146,27 +146,11 @@ class NaoApp(Param):
             data[NaoApp.NAME_GEOLOCATION] = geolocation
         return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_INSTANCE, data)[NaoApp.NAME_ID_ID])
 
-    def sendInstanceInputMany(self, data_list:list):
-        '''
-        [[<value>, <input_id>, <instance_id>], ...]
-        '''
-        data = []
-        data_add = data.append
-        for data_set in data_list:
-            data_add({
-            NaoApp.NAME_VALUE: data_set[0],
-            NaoApp.NAME_INPUT_ID: data_set[1],
-            NaoApp.NAME_RELATION_ID: data_set[2]
-            })
-        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_INPUTS, data))
-
-    def sendInstanceInput(self,value,input_id,instance_id):
+    def sendInstanceInput(self, _instance, _input_group, value):
         data = {
-          NaoApp.NAME_VALUE: value,
-          NaoApp.NAME_INPUT_ID: input_id,
-          NaoApp.NAME_RELATION_ID: instance_id
+            NaoApp.NAME_VALUE: value
         }
-        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_INPUT, data))
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_INPUTS_SINGLE%(_instance,_input_group), data))
 
     def startDataTransferFromDb(self):
         if not self.DataFromDb: 
@@ -488,16 +472,13 @@ class NaoApp(Param):
             NaoApp.NAME_COLOR: color,
             NaoApp.NAME_PARENT_ID: _parent
         }
-        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_PATH, payload))
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_PATH%(_asset), payload))
 
-    def createInputcontainer(self, name, _asset, description="", color="#02c1de"):
+    def createInputcontainer(self, name, _asset):
         payload = {
-            NaoApp.NAME_RELATION_ID: _asset,
-            NaoApp.NAME_NAME: name,
-            NaoApp.NAME_DESCRIPTION: description,
-            NaoApp.NAME_COLOR: color
+            NaoApp.NAME_NAME: name
         }
-        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_INPUTCONTAINER, payload))
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_INPUTCONTAINER%(_asset), payload))
 
     def patchIpuntsInputcontainer(self, _inputcontainer, _inputs):
         payload = {
@@ -505,19 +486,17 @@ class NaoApp(Param):
         }
         return(self._sendDataToNaoJson(NaoApp.NAME_PATCH, NaoApp.URL_INPUTCONTAINER+"/"+_inputcontainer, payload))
 
-    def createInput(self, name, _asset, value="", description="", component="input-text-field", props={}, rules={}):
+    def createInput(self, name, _asset, input_group, value="", description="", component="input-text-field", props={}, rules={}):
         payload = {
-            NaoApp.NAME_RELATION_ID: _asset,
             NaoApp.NAME_COMPONENT: component,
             NaoApp.NAME_VALUE: value,
             NaoApp.NAME_NAME: name,
             NaoApp.NAME_DESCRIPTION: description,
             NaoApp.NAME_PROPS: props,
             NaoApp.NAME_RULES: rules,
-            NaoApp.NAME_FIELD: "8ee"+str(time_ns())[-5:]+"-513b-11ed-98eb-5dac241cd04e"
+            NaoApp.INPUT_GROUP: input_group
         }
-        sleep(0.01)
-        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_INPUT_DESC, payload))
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_INPUT_DESC%(_asset), payload))
 
     def createUnit(self, name):
         payload = {
@@ -547,76 +526,23 @@ class NaoApp(Param):
             NaoApp.NAME_TAGITEMS_ID: _tagitems,
             NaoApp.NAME_UNIT_ID: _unit
         }
-        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_SERIES + type, payload))
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_SERIES%(_asset,type), payload))
 
-    def createInstance(self, name, description, _asset, geolocation=[], _tagitems=[]):
+    def createInstance(self, name, description, _asset, geolocation=[]):
         payload = {
             NaoApp.NAME_NAME: name,
             NaoApp.NAME_DESCRIPTION: description,
             NaoApp.NAME_GEOLOCATION: geolocation,
-            NaoApp.NAME_ASSET_ID: _asset,
-            NaoApp.NAME_TAGITEMS_ID: _tagitems
+            NaoApp.NAME_ASSET_ID: _asset
         }
         return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_INSTANCE, payload))
-        
-    def patchEnpointConifg(self, conf:dict, _instance=None, _series=None, _asset=None, **args):
-        """
-        _asset (id), _instance (id) and _series (id) can be used as arguments \n
-        or \n
-        _endpoint (id) (actual instance-series) \n
-        -->\n
-        if no endpoint in NAO you can fix it with give args _asset, _instance, _series and series_type
-        --> series_type can be Meter, Sensor, Actor or Setpoint
-        """
-        if args.get(NaoApp.NAME_ENDPOINT_ID):
-            try:
-                return(self._sendDataToNaoJson("PATCH", NaoApp.URL_SERIES+args[NaoApp.NAME_ENDPOINT_ID], dumps(
-                    {NaoApp.NAME_CONFIG: dumps(conf)}
-                )))
-            except:
-                raise Exception("no _endpoint in NAO, fix with give args _asset, _instance, _series and series-type")
-        if _series == None and _instance == None:
-            raise Exception("_series, _instance (or _endpoint) is missing")
-        result = self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_SERIES+NaoApp.QUERY_GET_ENDPOINT%(_instance,_series), None)
-        if result[NaoApp.NAME_RESULTS] == []:
-            if _asset == None or args.get(NaoApp.NAME_POINT_MODEL):
-                raise Exception("_asset or series_type is missing")
-            return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_SERIES,{
-                NaoApp.NAME_INSTANCE_ID:_instance,
-                NaoApp.NAME_ASSET_ID:_asset,
-                NaoApp.NAME_POINT_ID:_series,
-                NaoApp.NAME_POINT_MODEL:args[NaoApp.SERIES_TYPE],
-                NaoApp.NAME_CONFIG:dumps(conf)
-            })[NaoApp.NAME_ID_ID])
-        else:
-            return(self._sendDataToNaoJson("PATCH", NaoApp.URL_SERIES+result[NaoApp.NAME_RESULTS][0][NaoApp.NAME_ID_ID], dumps(
-                    {NaoApp.NAME_CONFIG: dumps(conf)}
-            )))
 
-    def postEnpointConifg(self, conf:dict, _instance=None, _series=None, _asset=None):
-        """
-        _asset (id), _instance (id) and _series (id) can be used as arguments \n
-        """
-        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_SERIES,{
-            NaoApp.NAME_INSTANCE_ID:_instance,
-            NaoApp.NAME_ASSET_ID:_asset,
+    def postDatapointConifg(self, conf:dict, _instance=None, _series=None, pointModel="Sensor"):
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_INSTANCE_DATAPOINTS%(_instance),{
+            NaoApp.NAME_POINT_MODEL:pointModel,
             NaoApp.NAME_POINT_ID:_series,
             NaoApp.NAME_CONFIG:dumps(conf)
         })[NaoApp.NAME_ID_ID])
-
-    def getEndpoints(self, **args):
-        if len(args) > 0:
-            query = NaoApp.QUERY_GET
-            for arg in args:
-                query += arg + "=" + args[arg] + ","
-            query = query[:-1]
-        else:
-            query = ""
-        return(self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_SERIES+query, {}))
-
-    def deleteEndpoint(self, _endpoint):
-        self._sendDataToNaoJson(NaoApp.NAME_DELETE, NaoApp.URL_SERIES+_endpoint, {})
-        return(NaoApp.NAME_DELETE)
     
     def getWorkspace(self, **args):
         if len(args) > 0:
