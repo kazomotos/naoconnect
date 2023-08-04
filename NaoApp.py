@@ -10,7 +10,6 @@ from threading import Thread
 from time import sleep, time, time_ns
 from typing import Union
 from urllib.parse import quote
-
 from naoconnect.Param import Param
 from naoconnect.TinyDb import TinyDb
 
@@ -32,6 +31,8 @@ class NaoApp(Param):
     URL_POST_HEAT_METER = "/api/nao/customer/%s/heatMeters"
     URL_POST_HEAT_HISTORY = "/api/nao/customer/%s/meterHistory"
     URL_POST_HEAT_TARIF_HISTORY = "/api/nao/customer/%s/energytarifHistory"
+    URL_INSTANCE_MORE = "/api/nao/instance/more/%s?select=attributevalues"
+    URL_UPDATE_HEAT_METER = "/api/nao/customer/%s/heatMeters/%s"
     URL_SERIES = "/api/nao/series/"
     URL_SINGELVALUES = "/api/series/data/singlevalues"
     URL_PLOTTIMESERIES = "/api/series/data/plot"
@@ -724,6 +725,16 @@ class NaoApp(Param):
 
     def getPlotformatetTimeseries(self, select):
         return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_PLOTTIMESERIES, payload=select))
+
+    def getCustomers(self):
+        return(self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_CUSTOMER, None))
+    
+    def getInstancesInputs(self, instance):
+        return(self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_INSTANCE_MORE%(instance), None))
+    
+    def updateHeatMeter(self, customer_id, heat_meter_id, conf):
+        return(self._sendDataToNaoJson(NaoApp.NAME_PATCH, NaoApp.URL_UPDATE_HEAT_METER%(customer_id,heat_meter_id), conf))
+
 
 #TODO refactoring BuildAssets
 class BuildAssets():
