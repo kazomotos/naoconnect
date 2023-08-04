@@ -27,6 +27,11 @@ class NaoApp(Param):
     URL_ASSET = "/api/nao/asset"
     URL_PATH = "/api/nao/part"
     URL_UNITS = "/api/nao/units"
+    URL_PUSH_TARIFS_MANY = "/api/nao/energytarif/many"
+    URL_CUSTOMER = "/api/nao/customer"
+    URL_POST_HEAT_METER = "/api/nao/customer/%s/heatMeters"
+    URL_POST_HEAT_HISTORY = "/api/nao/customer/%s/meterHistory"
+    URL_POST_HEAT_TARIF_HISTORY = "/api/nao/customer/%s/energytarifHistory"
     URL_SERIES = "/api/nao/series/"
     URL_SINGELVALUES = "/api/series/data/singlevalues"
     URL_PLOTTIMESERIES = "/api/series/data/plot"
@@ -558,6 +563,21 @@ class NaoApp(Param):
             NaoApp.NAME_TAGITEMS_ID: _tagitems
         }
         return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_INSTANCE, payload))
+    
+    def createTarifs(self, tarifs):
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_PUSH_TARIFS_MANY, tarifs))
+    
+    def createCustomer(self, customer):
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_CUSTOMER, customer))
+    
+    def createHeatMeter(self, customer_id, heat_meter):
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_POST_HEAT_METER%(customer_id), heat_meter))
+    
+    def createHeatHistory(self, customer_id, heat_history):
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_POST_HEAT_HISTORY%(customer_id), heat_history))
+
+    def createHeatTarifHistory(self, customer_id, energytarif_history):
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_POST_HEAT_TARIF_HISTORY%(customer_id), energytarif_history))
         
     def patchEnpointConifg(self, conf:dict, _instance=None, _series=None, _asset=None, **args):
         """
