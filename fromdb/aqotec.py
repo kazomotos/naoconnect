@@ -107,7 +107,7 @@ class Aquotec(Param):
     def _buildTelegrafFrameForm(self, twin, instance, series):
         return(Aquotec.FORMAT_TELEGRAFFRAMESTRUCT2%(twin,instance,series)+"%f %.0f")
 
-    def getTelegrafData(self, max_data_len=30000, maxtimerange=3600*24*5, time_column="DP_Zeitstempel"):
+    def getTelegrafData(self, max_data_len=30000, maxtimerange=3600*24*1, time_column="DP_Zeitstempel"):
         ''' [ '<twin>,instance=<insatance>, <measurement>=<value> <timestamp>' ] '''
         self.connectToDb()
         ret_data = []

@@ -22,9 +22,12 @@ class NaoApp(Param):
     URL_INPUT_DESC = "/api/nao/input"
     URL_INPUTCONTAINER = "/api/nao/inputcontainer"
     URL_INPUTS = "/api/nao/inputvalue/many"
+    URL_INPUTS_SINGLE = "/api/nao/instance/%s/attributevalues"
     URL_WORKSPACE = "/api/nao/workspace"
     URL_ASSET = "/api/nao/asset"
     URL_PATH = "/api/nao/part"
+    NAME_ATTRIUT_ID = "_attribute"
+    NAME_ATTRIBUT_GROUP_ID = "_attributegroup"
     URL_UNITS = "/api/nao/units"
     URL_PUSH_TARIFS_MANY = "/api/nao/energytarif/many"
     URL_CUSTOMER = "/api/nao/customer"
@@ -142,16 +145,26 @@ class NaoApp(Param):
             except:
                 return(-1) # type: ignore
     
-    def sendNewInstance(self, asset, name, discription, geolocation=None):
+    def sendNewInstance(self, asset, name, discription, workspace, geolocation=None):
         data = {
             NaoApp.NAME_NAME: name,
             NaoApp.NAME_DESCRIPTION: discription,
-            NaoApp.NAME_ASSET_ID: asset
+            NaoApp.NAME_ASSET_ID: asset,
+            NaoApp.NAME_WORKSPACE_ID:workspace
         }
         if geolocation != None:
             data[NaoApp.NAME_GEOLOCATION] = geolocation
-        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_INSTANCE, data)[NaoApp.NAME_ID_ID])
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_INSTANCE, data))
 
+    def postInstanceInput(self, _instance, input_id, input_group, value):
+        data = {
+            NaoApp.NAME_ATTRIUT_ID:input_id,
+            NaoApp.NAME_ATTRIBUT_GROUP_ID: input_group,
+            NaoApp.NAME_VALUE: value
+        }
+        ret = self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_INPUTS_SINGLE%(_instance), data)
+        return(ret)
+    
     def sendInstanceInputMany(self, data_list:list):
         '''
         [[<value>, <input_id>, <instance_id>], ...]
@@ -166,13 +179,14 @@ class NaoApp(Param):
             })
         return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_INPUTS, data))
 
-    def sendInstanceInput(self,value,input_id,instance_id):
+    def postInstanceInput(self, _instance, input_id, input_group, value):
         data = {
-          NaoApp.NAME_VALUE: value,
-          NaoApp.NAME_INPUT_ID: input_id,
-          NaoApp.NAME_RELATION_ID: instance_id
+            NaoApp.NAME_ATTRIUT_ID:input_id,
+            NaoApp.NAME_ATTRIBUT_GROUP_ID: input_group,
+            NaoApp.NAME_VALUE: value
         }
-        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_INPUT, data))
+        ret = self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_INPUTS_SINGLE%(_instance), data)
+        return(ret)
 
     def startDataTransferFromDb(self):
         if not self.DataFromDb: 
