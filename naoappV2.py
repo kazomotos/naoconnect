@@ -1,0 +1,188 @@
+'Autor: Rupert Wieser -- Naotilus -- 20232209'
+import http.client
+from urllib.parse import quote
+from json import loads, dumps
+from copy import copy
+from time import sleep
+from math import ceil
+
+class NaoApp():
+    STADARTD_DATA_PER_TELEGRAF = 10000
+    NAME_HOST = "host"
+    NAME_PAYLOAD = "payload"
+    NAME_PASSWD = "password"
+    NAME_EMAIL = "email"
+    NAME_WEBAUTH = "Authorization"
+    NAME_POINT_ID = "_point"
+    NAME_POINT_MODEL = "pointModel"
+    NAME_POINT_CONFIG = "config"
+    NAME_NAME = "name"
+    NAME_CONTENT_HEADER = "Content-Type"
+    NAME__ID = "_id"
+    NAME_VALUE = "value"
+    NAME_DESCRIPTION = "description"
+    NAME_GEOLOCATION = "geolocation"
+    NAME_ATTRIBUTEVALUES = "attributevalues"
+    NAME_WORKSPACE_ID = "_workspace"
+    NAME_ASSET_ID = "_asset"
+    NAME_GET = "GET"
+    NAME_POST = "POST"
+    NAME_UTF8 = "utf-8"
+    NAME_PATCH = "PATCH"
+    NAME_DELETE = "DELETE"
+    NAME_AVATAR_ID = "_avatar"
+    URL_TELEGRAF = "/api/telegraf"
+    URL_INSTANCE = "/api/nao/instance"
+    URL_WORKSPACE = "/api/nao/workspace"
+    URL_ACTIVATE_DATAPOINT = "/api/nao/instance/%s/datapoints"
+    URL_PATCH_META_INSTANCE = "/api/nao/instance/%s/attributevalues/%s"
+    QUERY_HEADER_JSON = 'application/json'
+    QUERY_BEARER = "Bearer "
+    NAME_TOKENAC = "accessToken"
+    QUERY_LOGINHEADER = {'Content-Type': 'application/x-www-form-urlencoded'}
+    URL_LOGIN = "/api/user/auth/login"
+    QUERY_TRANSFERHEADER = {"Authorization": "", 'Content-Type': 'text/plain', 'Cookie': ""}
+    FORMAT_TELEFRAF_FRAME_SEPERATOR = "\n"
+    STATUS_CODE_GOOD = 204
+
+    def __init__(self, host, email, password, local=False): # type: ignore
+        self.auth = {
+            NaoApp.NAME_HOST:host,
+            NaoApp.NAME_PAYLOAD:NaoApp.NAME_EMAIL+"="+quote(email)+"&"+NaoApp.NAME_PASSWD+"="+quote(password)
+        }
+        self.headers = NaoApp.QUERY_TRANSFERHEADER
+        self.__conneciton = None # type: ignore
+        self.local=local
+
+    def _loginNao(self):
+        if self.local:
+            self._loginNaoLocal()
+        else:
+            self._loginNaoCloud()
+
+    def _loginNaoLocal(self):
+        try:
+            self.__conneciton = http.client.HTTPConnection(self.auth[NaoApp.NAME_HOST])
+            self.__conneciton.request(NaoApp.NAME_POST, NaoApp.URL_LOGIN, self.auth[NaoApp.NAME_PAYLOAD], NaoApp.QUERY_LOGINHEADER)
+            res = self.__conneciton.getresponse()
+            data = loads(res.read().decode(NaoApp.NAME_UTF8))
+            self.headers[NaoApp.NAME_WEBAUTH] = NaoApp.QUERY_BEARER + data[NaoApp.NAME_TOKENAC]
+        except:
+            sleep(1) # type: ignore
+            self.__conneciton = http.client.HTTPConnection(self.auth[NaoApp.NAME_HOST])
+            self.__conneciton.request(NaoApp.NAME_POST, NaoApp.URL_LOGIN, self.auth[NaoApp.NAME_PAYLOAD], NaoApp.QUERY_LOGINHEADER)
+            res = self.__conneciton.getresponse()
+            data = loads(res.read().decode(NaoApp.NAME_UTF8))
+            self.headers[NaoApp.NAME_WEBAUTH] = NaoApp.QUERY_BEARER + data[NaoApp.NAME_TOKENAC]
+
+    def _loginNaoCloud(self):
+        try:
+            self.__conneciton = http.client.HTTPSConnection(self.auth[NaoApp.NAME_HOST])
+            self.__conneciton.request(NaoApp.NAME_POST, NaoApp.URL_LOGIN, self.auth[NaoApp.NAME_PAYLOAD], NaoApp.QUERY_LOGINHEADER)
+            res = self.__conneciton.getresponse()
+            data = loads(res.read().decode(NaoApp.NAME_UTF8))
+            self.headers[NaoApp.NAME_WEBAUTH] = NaoApp.QUERY_BEARER + data[NaoApp.NAME_TOKENAC]
+        except:
+            sleep(1) # type: ignore
+            self.__conneciton = http.client.HTTPSConnection(self.auth[NaoApp.NAME_HOST])
+            self.__conneciton.request(NaoApp.NAME_POST, NaoApp.URL_LOGIN, self.auth[NaoApp.NAME_PAYLOAD], NaoApp.QUERY_LOGINHEADER)
+            res = self.__conneciton.getresponse()
+            data = loads(res.read().decode(NaoApp.NAME_UTF8))
+            self.headers[NaoApp.NAME_WEBAUTH] = NaoApp.QUERY_BEARER + data[NaoApp.NAME_TOKENAC]
+
+    def createWorkspace(self, name, avatar=None):
+        payload = {
+            NaoApp.NAME_NAME: name,
+            NaoApp.NAME_AVATAR_ID: avatar,
+        }
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_WORKSPACE, payload))
+    
+    def createInstance(self, name, description, asset_id, workspace_id, geolocation=[], attributevalues=[]):
+        payload = {
+            NaoApp.NAME_NAME: name,
+            NaoApp.NAME_DESCRIPTION: description,
+            NaoApp.NAME_GEOLOCATION: geolocation,
+            NaoApp.NAME_ASSET_ID: asset_id,
+            NaoApp.NAME_WORKSPACE_ID: workspace_id,
+            NaoApp.NAME_ATTRIBUTEVALUES: attributevalues,
+        }
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_INSTANCE, payload))
+
+    def activateDatapoint(self, type_sensor, sensor_id, instance_id, config:dict={}):
+        payload = {
+            NaoApp.NAME_POINT_ID: sensor_id,
+            NaoApp.NAME_POINT_MODEL: type_sensor,
+            NaoApp.NAME_POINT_CONFIG: dumps(config)
+        }
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_ACTIVATE_DATAPOINT%(instance_id), payload))
+
+    def _sendDataToNaoJson(self, method, url, payload) -> dict:
+        header = copy(self.headers)
+        header[NaoApp.NAME_CONTENT_HEADER] = NaoApp.QUERY_HEADER_JSON
+        if payload != None:
+            payload = dumps(payload)
+        try:
+            self.__conneciton.request(method, url, payload, header) # type: ignore
+            data = self.__conneciton.getresponse().read() # type: ignore
+            self.__conneciton.close() # type: ignore
+        except:
+            self._loginNao()
+            header = copy(self.headers)
+            header[NaoApp.NAME_CONTENT_HEADER] = NaoApp.QUERY_HEADER_JSON
+            self.__conneciton.request(method, url, payload, header) # type: ignore
+            data = self.__conneciton.getresponse().read() # type: ignore
+            self.__conneciton.close() # type: ignore
+        if data == b'':
+            return('') # type: ignore
+        else:
+            try:
+                return(loads(data))
+            except:
+                return(-1) # type: ignore
+            
+    def patchInstanceMeta(self, instance_id, meta_id, value):
+        payload = {
+            NaoApp.NAME__ID: instance_id,
+            NaoApp.NAME_VALUE: value
+        }
+        return(self._sendDataToNaoJson(NaoApp.NAME_PATCH, NaoApp.URL_PATCH_META_INSTANCE%(instance_id, meta_id), payload))
+    
+    def sendTelegrafData(self, payload):
+        ''' 
+        [ '<twin>,instance=<insatance>, <measurement>=<value> <timestamp>' ] 
+                                      or
+          '<twin>,instance=<insatance>, <measurement>=<value> <timestamp>'
+        '''
+        if type(payload) != list:
+            return(self._sendTelegrafData(payload=payload))
+        else:
+            if len(payload) > NaoApp.STADARTD_DATA_PER_TELEGRAF:
+                last_idx = 0
+                for idx in range(int(ceil(len(payload)/NaoApp.STADARTD_DATA_PER_TELEGRAF))-1):
+                    last_idx = idx
+                    sta = self._sendTelegrafData(payload[int(idx*NaoApp.STADARTD_DATA_PER_TELEGRAF):int(idx*NaoApp.STADARTD_DATA_PER_TELEGRAF)+NaoApp.STADARTD_DATA_PER_TELEGRAF])
+                    if sta != 204:
+                        return(sta)
+                    sleep(0.2+idx*0.07)
+                return(self._sendTelegrafData(payload[int(last_idx*NaoApp.STADARTD_DATA_PER_TELEGRAF):]))
+            else:
+                return(self._sendTelegrafData(payload))
+
+    def _sendTelegrafData(self, payload):
+        if type(payload) == list:
+            payload = NaoApp.FORMAT_TELEFRAF_FRAME_SEPERATOR.join(payload)
+        try:
+            self.__conneciton.request(NaoApp.NAME_POST, NaoApp.URL_TELEGRAF, payload, self.headers) # type: ignore
+            status = self.__conneciton.getresponse().status # type: ignore
+            self.__conneciton.close() # type: ignore
+            if status != NaoApp.STATUS_CODE_GOOD:
+                self._loginNao()
+                self.__conneciton.request(NaoApp.NAME_POST, NaoApp.URL_TELEGRAF, payload, self.headers) # type: ignore
+                status = self.__conneciton.getresponse().status # type: ignore
+                self.__conneciton.close() # type: ignore
+        except:
+            self._loginNao()
+            self.__conneciton.request(NaoApp.NAME_POST, NaoApp.URL_TELEGRAF, payload, self.headers) # type: ignore
+            status = self.__conneciton.getresponse().status # type: ignore
+            self.__conneciton.close() # type: ignore
+        return(status)
