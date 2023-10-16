@@ -72,7 +72,7 @@ class Driver(Par):
         table = self.db.table(Driver.NAME_DRIVER_ASSET_META)
         ret = table.search(Query().meta_id==_attribute)
         table.clear_cache()
-        return() 
+        return(ret) 
 
 class StationDatapoints(Par):
     

@@ -27,6 +27,8 @@ class AqotecParams():
     NAME_ENDING_TABLE_ROW_META = "_b"
     NAME_STARTING_TABLE_UG07 = "UG07_"
     NAME_STARTING_TABLE_RM360 = "RM360_"
+    NAME_BETWEEN_TABLE_BHKW = "BHKW"
+    NAME_BETWEEN_TABLE_SUBZ = "SubZ_"
     NAME_SENSOR_ID = "sensor_id"
     NAME_STARTING_TABLE_WMZ = "WMZ_"
     NAME_DB_INSTANCE_ID = "instance_id"
@@ -84,6 +86,9 @@ class DbStruct():
         self.ug07 = {}
         self.wmz = {}
         self.rm360 = {}
+        self.bhkw = {}
+        self.subz = {}
+        self.other = {}
 
     def putUg07(self, database, table):
         if database not in self.ug07:
@@ -99,6 +104,21 @@ class DbStruct():
         if database not in self.rm360:
             self.rm360[database] = []
         self.rm360[database].append(table)
+
+    def putBHKW(self, database, table):
+        if database not in self.bhkw:
+            self.bhkw[database] = []
+        self.bhkw[database].append(table)
+
+    def putSubZ(self, database, table):
+        if database not in self.subz:
+            self.subz[database] = []
+        self.subz[database].append(table)
+
+    def putOher(self, database, table):
+        if database not in self.other:
+            self.other[database] = []
+        self.other[database].append(table)
 
 '''
 --------------------------------------------------------------------------------------------------------------------
@@ -173,10 +193,16 @@ class AqotecMetaV2(AqotecConnectorV2):
             if table[-2:]!=AqotecMetaV2.NAME_ENDING_TABLE_ROW_META:continue
             if AqotecMetaV2.NAME_STARTING_TABLE_UG07 in table:
                 self.struct.putUg07(database,table)
-            if AqotecMetaV2.NAME_STARTING_TABLE_WMZ in table:
+            elif AqotecMetaV2.NAME_STARTING_TABLE_WMZ in table:
                 self.struct.putWmz(database,table)
-            if AqotecMetaV2.NAME_STARTING_TABLE_RM360 in table:
+            elif AqotecMetaV2.NAME_STARTING_TABLE_RM360 in table:
                 self.struct.putRm360(database,table)
+            elif AqotecMetaV2.NAME_BETWEEN_TABLE_BHKW in table:
+                self.struct.putBHKW(database,table)
+            elif AqotecMetaV2.NAME_BETWEEN_TABLE_SUBZ in table:
+                self.struct.putSubZ(database,table)
+            else:
+                self.struct.putOher(database,table)
 
     def checkStationDatapoints(self):
         self._ceckUg07()
@@ -379,6 +405,8 @@ class AqotecTransferV2(AqotecConnectorV2):
         is_sinct = False
         while 1==1:
             try:
+                if datetime.now().hour >= 23:
+                    break
                 start_time = time()
                 data_telegraf = self.getTelegrafData()
                 if len(data_telegraf)>0:ret=self.nao.sendTelegrafData(data_telegraf)
@@ -398,8 +426,6 @@ class AqotecTransferV2(AqotecConnectorV2):
             except:
                 if logfile: logfile(str(sys.exc_info()))
                 sleep(AqotecTransferV2.DEFAULT_ERROR_SLEEP_SECOND)
-            if datetime.now().hour > 23:
-                break
         if logfile:logfile(str(count)+" data sended")
 
     def setSyncStatus(self):
