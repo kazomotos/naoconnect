@@ -542,6 +542,16 @@ class AqotecTransferV2(AqotecConnectorV2):
         reset = False
         for database in status:
             for table_dic in status[database]:
+                if table_dic[AqotecTransferV2.NAME_SYNCRONICZIED]!=[] and table_dic[AqotecTransferV2.NAME_UNSYCRONICIZIED]!=[]:
+                    if table_dic[AqotecTransferV2.NAME_TIME_SYNCRONICZIED]==None and table_dic[AqotecTransferV2.NAME_TIME_UNSYCRONICIZIED]==None:
+                        reset=True
+                        self.sync_status.postSyncroniziedValue(
+                            database=database,
+                            table_db=table_dic[AqotecTransferV2.NAME_TABLE],
+                            value=table_dic[AqotecTransferV2.NAME_UNSYCRONICIZIED],
+                            timestamp=table_dic[AqotecTransferV2.NAME_TIME_UNSYCRONICIZIED]
+                        )
+                        self.sync_status.dropUnSincDps(database=database,table_dp=table_dic[AqotecTransferV2.NAME_TABLE])
                 if table_dic[AqotecTransferV2.NAME_SYNCRONICZIED]==[] and table_dic[AqotecTransferV2.NAME_UNSYCRONICIZIED]!=[]:
                     reset=True
                     self.sync_status.postSyncroniziedValue(
@@ -557,6 +567,7 @@ class AqotecTransferV2(AqotecConnectorV2):
                             database=database,
                             table_db=table_dic[AqotecTransferV2.NAME_TABLE],
                             value=table_dic[AqotecTransferV2.NAME_UNSYCRONICIZIED],
+                            timestamp=table_dic[AqotecTransferV2.NAME_TIME_SYNCRONICZIED]
                         )
                         self.sync_status.dropUnSincDps(database=database,table_dp=table_dic[AqotecTransferV2.NAME_TABLE])
                         reset=True
@@ -574,6 +585,7 @@ class AqotecTransferV2(AqotecConnectorV2):
         ext_telegraf = telegraf.extend
         for database in self.status:
             for status_instance in self.status[database]:
+                if status_instance["time_sincronizied"] != None: continue
                 ext_telegraf(self._getTelegrafDataInstance(status_instance,database, cursor))
                 if len(telegraf)>=AqotecTransferV2.DEFAULT_BREAK_TELEGRAF_LEN:
                     breaker=True
@@ -678,7 +690,10 @@ class AqotecTransferV2(AqotecConnectorV2):
         return(str((time.year,time.month,time.day,time.hour,time.minute,time.second,0,0)))
     
     def _getFirstStartTime(self,database,table,cursor:pyodbc.Cursor):
-        time = self._getFirstTime(database+AqotecTransferV2.NAME_ENDING_ARCHIV,table,cursor)
+        try:
+            time = self._getFirstTime(database+AqotecTransferV2.NAME_ENDING_ARCHIV,table,cursor)
+        except:
+            time = self._getFirstTime(database,table,cursor)
         if not time: return(self._getFirstTime(database,table,cursor))
         return(time)
 
@@ -690,9 +705,12 @@ class AqotecTransferV2(AqotecConnectorV2):
         return(data[0][1])
 
     def _getLastTime(self,database,table,cursor:pyodbc.Cursor):
-        cursor.execute(AqotecTransferV2.QUREY_USE%(database))
-        cursor.execute(AqotecTransferV2.QUERY_SELECT_LAST_TIME%(table))
-        data = cursor.fetchall()
+        try:
+            cursor.execute(AqotecTransferV2.QUREY_USE%(database))
+            cursor.execute(AqotecTransferV2.QUERY_SELECT_LAST_TIME%(table))
+            data = cursor.fetchall()
+        except:
+            return(None)
         if len(data)==0:return(None)
         return(data[0][1])
     
