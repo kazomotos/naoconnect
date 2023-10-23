@@ -10,6 +10,7 @@ class Par():
     NAME_DRIVER_RM360 = "driver_rm360"
     NAME_DRIVER_STATION_WMZ = "driver_wmz_station"
     NAME_DRIVER_ASSET_META = "driver_asset_meta"
+    NAME_DRIVER_ASSET_LAST_VALUE_META = "driver_asset_last_value_as_meta"
     NAME_DP_NAME = "name_dp"
     NAME_DP = "dp"
     NAME__ID = "_id"
@@ -68,8 +69,20 @@ class Driver(Par):
         table.clear_cache()
         return(ret)
     
+    def getAssetLastValueMeta(self):
+        table = self.db.table(Driver.NAME_DRIVER_ASSET_LAST_VALUE_META)
+        ret = table.all()
+        table.clear_cache()
+        return(ret)       
+
     def getAssetMetaFromId(self,_attribute):
         table = self.db.table(Driver.NAME_DRIVER_ASSET_META)
+        ret = table.search(Query().meta_id==_attribute)
+        table.clear_cache()
+        return(ret)
+
+    def getAssetLastValueMetaFromId(self,_attribute):
+        table = self.db.table(Driver.NAME_DRIVER_ASSET_LAST_VALUE_META)
         ret = table.search(Query().meta_id==_attribute)
         table.clear_cache()
         return(ret) 
@@ -203,7 +216,7 @@ class LablingNao(Par):
         else: 
             ret = table.all()
             table.clear_cache()
-            return()
+            return(ret)
         
     def putMetaInstance(self, meta_id, dp, value, id, asset_id, instance_id, type, dp_pos):
         table = self.db.table(LablingNao.NAME_TABLE_META_INSTANCE)
@@ -224,12 +237,22 @@ class LablingNao(Par):
         ret = table.search((Query().instance_id==instance_id)&(Query().dp_pos==dp_pos))
         table.clear_cache()
         return(ret)
+    
+    def getInstanceMetaByAttributeInstance(self, instance_id, attribute_id):
+        table = self.db.table(LablingNao.NAME_TABLE_META_INSTANCE)
+        ret = table.search((Query().instance_id==instance_id)&(Query()._attribute==attribute_id))
+        table.clear_cache()
+        return(ret)
 
     def patchInstanceMetaValueByPosInstance(self, instance_id, dp_pos, value):
         table = self.db.table(LablingNao.NAME_TABLE_META_INSTANCE)
         table.update({LablingNao.NAME_VALUE:value}, (Query().instance_id==instance_id)&(Query().dp_pos==dp_pos))
         table.clear_cache()
 
+    def patchInstanceMetaValueByAttributeInstance(self, instance_id, attribute_id, value):
+        table = self.db.table(LablingNao.NAME_TABLE_META_INSTANCE)
+        table.update({LablingNao.NAME_VALUE:value}, (Query().instance_id==instance_id)&(Query()._attribute==attribute_id))
+        table.clear_cache()
 
 class SyncronizationStatus(Par):
 
@@ -274,8 +297,6 @@ class SyncronizationStatus(Par):
         table.update({time_col:str(timestamp)},Query().table==table_db)
         table.clear_cache()
         sleep(0.02)
-        # test
-        test = self.getSyncStatusAll()
     
     def dropUnSincDps(self,database,table_dp):
         table = self.db.table(database)

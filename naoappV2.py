@@ -33,6 +33,7 @@ class NaoApp():
     NAME_AVATAR_ID = "_avatar"
     URL_TELEGRAF = "/api/telegraf"
     URL_INSTANCE = "/api/nao/instance"
+    URL_INSTANCE_MORE = "/api/nao/instance/more/%s"
     URL_WORKSPACE = "/api/nao/workspace"
     URL_ACTIVATE_DATAPOINT = "/api/nao/instance/%s/datapoints"
     URL_PATCH_META_INSTANCE = "/api/nao/instance/%s/attributevalues/%s"
@@ -107,6 +108,9 @@ class NaoApp():
             NaoApp.NAME_ATTRIBUTEVALUES: attributevalues,
         }
         return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_INSTANCE, payload))
+
+    def getInstanceInfos(self, instance_id):
+        return(self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_INSTANCE_MORE%(instance_id), {}))
 
     def activateDatapoint(self, type_sensor, sensor_id, instance_id, config:dict={}):
         payload = {

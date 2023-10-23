@@ -20,22 +20,27 @@ class AqotecParams():
     QUERY_TABLE_NAMES = "SELECT table_name FROM information_schema.tables"
     QUERY_TABLE_COL_NAMES = "SELECT * FROM %s"
     QUERY_DATA_POINT_CECK = "SELECT TOP 500 %s FROM %s ORDER BY DP_Zeitstempel DESC"
+    QUERY_DATA_POINT_CECK_LAST = "SELECT TOP 1 %s FROM %s ORDER BY DP_Zeitstempel DESC"
     QUERY_SELECT_FIRST_TIME = "SELECT TOP 1 * FROM %s ORDER BY DP_Zeitstempel ASC"
     QUERY_SELECT_LAST_TIME = "SELECT TOP 1 * FROM %s ORDER BY DP_Zeitstempel DESC"
     QUERY_TIMESERIES = "SELECT %s, DP_Zeitstempel FROM %s WHERE DP_Zeitstempel > DATETIME2FROMPARTS%s AND DP_Zeitstempel < DATETIME2FROMPARTS%s ORDER BY DP_Zeitstempel DESC"
     QUERY_META_CUSTOMER_SELECT = "SELECT %s FROM Tbl_Abnehmer WHERE AnID = %s"
     NAME_ENDING_TABLE_ROW_META = "_b"
+    NAME_TABLE_START = "table_start"
     NAME_STARTING_TABLE_UG07 = "UG07_"
+    NAME_BASE_DATABASE = "aqotec_Daten"
     NAME_STARTING_TABLE_RM360 = "RM360_"
     NAME_BETWEEN_TABLE_BHKW = "BHKW"
     NAME_BETWEEN_TABLE_SUBZ = "SubZ_"
     NAME_SENSOR_ID = "sensor_id"
+    NAME_NAME = "name"
     NAME_STARTING_TABLE_WMZ = "WMZ_"
     NAME_DB_INSTANCE_ID = "instance_id"
     NAME_DATABASE_END_CUSTOMER = "_Kunden"
     NAME_DATABASE_END_DATA = "_Daten"
     NAME_TABLE_CUSTOMER = "Tbl_Abnehmer"
     NAME_META_ID = "_attribute"
+    NAME_META_ID_DB = "meta_id"
     NAME_DP_POS = "dp_pos"
     NAME_META_VALUES = "attributevalues"
     NAME_ASSET_ID = "_asset"
@@ -58,6 +63,7 @@ class AqotecParams():
     NAME_TIME_UNSYCRONICIZIED = "time_unsyncronizied"
     NAME_DP_NAME = "name_dp"
     NAME_NUMBER = "number"
+    NAME_INTEGER = "integer"
     NAME__ID = "_id"
     LT = "lt"
     GT= "gt"
@@ -224,7 +230,7 @@ class AqotecMetaV2(AqotecConnectorV2):
         asset_id = self.labled_nao.ceckAsset(asset_name=asset_name)
         if not asset_id:return(-1)
         for database in table_struct:
-            if len(database.split("_"))<3:continue
+            if len(database.split("_"))<3 and database!=AqotecMetaV2.NAME_BASE_DATABASE:continue
             try:cursor.execute(AqotecMetaV2.QUREY_USE%(database))
             except:continue
             workspace_id = None
@@ -302,8 +308,11 @@ class AqotecMetaV2(AqotecConnectorV2):
         cursor.close()
         self.disconnetToDb()
 
-    def _ceckDataInPoint(self,table,dp,cursor:pyodbc.Cursor,lt,gt,b1,b2):
-        cursor.execute(AqotecMetaV2.QUERY_DATA_POINT_CECK%(dp,table))
+    def _ceckDataInPoint(self,table,dp,cursor:pyodbc.Cursor,lt,gt,b1,b2,returns=False,last=False):
+        if last:
+            cursor.execute(AqotecMetaV2.QUERY_DATA_POINT_CECK%(dp,table))
+        else:
+            cursor.execute(AqotecMetaV2.QUERY_DATA_POINT_CECK%(dp,table))
         series = Series([row[0] for row in cursor.fetchall()])
         if len(series)==0:
             return(False)
@@ -311,6 +320,11 @@ class AqotecMetaV2(AqotecConnectorV2):
         if lt: data_bool=series.lt(lt)&data_bool
         if gt: data_bool=series.gt(gt)&data_bool
         if b1: data_bool=(series.lt(b1)|series.gt(b2))&data_bool
+        if returns:
+            if data_bool.any():
+                return(series)
+            else:
+                return([])
         return(data_bool.any())
     
     def patchStationMeta(self):
@@ -331,6 +345,84 @@ class AqotecMetaV2(AqotecConnectorV2):
         cursor.close()
         self.disconnetToDb()
 
+    def patchLastDataPointMeta(self):
+        self.connectToDb()
+        cursor = self.conn.cursor()
+        asset_meta = self.driver_db.getAssetLastValueMeta()
+        instances = self.labled_nao.getInstances()
+        name_db = ""
+        for instance in instances:
+            try: 
+                if instance[AqotecMetaV2.NAME_DATABASE]!=name_db:cursor.execute(AqotecMetaV2.QUREY_USE%(
+                    instance[AqotecMetaV2.NAME_DATABASE]
+                ))
+            except: continue
+            for asset_values_drive in asset_meta:
+                # if table for meta in database ?
+                try:
+                    # if data name in datatable ?
+                    cursor.execute(AqotecMetaV2.QUERY_TABLE_COL_NAMES%(asset_values_drive[AqotecMetaV2.NAME_TABLE_START]+instance[AqotecMetaV2.NAME_NAME]+AqotecConnectorV2.NAME_ENDING_TABLE_ROW_META))
+                    col_names = cursor.fetchall()
+                    ifcol = False
+                    for col_name in col_names:
+                        if col_name[AqotecMetaV2.POS_DP] == asset_values_drive[AqotecMetaV2.NAME_DP] and col_name[AqotecMetaV2.POS_NAME_DP] == asset_values_drive[AqotecMetaV2.NAME_DP_NAME]:
+                            ifcol = True
+                            break
+                    if not ifcol: continue
+                    # if a valid value in datatable ?
+                    ifdata = self._ceckDataInPoint(
+                        cursor=cursor,
+                        dp=asset_values_drive[AqotecMetaV2.NAME_DP],
+                        table=asset_values_drive[AqotecMetaV2.NAME_TABLE_START]+instance[AqotecMetaV2.NAME_NAME],
+                        lt=asset_values_drive[AqotecMetaV2.LT],
+                        gt=asset_values_drive[AqotecMetaV2.GT],
+                        b1=asset_values_drive[AqotecMetaV2.B1],
+                        b2=asset_values_drive[AqotecMetaV2.B2],
+                        returns=True,
+                        last=True
+                    )
+                    if len(ifdata) == 0: continue
+                except:
+                    continue
+                self._patchStationMetaFromValue(ifdata[0],instance[AqotecMetaV2.NAME__ID],asset_values_drive)
+        cursor.close()
+        self.disconnetToDb()
+
+    def _patchStationMetaFromValue(self, value, instance_id, driver_infos):
+        # check if data valid
+        if value=="" or value==None: return(-1)
+        # check if meta labled before
+        meta = self.labled_nao.getInstanceMetaByAttributeInstance(instance_id,driver_infos[AqotecMetaV2.NAME_META_ID_DB])
+        if meta==[]:
+            # get data from nao if not labled before
+            instance_infos = self.nao.getInstanceInfos(instance_id)
+            id_att = ""
+            for info in instance_infos[AqotecMetaV2.NAME_META_VALUES]:
+                if info[AqotecMetaV2.NAME_META_ID] == driver_infos[AqotecMetaV2.NAME_META_ID_DB]:
+                    id_att = info[AqotecMetaV2.NAME__ID]
+            if id_att=="":return(-1)
+            # put initial meta data to local labling db
+            self.labled_nao.putMetaInstance(
+                value=value,
+                meta_id=driver_infos[AqotecMetaV2.NAME_META_ID_DB],
+                dp=driver_infos[AqotecMetaV2.NAME_DP],
+                id=id_att,
+                asset_id=driver_infos[AqotecMetaV2.NAME_DB_ASSET_ID],
+                type=driver_infos[AqotecMetaV2.NAME_TYPE],
+                dp_pos=None,
+                instance_id=instance_id
+            )
+            meta = self.labled_nao.getInstanceMetaByAttributeInstance(instance_id,driver_infos[AqotecMetaV2.NAME_META_ID_DB])
+        # ceck if meta has chanced
+        if meta[0][AqotecMetaV2.NAME_TYPE] == AqotecMetaV2.NAME_NUMBER: dat = float(value)
+        elif meta[0][AqotecMetaV2.NAME_TYPE] == AqotecMetaV2.NAME_INTEGER: dat = int(value)
+        else: dat = str(value)
+        if meta[0][AqotecMetaV2.NAME_VALUE]!=dat:
+            # patch meta data
+            self.nao.patchInstanceMeta(meta[0][AqotecMetaV2.NAME_DB_INSTANCE_ID],meta[0][AqotecMetaV2.NAME_ID],dat)
+            self.labled_nao.patchInstanceMetaValueByAttributeInstance(instance_id,driver_infos[AqotecMetaV2.NAME_META_ID_DB], dat)
+            print("patch meta")
+
     def _getAssetMetaQuery(self):
         asset_meta = self.driver_db.getAssetMeta()
         ret = {}
@@ -343,7 +435,12 @@ class AqotecMetaV2(AqotecConnectorV2):
 
     def _saveInitialMetaData(self, attributevalues, instance_id):
         for value in attributevalues:
-            meta_driver = self.driver_db.getAssetMetaFromId(value[AqotecMetaV2.NAME_META_ID])[0]
+            meta_driver = self.driver_db.getAssetMetaFromId(value[AqotecMetaV2.NAME_META_ID])
+            if len(meta_driver)==0:
+                continue
+            meta_driver = meta_driver[0]
+            old = self.labled_nao.getInstanceMetaByPosInstance(instance_id,meta_driver[AqotecMetaV2.NAME_DP_POS])
+            if len(old)!=0:continue
             self.labled_nao.putMetaInstance(
                 value=value[AqotecMetaV2.NAME_VALUE],
                 meta_id=value[AqotecMetaV2.NAME_META_ID],
@@ -354,17 +451,21 @@ class AqotecMetaV2(AqotecConnectorV2):
                 dp_pos=meta_driver[AqotecMetaV2.NAME_DP_POS],
                 instance_id=instance_id
             )
-    
+
     def _patchStationMeta(self, data,instance,pos_meta):
         for idx in range(len(data)):
             sleep(0.05)
             if data[idx]=="" or data[idx]==None: continue
             meta = self.labled_nao.getInstanceMetaByPosInstance(instance[AqotecMetaV2.NAME__ID],pos_meta[idx])
+            if meta==[]: 
+                instance_infos = self.nao.getInstanceInfos(instance[AqotecMetaV2.NAME__ID])
+                self._saveInitialMetaData(instance_infos[AqotecMetaV2.NAME_META_VALUES], instance[AqotecMetaV2.NAME__ID])
+                meta = self.labled_nao.getInstanceMetaByPosInstance(instance[AqotecMetaV2.NAME__ID],pos_meta[idx])
             if meta[0][AqotecMetaV2.NAME_TYPE] == AqotecMetaV2.NAME_NUMBER: dat = float(data[idx])
             else: dat = str(data[idx])
             if meta[0][AqotecMetaV2.NAME_VALUE]!=dat:
                 self.nao.patchInstanceMeta(meta[0][AqotecMetaV2.NAME_DB_INSTANCE_ID],meta[0][AqotecMetaV2.NAME_ID],dat)
-                self.labled_nao.patchInstanceMetaValueByPosInstance(instance[AqotecMetaV2.NAME__ID],idx+1, dat)
+                self.labled_nao.patchInstanceMetaValueByPosInstance(instance[AqotecMetaV2.NAME__ID],pos_meta[idx], dat)
                 print("patch meta")
 
     def patchSyncStatus(self):
@@ -451,7 +552,7 @@ class AqotecTransferV2(AqotecConnectorV2):
                     )
                     self.sync_status.dropUnSincDps(database=database,table_dp=table_dic[AqotecTransferV2.NAME_TABLE])
                 elif table_dic.get(AqotecTransferV2.NAME_TIME_UNSYCRONICIZIED):
-                    if table_dic[AqotecTransferV2.NAME_TIME_SYNCRONICZIED]<table_dic[AqotecTransferV2.NAME_TIME_UNSYCRONICIZIED]:
+                     if datetime.fromisoformat(table_dic[AqotecTransferV2.NAME_TIME_SYNCRONICZIED])<=datetime.fromisoformat(table_dic[AqotecTransferV2.NAME_TIME_UNSYCRONICIZIED]):
                         self.sync_status.postSyncroniziedValue(
                             database=database,
                             table_db=table_dic[AqotecTransferV2.NAME_TABLE],
