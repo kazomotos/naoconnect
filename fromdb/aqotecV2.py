@@ -403,7 +403,7 @@ class AqotecMetaV2(AqotecConnectorV2):
             if id_att=="":return(-1)
             # put initial meta data to local labling db
             self.labled_nao.putMetaInstance(
-                value=value,
+                value=None,
                 meta_id=driver_infos[AqotecMetaV2.NAME_META_ID_DB],
                 dp=driver_infos[AqotecMetaV2.NAME_DP],
                 id=id_att,
@@ -442,7 +442,7 @@ class AqotecMetaV2(AqotecConnectorV2):
             old = self.labled_nao.getInstanceMetaByPosInstance(instance_id,meta_driver[AqotecMetaV2.NAME_DP_POS])
             if len(old)!=0:continue
             self.labled_nao.putMetaInstance(
-                value=value[AqotecMetaV2.NAME_VALUE],
+                value=None,
                 meta_id=value[AqotecMetaV2.NAME_META_ID],
                 dp=meta_driver[AqotecMetaV2.NAME_DP],
                 id=value[AqotecMetaV2.NAME__ID],
@@ -484,6 +484,7 @@ class AqotecMetaV2(AqotecConnectorV2):
     def startCheckAllMetaData(self):
         self.checkStationDatapoints()
         self.patchStationMeta()
+        self.patchLastDataPointMeta()
         self.patchSyncStatus()
 
 '''
@@ -585,7 +586,6 @@ class AqotecTransferV2(AqotecConnectorV2):
         ext_telegraf = telegraf.extend
         for database in self.status:
             for status_instance in self.status[database]:
-                if status_instance["time_sincronizied"] != None: continue
                 ext_telegraf(self._getTelegrafDataInstance(status_instance,database, cursor))
                 if len(telegraf)>=AqotecTransferV2.DEFAULT_BREAK_TELEGRAF_LEN:
                     breaker=True
