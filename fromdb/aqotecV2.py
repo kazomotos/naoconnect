@@ -8,6 +8,21 @@ from time import sleep, time
 import sys
 import pytz
 
+''' DOC
+-----------  Ubunut  -----------
+sudo apt-get update
+sudo apt-get install unixodbc
+pip install pyodbc
+----------- install Driver ODBC from Microsoft -------------
+--> example for linux:
+curl https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc
+curl https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
+sudo apt-get update
+sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18
+
+'''
+
+
 '''
 --------------------------------------------------------------------------------------------------------------------
                                                         Params
@@ -145,7 +160,8 @@ class AqotecConnectorV2(AqotecParams):
         try:
             self.conn = pyodbc.connect("DRIVER="+self.driver+";SERVER="+self.host+";PORT="+self.port+";UID="+self.user+";PWD="+self.password+";Encrypt=No")
         except:
-            sleep(300)
+            print("connection faild, nex connetction in 300 sec")
+            sleep(2)
             self.conn = pyodbc.connect("DRIVER="+self.driver+";SERVER="+self.host+";PORT="+self.port+";UID="+self.user+";PWD="+self.password+";Encrypt=No")
 
     def disconnetToDb(self):
