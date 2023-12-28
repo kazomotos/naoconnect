@@ -41,6 +41,10 @@ class Par():
     NAME_UNSYCRONICIZIED = "unsyncronizied"
     NAME_TIME_SYNCRONICZIED = "time_sincronizied"
     NAME_TIME_UNSYCRONICIZIED = "time_unsyncronizied"
+    NAME_SYNC_FILES = "syncronizied_files"
+    NAME_FILE_NAMES = "file_names"
+    NAME_COUNT_INSTANCE = "count_instance"
+    NAME_COUNT = "count"
 
 class Driver(Par):
 
@@ -184,6 +188,21 @@ class LablingNao(Par):
         if len(res)>0:return(res[0][LablingNao.NAME__ID])
         else:return(None)
 
+    def getInstanceCount(self):
+        table = self.db.table(LablingNao.NAME_COUNT_INSTANCE)
+        res = table.all()
+        if res == []: 
+            table.insert({LablingNao.NAME_COUNT: 0})
+            table.clear_cache()
+            return(0)
+        table.clear_cache()
+        return(res[0][LablingNao.NAME_COUNT])
+
+    def updateInstanceCount(self, count):
+        table = self.db.table(LablingNao.NAME_COUNT_INSTANCE)
+        table.update({LablingNao.NAME_COUNT: count})
+        table.clear_cache()
+
     def putInstance(self, nao_ret, database):
         table = self.db.table(LablingNao.NAME_TABLE_INSTANCE)
         table.insert({
@@ -304,4 +323,26 @@ class SyncronizationStatus(Par):
             SyncronizationStatus.NAME_TIME_UNSYCRONICIZIED:None,
             SyncronizationStatus.NAME_UNSYCRONICIZIED:[]
         }, Query().table==table_dp)
+        table.clear_cache()
+
+class CsvReadStatus(Par):
+
+    def __init__(self, database_name=path.dirname(path.abspath(__file__))+"/csv_read_status.json") -> None:
+        self.db = TinyDB(database_name)
+        if self.getSyncroniziedFiles()==[]:self._creatSycronizedFilesTable()
+
+    def getSyncroniziedFiles(self):
+        table = self.db.table(CsvReadStatus.NAME_SYNC_FILES)
+        status = table.all()
+        table.clear_cache()
+        return(status)
+
+    def postSyncroniziedFiles(self, file_name):
+        table = self.db.table(CsvReadStatus.NAME_SYNC_FILES)
+        table.update(operations.add(CsvReadStatus.NAME_FILE_NAMES,file_name))
+        table.clear_cache()
+    
+    def _creatSycronizedFilesTable(self):
+        table = self.db.table(CsvReadStatus.NAME_SYNC_FILES)
+        table.insert({CsvReadStatus.NAME_FILE_NAMES:[]})
         table.clear_cache()
