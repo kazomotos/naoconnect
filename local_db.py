@@ -257,6 +257,12 @@ class LablingNao(Par):
         table.clear_cache()
         return(ret)
     
+    def getInstanceMetaAll(self):
+        table = self.db.table(LablingNao.NAME_TABLE_META_INSTANCE)
+        ret = table.all()
+        table.clear_cache()
+        return(ret)
+    
     def getInstanceMetaByAttributeInstance(self, instance_id, attribute_id):
         table = self.db.table(LablingNao.NAME_TABLE_META_INSTANCE)
         ret = table.search((Query().instance_id==instance_id)&(Query()._attribute==attribute_id))
