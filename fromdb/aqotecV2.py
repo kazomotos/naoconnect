@@ -8,6 +8,21 @@ from time import sleep, time
 import sys
 import pytz
 
+''' DOC
+-----------  Ubunut  -----------
+sudo apt-get update
+sudo apt-get install unixodbc
+pip install pyodbc
+----------- install Driver ODBC from Microsoft -------------
+--> example for linux:
+curl https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc
+curl https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
+sudo apt-get update
+sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18
+
+'''
+
+
 '''
 --------------------------------------------------------------------------------------------------------------------
                                                         Params
@@ -145,7 +160,8 @@ class AqotecConnectorV2(AqotecParams):
         try:
             self.conn = pyodbc.connect("DRIVER="+self.driver+";SERVER="+self.host+";PORT="+self.port+";UID="+self.user+";PWD="+self.password+";Encrypt=No")
         except:
-            sleep(300)
+            print("connection faild, nex connetction in 300 sec")
+            sleep(2)
             self.conn = pyodbc.connect("DRIVER="+self.driver+";SERVER="+self.host+";PORT="+self.port+";UID="+self.user+";PWD="+self.password+";Encrypt=No")
 
     def disconnetToDb(self):
@@ -537,6 +553,7 @@ class AqotecTransferV2(AqotecConnectorV2):
                     self.sync_status.patchSincStatus(database,table_db,self.new_status[database][table_db][AqotecTransferV2.NAME_TIME_UNSYCRONICIZIED],True)
                 if self.new_status[database][table_db].get(AqotecTransferV2.NAME_TIME_SYNCRONICZIED):
                     self.sync_status.patchSincStatus(database,table_db,self.new_status[database][table_db][AqotecTransferV2.NAME_TIME_SYNCRONICZIED],False)
+        self.new_status = {}
 
     def getSyncStatus(self):
         status = self.sync_status.getSyncStatusAll()
@@ -586,6 +603,13 @@ class AqotecTransferV2(AqotecConnectorV2):
         ext_telegraf = telegraf.extend
         for database in self.status:
             for status_instance in self.status[database]:
+                if status_instance["time_sincronizied"]!=None:
+                    if "WMZ" in status_instance[AqotecTransferV2.NAME_TABLE]:
+                        if  pytz.timezone(AqotecTransferV2.DEFAULT_AQOTEC_TIMEZONE).localize(datetime.fromisoformat(status_instance["time_sincronizied"])).astimezone(pytz.utc).replace(tzinfo=None) > datetime.utcnow()-timedelta(hours=26):
+                            continue
+                    else:
+                        if  pytz.timezone(AqotecTransferV2.DEFAULT_AQOTEC_TIMEZONE).localize(datetime.fromisoformat(status_instance["time_sincronizied"])).astimezone(pytz.utc).replace(tzinfo=None) > datetime.utcnow()-timedelta(minutes=120):
+                            continue
                 ext_telegraf(self._getTelegrafDataInstance(status_instance,database, cursor))
                 if len(telegraf)>=AqotecTransferV2.DEFAULT_BREAK_TELEGRAF_LEN:
                     breaker=True

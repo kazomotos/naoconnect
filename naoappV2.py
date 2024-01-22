@@ -7,7 +7,6 @@ from time import sleep
 from math import ceil
 
 class NaoApp():
-    STADARTD_DATA_PER_TELEGRAF = 10000
     NAME_HOST = "host"
     NAME_PAYLOAD = "payload"
     NAME_PASSWD = "password"
@@ -46,12 +45,13 @@ class NaoApp():
     FORMAT_TELEFRAF_FRAME_SEPERATOR = "\n"
     STATUS_CODE_GOOD = 204
 
-    def __init__(self, host, email, password, local=False): # type: ignore
+    def __init__(self, host, email, password, local=False, data_per_telegraf_push:int=10000): # type: ignore
         self.auth = {
             NaoApp.NAME_HOST:host,
             NaoApp.NAME_PAYLOAD:NaoApp.NAME_EMAIL+"="+quote(email)+"&"+NaoApp.NAME_PASSWD+"="+quote(password)
         }
         self.headers = NaoApp.QUERY_TRANSFERHEADER
+        self.data_per_telegraf_push=data_per_telegraf_push
         self.__conneciton = None # type: ignore
         self.local=local
 
@@ -160,15 +160,15 @@ class NaoApp():
         if type(payload) != list:
             return(self._sendTelegrafData(payload=payload))
         else:
-            if len(payload) > NaoApp.STADARTD_DATA_PER_TELEGRAF:
+            if len(payload) > self.data_per_telegraf_push:
                 last_idx = 0
-                for idx in range(int(ceil(len(payload)/NaoApp.STADARTD_DATA_PER_TELEGRAF))-1):
+                for idx in range(int(ceil(len(payload)/self.data_per_telegraf_push))-1):
                     last_idx = idx
-                    sta = self._sendTelegrafData(payload[int(idx*NaoApp.STADARTD_DATA_PER_TELEGRAF):int(idx*NaoApp.STADARTD_DATA_PER_TELEGRAF)+NaoApp.STADARTD_DATA_PER_TELEGRAF])
+                    sta = self._sendTelegrafData(payload[int(idx*self.data_per_telegraf_push):int(idx*self.data_per_telegraf_push)+self.data_per_telegraf_push])
                     if sta != 204:
                         return(sta)
-                    sleep(0.2+idx*0.07)
-                return(self._sendTelegrafData(payload[int(last_idx*NaoApp.STADARTD_DATA_PER_TELEGRAF):]))
+                    sleep(0.1+idx*0.04)
+                return(self._sendTelegrafData(payload[int(last_idx*self.data_per_telegraf_push):]))
             else:
                 return(self._sendTelegrafData(payload))
 
