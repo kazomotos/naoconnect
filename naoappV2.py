@@ -167,7 +167,10 @@ class NaoApp():
                     sta = self._sendTelegrafData(payload[int(idx*self.data_per_telegraf_push):int(idx*self.data_per_telegraf_push)+self.data_per_telegraf_push])
                     if sta != 204:
                         return(sta)
-                    sleep(0.1+idx*0.04)
+                    if 0.1+idx*0.04 > 2:
+                        sleep(2)
+                    else:
+                        sleep(0.1+idx*0.04)
                 return(self._sendTelegrafData(payload[int(last_idx*self.data_per_telegraf_push):]))
             else:
                 return(self._sendTelegrafData(payload))

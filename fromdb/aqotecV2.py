@@ -40,6 +40,7 @@ class AqotecParams():
     QUERY_SELECT_LAST_TIME = "SELECT TOP 1 * FROM %s ORDER BY DP_Zeitstempel DESC"
     QUERY_TIMESERIES = "SELECT %s, DP_Zeitstempel FROM %s WHERE DP_Zeitstempel > DATETIME2FROMPARTS%s AND DP_Zeitstempel < DATETIME2FROMPARTS%s ORDER BY DP_Zeitstempel DESC"
     QUERY_META_CUSTOMER_SELECT = "SELECT %s FROM Tbl_Abnehmer WHERE AnID = %s"
+    QUERY_META_CUSTOMER_SELECT_2 = "SELECT %s FROM Tbl_Station WHERE AnID = %s"
     NAME_ENDING_TABLE_ROW_META = "_b"
     NAME_TABLE_START = "table_start"
     NAME_STARTING_TABLE_UG07 = "UG07_"
@@ -346,8 +347,21 @@ class AqotecMetaV2(AqotecConnectorV2):
     def patchStationMeta(self):
         self.connectToDb()
         cursor = self.conn.cursor()
-        asset_meta, pos_dp = self._getAssetMetaQuery()
         instances = self.labled_nao.getInstances()
+        # -------------- Stationsdaten --------------
+        asset_meta, pos_dp = self._getAssetMetaQuery(number=2)
+        name_db = ""
+        for instance in instances:
+            try: 
+                if instance[AqotecMetaV2.NAME_DATABASE]!=name_db:cursor.execute(AqotecMetaV2.QUREY_USE%(
+                    instance[AqotecMetaV2.NAME_DATABASE].split(AqotecMetaV2.NAME_DATABASE_END_DATA)[0]+AqotecMetaV2.NAME_DATABASE_END_CUSTOMER
+                ))
+            except: continue
+            cursor.execute(AqotecMetaV2.QUERY_META_CUSTOMER_SELECT_2%(asset_meta[instance[AqotecMetaV2.NAME_ASSET_ID]][:-1],instance[AqotecMetaV2.NAME_NAME].split("R")[-1]))
+            data = cursor.fetchall()
+            if len(data)>0:self._patchStationMeta(data[0],instance, pos_dp, asset_meta[instance[AqotecMetaV2.NAME_ASSET_ID]].split(","), number=2)
+        # -------------- Kundendaten --------------
+        asset_meta, pos_dp = self._getAssetMetaQuery()
         name_db = ""
         for instance in instances:
             try: 
@@ -357,7 +371,9 @@ class AqotecMetaV2(AqotecConnectorV2):
             except: continue
             cursor.execute(AqotecMetaV2.QUERY_META_CUSTOMER_SELECT%(asset_meta[instance[AqotecMetaV2.NAME_ASSET_ID]][:-1],instance[AqotecMetaV2.NAME_NAME].split("R")[-1]))
             data = cursor.fetchall()
-            if len(data)>0:self._patchStationMeta(data[0],instance, pos_dp)
+            if len(data)>0:self._patchStationMeta(data[0],instance, pos_dp, asset_meta[instance[AqotecMetaV2.NAME_ASSET_ID]].split(","), number=1)
+        cursor = self.conn.cursor()
+
         cursor.close()
         self.disconnetToDb()
 
@@ -439,8 +455,11 @@ class AqotecMetaV2(AqotecConnectorV2):
             self.labled_nao.patchInstanceMetaValueByAttributeInstance(instance_id,driver_infos[AqotecMetaV2.NAME_META_ID_DB], dat)
             print("patch meta")
 
-    def _getAssetMetaQuery(self):
-        asset_meta = self.driver_db.getAssetMeta()
+    def _getAssetMetaQuery(self, number=1):
+        if number==1:
+            asset_meta = self.driver_db.getAssetMeta()
+        else:
+            asset_meta = self.driver_db.getAssetMeta2()
         ret = {}
         ret2 = []
         for set in asset_meta:
@@ -449,13 +468,16 @@ class AqotecMetaV2(AqotecConnectorV2):
             ret2.append(set[AqotecMetaV2.NAME_DP_POS])
         return(ret, ret2)
 
-    def _saveInitialMetaData(self, attributevalues, instance_id):
+    def _saveInitialMetaData(self, attributevalues, instance_id, dp, number=1):
         for value in attributevalues:
-            meta_driver = self.driver_db.getAssetMetaFromId(value[AqotecMetaV2.NAME_META_ID])
+            if number == 1:
+                meta_driver = self.driver_db.getAssetMetaFromId(value[AqotecMetaV2.NAME_META_ID])
+            else:
+                meta_driver = self.driver_db.getAssetMetaFromId2(value[AqotecMetaV2.NAME_META_ID])
             if len(meta_driver)==0:
                 continue
             meta_driver = meta_driver[0]
-            old = self.labled_nao.getInstanceMetaByPosInstance(instance_id,meta_driver[AqotecMetaV2.NAME_DP_POS])
+            old = self.labled_nao.getInstanceMetaByPosInstance(instance_id,meta_driver[AqotecMetaV2.NAME_DP_POS], dp)
             if len(old)!=0:continue
             self.labled_nao.putMetaInstance(
                 value=None,
@@ -468,20 +490,21 @@ class AqotecMetaV2(AqotecConnectorV2):
                 instance_id=instance_id
             )
 
-    def _patchStationMeta(self, data,instance,pos_meta):
+    def _patchStationMeta(self, data,instance,pos_meta,name_dp,number):
         for idx in range(len(data)):
             sleep(0.05)
             if data[idx]=="" or data[idx]==None: continue
-            meta = self.labled_nao.getInstanceMetaByPosInstance(instance[AqotecMetaV2.NAME__ID],pos_meta[idx])
+            meta = self.labled_nao.getInstanceMetaByPosInstance(instance[AqotecMetaV2.NAME__ID],pos_meta[idx],name_dp[idx])
             if meta==[]: 
                 instance_infos = self.nao.getInstanceInfos(instance[AqotecMetaV2.NAME__ID])
-                self._saveInitialMetaData(instance_infos[AqotecMetaV2.NAME_META_VALUES], instance[AqotecMetaV2.NAME__ID])
-                meta = self.labled_nao.getInstanceMetaByPosInstance(instance[AqotecMetaV2.NAME__ID],pos_meta[idx])
+                self._saveInitialMetaData(instance_infos[AqotecMetaV2.NAME_META_VALUES], instance[AqotecMetaV2.NAME__ID],name_dp[idx],number)
+                meta = self.labled_nao.getInstanceMetaByPosInstance(instance[AqotecMetaV2.NAME__ID],pos_meta[idx],name_dp[idx])
             if meta[0][AqotecMetaV2.NAME_TYPE] == AqotecMetaV2.NAME_NUMBER: dat = float(data[idx])
+            elif meta[0][AqotecMetaV2.NAME_TYPE] == AqotecMetaV2.NAME_INTEGER: dat = int(data[idx])
             else: dat = str(data[idx])
             if meta[0][AqotecMetaV2.NAME_VALUE]!=dat:
                 self.nao.patchInstanceMeta(meta[0][AqotecMetaV2.NAME_DB_INSTANCE_ID],meta[0][AqotecMetaV2.NAME_ID],dat)
-                self.labled_nao.patchInstanceMetaValueByPosInstance(instance[AqotecMetaV2.NAME__ID],pos_meta[idx], dat)
+                self.labled_nao.patchInstanceMetaValueByPosInstance(instance[AqotecMetaV2.NAME__ID],pos_meta[idx],name_dp[idx], dat)
                 print("patch meta")
 
     def patchSyncStatus(self):
