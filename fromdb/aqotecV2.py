@@ -61,6 +61,7 @@ class AqotecParams():
     NAME_ASSET_ID = "_asset"
     NAME_ASSET_UG07 = "ug07"
     NAME_ASSET_RM360 = "rm360"
+    NAME_ASSET_SZBZ = "subz"
     NAME_TYPE = "type"
     NAME_VALUE = "value"
     NAME_ID = "id"
@@ -94,6 +95,7 @@ class AqotecParams():
     DEFAULT_ERROR_SLEEP_SECOND = 300
     STATUS_CODE_GOOD = 204
     ERROR_HANDLING_START_DP = "DP_"
+    INSTANCE_NAME_ADDITIVE_SUBZ = "SubZ-"
 
 '''
 --------------------------------------------------------------------------------------------------------------------
@@ -227,6 +229,8 @@ class AqotecMetaV2(AqotecConnectorV2):
                 self.struct.putOher(database,table)
 
     def checkStationDatapoints(self):
+        self._ceckSubWmz()
+        self._ceckWmzFromSubz()
         self._ceckUg07()
         self._ceckRm360()
         self._ceckStationWmz()
@@ -240,7 +244,13 @@ class AqotecMetaV2(AqotecConnectorV2):
     def _ceckStationWmz(self):
         self._ceckTable(self.struct.wmz, self.driver_db.ceckDriverStationWMZ, AqotecMetaV2.NAME_ASSET_WMZ, False)
 
-    def _ceckTable(self, table_struct, ceckDriver, asset_name, create_instance=True):
+    def _ceckSubWmz(self):
+        self._ceckTable(self.struct.subz, self.driver_db.ceckDriverSubWMZ, AqotecMetaV2.NAME_ASSET_SZBZ, True, AqotecMetaV2.INSTANCE_NAME_ADDITIVE_SUBZ)
+
+    def _ceckWmzFromSubz(self):
+        self._ceckTable(self.struct.wmz, self.driver_db.ceckDriverWMZfromSub, AqotecMetaV2.NAME_ASSET_SZBZ, False, AqotecMetaV2.INSTANCE_NAME_ADDITIVE_SUBZ )
+    
+    def _ceckTable(self, table_struct, ceckDriver, asset_name, create_instance=True, instance_name_addive=""):
         self.connectToDb()
         cursor = self.conn.cursor()
         asset_id = self.labled_nao.ceckAsset(asset_name=asset_name)
@@ -251,7 +261,7 @@ class AqotecMetaV2(AqotecConnectorV2):
             except:continue
             workspace_id = None
             for table in table_struct[database]:
-                instance_id = self.labled_nao.ceckInstance(table.split("_")[-2],database=database)
+                instance_id = self.labled_nao.ceckInstance(instance_name_addive+table.split("_")[-2],database=database,asset_id=asset_id)
                 if not instance_id and not create_instance: continue
                 try:cursor.execute(AqotecMetaV2.QUERY_TABLE_COL_NAMES%(table))
                 except:continue
@@ -283,7 +293,7 @@ class AqotecMetaV2(AqotecConnectorV2):
                             self.labled_nao.putWorkspace(ret)
                     # -------------------------------------------creat instance if not been created---------------------------------------------------------
                     if not instance_id:
-                        instance_name = table.split("_")[-2]
+                        instance_name = instance_name_addive+table.split("_")[-2]
                         ret=self.nao.createInstance(
                             name=instance_name,
                             asset_id=asset_id,
@@ -350,14 +360,19 @@ class AqotecMetaV2(AqotecConnectorV2):
         instances = self.labled_nao.getInstances()
         name_db = ""
         for instance in instances:
+            # not for subz
+            if AqotecMetaV2.INSTANCE_NAME_ADDITIVE_SUBZ in instance[AqotecMetaV2.NAME_NAME]: continue
             try: 
-                if instance[AqotecMetaV2.NAME_DATABASE]!=name_db:cursor.execute(AqotecMetaV2.QUREY_USE%(
-                    instance[AqotecMetaV2.NAME_DATABASE].split(AqotecMetaV2.NAME_DATABASE_END_DATA)[0]+AqotecMetaV2.NAME_DATABASE_END_CUSTOMER
-                ))
+                if instance[AqotecMetaV2.NAME_DATABASE]!=name_db:
+                    cursor.execute(AqotecMetaV2.QUREY_USE%(
+                        instance[AqotecMetaV2.NAME_DATABASE].split(AqotecMetaV2.NAME_DATABASE_END_DATA)[0]+AqotecMetaV2.NAME_DATABASE_END_CUSTOMER
+                    ))
+                    name_db = instance[AqotecMetaV2.NAME_DATABASE]
             except: continue
             cursor.execute(AqotecMetaV2.QUERY_META_CUSTOMER_SELECT%(asset_meta[instance[AqotecMetaV2.NAME_ASSET_ID]][:-1],instance[AqotecMetaV2.NAME_NAME].split("R")[-1]))
             data = cursor.fetchall()
-            if len(data)>0:self._patchStationMeta(data[0],instance, pos_dp)
+            if len(data)>0:
+                self._patchStationMeta(data[0],instance, pos_dp)
         cursor.close()
         self.disconnetToDb()
 
@@ -369,15 +384,15 @@ class AqotecMetaV2(AqotecConnectorV2):
         name_db = ""
         for instance in instances:
             try: 
-                if instance[AqotecMetaV2.NAME_DATABASE]!=name_db:cursor.execute(AqotecMetaV2.QUREY_USE%(
-                    instance[AqotecMetaV2.NAME_DATABASE]
-                ))
+                if instance[AqotecMetaV2.NAME_DATABASE]!=name_db:
+                    cursor.execute(AqotecMetaV2.QUREY_USE%(instance[AqotecMetaV2.NAME_DATABASE]))
+                    name_db=instance[AqotecMetaV2.NAME_DATABASE]
             except: continue
             for asset_values_drive in asset_meta:
                 # if table for meta in database ?
                 try:
                     # if data name in datatable ?
-                    cursor.execute(AqotecMetaV2.QUERY_TABLE_COL_NAMES%(asset_values_drive[AqotecMetaV2.NAME_TABLE_START]+instance[AqotecMetaV2.NAME_NAME]+AqotecConnectorV2.NAME_ENDING_TABLE_ROW_META))
+                    cursor.execute(AqotecMetaV2.QUERY_TABLE_COL_NAMES%(asset_values_drive[AqotecMetaV2.NAME_TABLE_START]+instance[AqotecMetaV2.NAME_NAME].replace(AqotecMetaV2.INSTANCE_NAME_ADDITIVE_SUBZ,"")+AqotecConnectorV2.NAME_ENDING_TABLE_ROW_META))
                     col_names = cursor.fetchall()
                     ifcol = False
                     for col_name in col_names:
@@ -389,7 +404,7 @@ class AqotecMetaV2(AqotecConnectorV2):
                     ifdata = self._ceckDataInPoint(
                         cursor=cursor,
                         dp=asset_values_drive[AqotecMetaV2.NAME_DP],
-                        table=asset_values_drive[AqotecMetaV2.NAME_TABLE_START]+instance[AqotecMetaV2.NAME_NAME],
+                        table=asset_values_drive[AqotecMetaV2.NAME_TABLE_START]+instance[AqotecMetaV2.NAME_NAME].replace(AqotecMetaV2.INSTANCE_NAME_ADDITIVE_SUBZ,""),
                         lt=asset_values_drive[AqotecMetaV2.LT],
                         gt=asset_values_drive[AqotecMetaV2.GT],
                         b1=asset_values_drive[AqotecMetaV2.B1],
