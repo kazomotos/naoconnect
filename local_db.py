@@ -11,6 +11,8 @@ class Par():
     NAME_DRIVER_STATION_WMZ = "driver_wmz_station"
     NAME_DRIVER_ASSET_META = "driver_asset_meta"
     NAME_DRIVER_ASSET_META_2 = "driver_asset_meta_2"
+    NAME_DRIVER_SUBZ = "driver_subz"
+    NAME_DRIVER_SUBZ_WMZ = "driver_wmz_subz"
     NAME_DRIVER_ASSET_LAST_VALUE_META = "driver_asset_last_value_as_meta"
     NAME_DP_NAME = "name_dp"
     NAME_DP = "dp"
@@ -67,6 +69,12 @@ class Driver(Par):
 
     def ceckDriverStationWMZ(self, name_dp, dp):
         return(self._ceckDriver(Driver.NAME_DRIVER_STATION_WMZ,name_dp,dp))
+
+    def ceckDriverSubWMZ(self, name_dp, dp):
+        return(self._ceckDriver(Driver.NAME_DRIVER_SUBZ,name_dp,dp))
+
+    def ceckDriverWMZfromSub(self, name_dp, dp):
+        return(self._ceckDriver(Driver.NAME_DRIVER_SUBZ_WMZ,name_dp,dp))
 
     def getAssetMeta(self):
         table = self.db.table(Driver.NAME_DRIVER_ASSET_META)
@@ -190,10 +198,10 @@ class LablingNao(Par):
         })
         table.clear_cache()
 
-    def ceckInstance(self, instance_name, database) -> Union[str, None]:
+    def ceckInstance(self, instance_name, database, asset_id) -> Union[str, None]:
         table = self.db.table(LablingNao.NAME_TABLE_INSTANCE)
         try:
-            res = table.search((Query().name==instance_name)&(Query().database==database))
+            res = table.search((Query().name==instance_name)&(Query().database==database)&(Query()._asset==asset_id))
             table.clear_cache()
         except:
             table.clear_cache()
