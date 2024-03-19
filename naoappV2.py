@@ -32,6 +32,7 @@ class NaoApp():
     NAME_AVATAR_ID = "_avatar"
     URL_GET_USER_INFO = "/api/user/me"
     URL_PUT_NOTE = "/api/nao/asset/%s/notes"
+    URL_PATCH_INSTANCE = "/api/nao/instance/%s"
     URL_TELEGRAF = "/api/telegraf"
     URL_INSTANCE = "/api/nao/instance"
     URL_INSTANCE_MORE = "/api/nao/instance/more/%s"
@@ -160,6 +161,9 @@ class NaoApp():
             NaoApp.NAME_VALUE: value
         }
         return(self._sendDataToNaoJson(NaoApp.NAME_PATCH, NaoApp.URL_PATCH_META_INSTANCE%(instance_id, meta_id), payload))
+    
+    def patchInstanceData(self, instance_id:str, payload:dict):
+        return(self._sendDataToNaoJson(NaoApp.NAME_PATCH, NaoApp.URL_PATCH_INSTANCE%(instance_id), payload))
     
     def sendTelegrafData(self, payload):
         ''' 
