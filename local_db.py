@@ -14,7 +14,9 @@ class Par():
     NAME_DRIVER_SUBZ = "driver_subz"
     NAME_DRIVER_SUBZ_WMZ = "driver_wmz_subz"
     NAME_DRIVER_ASSET_LAST_VALUE_META = "driver_asset_last_value_as_meta"
+    NAME_DRIVER_ASSET_NOTES_META = "driver_assst_notes_meta"
     NAME_DP_NAME = "name_dp"
+    NAME_NOTES = "notes"
     NAME_DP = "dp"
     NAME__ID = "_id"
     NAME_TABLE = "table"
@@ -43,6 +45,7 @@ class Par():
     NAME_SYNCRONICZIED = "syncronizied"
     NAME_UNSYCRONICIZIED = "unsyncronizied"
     NAME_TIME_SYNCRONICZIED = "time_sincronizied"
+    NAME_TIME_SYNCRONICZIED_META = "time_sincronizied_meta"
     NAME_TIME_UNSYCRONICIZIED = "time_unsyncronizied"
     NAME_SYNC_FILES = "syncronizied_files"
     NAME_FILE_NAMES = "file_names"
@@ -90,6 +93,12 @@ class Driver(Par):
 
     def getAssetLastValueMeta(self):
         table = self.db.table(Driver.NAME_DRIVER_ASSET_LAST_VALUE_META)
+        ret = table.all()
+        table.clear_cache()
+        return(ret)       
+
+    def getAssetNotesMeta(self):
+        table = self.db.table(Driver.NAME_DRIVER_ASSET_NOTES_META)
         ret = table.all()
         table.clear_cache()
         return(ret)       
@@ -298,6 +307,22 @@ class LablingNao(Par):
     def patchInstanceMetaValueByAttributeInstance(self, instance_id, attribute_id, value):
         table = self.db.table(LablingNao.NAME_TABLE_META_INSTANCE)
         table.update({LablingNao.NAME_VALUE:value}, (Query().instance_id==instance_id)&(Query()._attribute==attribute_id))
+        table.clear_cache()
+
+    def getNotesAll(self):
+        table = self.db.table(LablingNao.NAME_NOTES)
+        ret = table.all()
+        table.clear_cache()
+        return(ret)
+    
+    def updateNoteTimeByName(self,time,name):
+        table = self.db.table(LablingNao.NAME_NOTES)
+        table.update({LablingNao.NAME_TIME_SYNCRONICZIED:str(time)}, (Query().name==name))
+        table.clear_cache()
+
+    def updateNoteTimeMetaByName(self,time,name):
+        table = self.db.table(LablingNao.NAME_NOTES)
+        table.update({LablingNao.NAME_TIME_SYNCRONICZIED_META:str(time)}, (Query().name==name))
         table.clear_cache()
 
 class SyncronizationStatus(Par):

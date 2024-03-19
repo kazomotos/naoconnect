@@ -30,6 +30,8 @@ class NaoApp():
     NAME_PATCH = "PATCH"
     NAME_DELETE = "DELETE"
     NAME_AVATAR_ID = "_avatar"
+    URL_GET_USER_INFO = "/api/user/me"
+    URL_PUT_NOTE = "/api/nao/asset/%s/notes"
     URL_TELEGRAF = "/api/telegraf"
     URL_INSTANCE = "/api/nao/instance"
     URL_INSTANCE_MORE = "/api/nao/instance/more/%s"
@@ -60,6 +62,14 @@ class NaoApp():
             self._loginNaoLocal()
         else:
             self._loginNaoCloud()
+    
+    def getUserId(self):
+        ret = self._sendDataToNaoJson(NaoApp.NAME_GET,NaoApp.URL_GET_USER_INFO,{})
+        return(ret[NaoApp.NAME__ID])
+    
+    def pushNote(self, asset_id, data_note):
+        ret = self._sendDataToNaoJson(NaoApp.NAME_POST,url=NaoApp.URL_PUT_NOTE%(asset_id),payload=data_note)
+        return(ret[NaoApp.NAME__ID])
 
     def _loginNaoLocal(self):
         try:

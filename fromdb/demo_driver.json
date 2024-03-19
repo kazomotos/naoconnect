@@ -912,5 +912,23 @@
             "b2": null,
             "type": "Setpoint"
         }
+    },
+    "driver_asset_meta_2": {
+        "1": {
+            "name": "StlNummer",
+            "meta_id": "65b21ee06e70669cf6fc4281",
+            "dp": "StlNummer",
+            "asset_id": "64ff6ca5d097c65edfb7fc31",
+            "dp_pos": 3,
+            "type": "string"
+        },
+        "2": {
+            "name": "StlLeistung",
+            "meta_id": "65b21efe6e70669cf6fd2144",
+            "dp": "StlLeistung",
+            "asset_id": "64ff6ca5d097c65edfb7fc31",
+            "dp_pos": 2,
+            "type": "number"
+        }
     }
 }
