@@ -337,8 +337,8 @@ class AqotecMetaV2(AqotecConnectorV2):
                         )
                         instance_id=ret[AqotecMetaV2.NAME__ID]
                         self.labled_nao.putInstance(ret,database)
-                        if len(ret[AqotecMetaV2.NAME_META_VALUES])>0:
-                            self._saveInitialMetaData(ret[AqotecMetaV2.NAME_META_VALUES],ret[AqotecMetaV2.NAME__ID])
+                        # if len(ret[AqotecMetaV2.NAME_META_VALUES])>0:
+                        #     self._saveInitialMetaData(ret[AqotecMetaV2.NAME_META_VALUES],ret[AqotecMetaV2.NAME__ID],"?")
                         print(instance_name)
                     # --------------------------------------ceck if allready activatet with other station (ug07)----------------------------
                     act_point = self.labled_points.getPointByInstanceSensorInstance(database,driver_meta[AqotecMetaV2.NAME_ID],instance_id)
