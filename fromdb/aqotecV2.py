@@ -52,6 +52,7 @@ class AqotecParams():
     NAME_SENSOR_ID = "sensor_id"
     NAME_NAME = "name"
     NAME_STARTING_TABLE_WMZ = "WMZ_"
+    NAME_BETWEEN_NETWORK = "Netz"
     NAME_DB_INSTANCE_ID = "instance_id"
     NAME_DATABASE_END_CUSTOMER = "_Kunden"
     NAME_DATABASE_END_DATA = "_Daten"
@@ -64,6 +65,7 @@ class AqotecParams():
     NAME_ASSET_UG07 = "ug07"
     NAME_ASSET_RM360 = "rm360"
     NAME_ASSET_SZBZ = "subz"
+    NAME_ASSET_NETWORK = "network"
     NAME_TYPE = "type"
     NAME_VALUE = "value"
     NAME_ID = "id"
@@ -99,7 +101,8 @@ class AqotecParams():
     STATUS_CODE_GOOD = 204
     ERROR_HANDLING_START_DP = "DP_"
     INSTANCE_NAME_ADDITIVE_SUBZ = "SubZ-"
-    DATABASE_NOTES = "aqotec_Alarme"
+    DATABASE_NOTES_DEVAULT = "aqotec_Alarme"
+    DATABASE_NOTES = "aqotec_%s_Alarme"
     NOTE_CREATED = "created"
     NOTE_NOTE = "note"
     NOTE_VISIB = "visibility"
@@ -108,6 +111,7 @@ class AqotecParams():
     NOTE_STOP = "stop"
     NOTE_USER = "_user"
     NOTE_TEXT = 'Änderung des Reglerwert "%s" von %s%s auf %s%s (Benutzer:%s)'
+    NAME_DEVAULT_DATABASE = "Daten"
 
 '''
 --------------------------------------------------------------------------------------------------------------------
@@ -124,6 +128,7 @@ class DbStruct():
         self.bhkw = {}
         self.subz = {}
         self.other = {}
+        self.network = {}
 
     def putUg07(self, database, table):
         if database not in self.ug07:
@@ -149,6 +154,11 @@ class DbStruct():
         if database not in self.subz:
             self.subz[database] = []
         self.subz[database].append(table)
+
+    def putNetwork(self, database, table):
+        if database not in self.network:
+            self.network[database] = []
+        self.network[database].append(table)
 
     def putOher(self, database, table):
         if database not in self.other:
@@ -230,6 +240,8 @@ class AqotecMetaV2(AqotecConnectorV2):
             if table[-2:]!=AqotecMetaV2.NAME_ENDING_TABLE_ROW_META:continue
             if AqotecMetaV2.NAME_STARTING_TABLE_UG07 in table:
                 self.struct.putUg07(database,table)
+            elif AqotecMetaV2.NAME_BETWEEN_NETWORK in table:
+                self.struct.putNetwork(database,table)
             elif AqotecMetaV2.NAME_STARTING_TABLE_WMZ in table:
                 self.struct.putWmz(database,table)
             elif AqotecMetaV2.NAME_STARTING_TABLE_RM360 in table:
@@ -242,12 +254,16 @@ class AqotecMetaV2(AqotecConnectorV2):
                 self.struct.putOher(database,table)
 
     def checkStationDatapoints(self):
+        self._ceckNetwork()
         self._ceckSubWmz()
         self._ceckWmzFromSubz()
         self._ceckUg07()
         self._ceckRm360()
         self._ceckStationWmz()
-                 
+
+    def _ceckNetwork(self):
+        self._ceckTable(self.struct.network, self.driver_db.ceckDriverNetwork, AqotecMetaV2.NAME_ASSET_NETWORK, True, "", True)
+
     def _ceckUg07(self):
         self._ceckTable(self.struct.ug07, self.driver_db.ceckDriverUG07, AqotecMetaV2.NAME_ASSET_UG07, True)
 
@@ -263,7 +279,7 @@ class AqotecMetaV2(AqotecConnectorV2):
     def _ceckWmzFromSubz(self):
         self._ceckTable(self.struct.wmz, self.driver_db.ceckDriverWMZfromSub, AqotecMetaV2.NAME_ASSET_SZBZ, False, AqotecMetaV2.INSTANCE_NAME_ADDITIVE_SUBZ )
     
-    def _ceckTable(self, table_struct, ceckDriver, asset_name, create_instance=True, instance_name_addive=""):
+    def _ceckTable(self, table_struct, ceckDriver, asset_name, create_instance=True, instance_name_addive="", full_name=False):
         self.connectToDb()
         cursor = self.conn.cursor()
         asset_id = self.labled_nao.ceckAsset(asset_name=asset_name)
@@ -274,7 +290,10 @@ class AqotecMetaV2(AqotecConnectorV2):
             except:continue
             workspace_id = None
             for table in table_struct[database]:
-                instance_id = self.labled_nao.ceckInstance(instance_name_addive+table.split("_")[-2],database=database,asset_id=asset_id)
+                if full_name:
+                    instance_id = self.labled_nao.ceckInstance(instance_name_addive+table[:-2],database=database,asset_id=asset_id)
+                else:
+                    instance_id = self.labled_nao.ceckInstance(instance_name_addive+table.split("_")[-2],database=database,asset_id=asset_id)
                 if not instance_id and not create_instance: continue
                 try:cursor.execute(AqotecMetaV2.QUERY_TABLE_COL_NAMES%(table))
                 except:continue
@@ -306,7 +325,10 @@ class AqotecMetaV2(AqotecConnectorV2):
                             self.labled_nao.putWorkspace(ret)
                     # -------------------------------------------creat instance if not been created---------------------------------------------------------
                     if not instance_id:
-                        instance_name = instance_name_addive+table.split("_")[-2]
+                        if full_name:
+                            instance_name = instance_name_addive+table[:-2]
+                        else:
+                            instance_name = instance_name_addive+table.split("_")[-2]
                         ret=self.nao.createInstance(
                             name=instance_name,
                             asset_id=asset_id,
@@ -315,7 +337,8 @@ class AqotecMetaV2(AqotecConnectorV2):
                         )
                         instance_id=ret[AqotecMetaV2.NAME__ID]
                         self.labled_nao.putInstance(ret,database)
-                        self._saveInitialMetaData(ret[AqotecMetaV2.NAME_META_VALUES],ret[AqotecMetaV2.NAME__ID])
+                        if len(ret[AqotecMetaV2.NAME_META_VALUES])>0:
+                            self._saveInitialMetaData(ret[AqotecMetaV2.NAME_META_VALUES],ret[AqotecMetaV2.NAME__ID])
                         print(instance_name)
                     # --------------------------------------ceck if allready activatet with other station (ug07)----------------------------
                     act_point = self.labled_points.getPointByInstanceSensorInstance(database,driver_meta[AqotecMetaV2.NAME_ID],instance_id)
@@ -417,78 +440,110 @@ class AqotecMetaV2(AqotecConnectorV2):
             AqotecMetaV2.NOTE_STOP : stop
         })
 
-    def patchNotesMeta(self):
+    # "notes": {
+    #     "1": {
+    #         "name": "Daten",
+    #         "time_sincronizied": "2024-03-26 09:16:11",
+    #         "time_sincronizied_meta": "2024-03-24 14:33:07"
+    #     }
+    # },
+
+    def patchNotesMeta(self, check_worcspace=False):
         # get user if undefined
         if not self.user_id_nao: self.user_id_nao = self.nao.getUserId()
         # notes last times
         notes_times = self.labled_nao.getNotesAll()
+        # check workspaces
+        workspaces = self.labled_nao.getWorkspaceMetaAll()
+        workspace_ids = {}
+        for work in workspaces:
+            workspace_ids[work[AqotecMetaV2.NAME_NAME]] = work[AqotecMetaV2.NAME__ID]
+        if check_worcspace:
+            spaces = []
+            for n_t in notes_times:
+                spaces.append(n_t[AqotecMetaV2.NAME_NAME])
+            for work in workspaces:
+                if work[AqotecMetaV2.NAME_NAME] in spaces:continue
+                self.labled_nao.putEmptyNode(work[AqotecMetaV2.NAME_NAME])
+            notes_times = self.labled_nao.getNotesAll()
         if not notes_times: return(-1)
         if len(notes_times)==0: return(-1)
-        sinc_time = notes_times[0][AqotecMetaV2.NAME_TIME_SYNCRONICZIED]
-        sinc_name = notes_times[0][AqotecMetaV2.NAME_NAME]
-        sinc_time_meta = notes_times[0][AqotecMetaV2.NAME_TIME_SYNCRONICZIED_META]
-        sinc_name_meta = notes_times[0][AqotecMetaV2.NAME_NAME]
-        if not sinc_time: sinc_time = datetime(2013,1,1,1,1,1)
-        else: sinc_time = datetime.fromisoformat(sinc_time)
-        if not sinc_time_meta: sinc_time_meta = datetime(2013,1,1,1,1,1)
-        else: sinc_time_meta = datetime.fromisoformat(sinc_time_meta)
-        # meta data status
-        asset_meta = self.driver_db.getAssetNotesMeta()
-        instances = self.labled_nao.getInstances()
-        instance_dic = {}
-        for instance in instances:
-            try:instance_dic[instance[AqotecMetaV2.NAME_NAME].split("R")[1]] = instance
-            except:continue
-        metas = {}
-        for asset in asset_meta:
-            metas[asset[AqotecMetaV2.NAME_DP]] = asset
-        # --------     get new meta from notes    ----------
-        self.connectToDb()
-        cursor = self.conn.cursor()
-        cursor.execute(AqotecMetaV2.QUREY_USE%(AqotecMetaV2.DATABASE_NOTES))
-        cursor.execute(AqotecMetaV2.QUERY_NOTES%(self._getDatetimeToSqlStrTuble(sinc_time_meta)))
-        data_raw = [row for row in cursor.fetchall()]
-        try:
-            for dat in data_raw:
-                if str(dat[4]) not in instance_dic: continue
-                if not dat[7] or dat[7] == "":continue
-                if dat[7] in metas:
-                    self._patchStationMetaFromValue(value=dat[10],instance_id=instance_dic[str(dat[4])][AqotecMetaV2.NAME__ID],driver_infos=metas[dat[7]])
-                    sinc_time_meta = dat[1]
-        except:
-            self.labled_nao.updateNoteTimeMetaByName(time=sinc_time_meta,name=sinc_name_meta)
-            raise(KeyError("can't send notes to nao"))
-        self.labled_nao.updateNoteTimeMetaByName(time=sinc_time_meta,name=sinc_name_meta)
-        # --------     get new notes    ----------
-        cursor = self.conn.cursor()
-        cursor.execute(AqotecMetaV2.QUREY_USE%(AqotecMetaV2.DATABASE_NOTES))
-        cursor.execute(AqotecMetaV2.QUERY_NOTES%(self._getDatetimeToSqlStrTuble(sinc_time)))
-        data_raw = [row for row in cursor.fetchall()]
-        for dat in data_raw:
-            if str(dat[4]) not in instance_dic: continue
-            if not dat[7] or dat[7] == "":continue
-            if dat[16]:unit=dat[16]
-            else:unit=""
-            text =  AqotecMetaV2.NOTE_TEXT%(dat[7],dat[9],unit,dat[10],unit,dat[15])
-            note_payload = self.getNoteSchema(
-                note=text,
-                user=self.user_id_nao,
-                start=str(dat[1]),
-                stop=str(dat[1]),
-                created=str(dat[1]),
-                instance_id=instance_dic[str(dat[4])][AqotecMetaV2.NAME__ID]
-            )
-            try:
-                ret = self.nao.pushNote(asset_id=instance_dic[str(dat[4])][AqotecMetaV2.NAME_ASSET_ID],data_note=note_payload)         
-                print("post_notes")
-            except:
+        for idx_sinc in range(len(notes_times)):
+            sinc_time = notes_times[idx_sinc][AqotecMetaV2.NAME_TIME_SYNCRONICZIED]
+            sinc_name = notes_times[idx_sinc][AqotecMetaV2.NAME_NAME]
+            sinc_time_meta = notes_times[idx_sinc][AqotecMetaV2.NAME_TIME_SYNCRONICZIED_META]
+            sinc_name_meta = notes_times[idx_sinc][AqotecMetaV2.NAME_NAME]
+            if not sinc_time: sinc_time = datetime(2013,1,1,1,1,1)
+            else: sinc_time = datetime.fromisoformat(sinc_time)
+            if not sinc_time_meta: sinc_time_meta = datetime(2013,1,1,1,1,1)
+            else: sinc_time_meta = datetime.fromisoformat(sinc_time_meta)
+            # meta data status
+            asset_meta = self.driver_db.getAssetNotesMeta()
+            instances = self.labled_nao.getInstances(workspace_id=workspace_ids[notes_times[idx_sinc][AqotecMetaV2.NAME_NAME]])
+            instance_dic = {}
+            for instance in instances:
+                try:instance_dic[instance[AqotecMetaV2.NAME_NAME].split("R")[1]] = instance
+                except:continue
+            metas = {}
+            for asset in asset_meta:
+                metas[asset[AqotecMetaV2.NAME_DP]] = asset
+            # ------------  database -----------
+            if notes_times[idx_sinc][AqotecMetaV2.NAME_NAME] == AqotecMetaV2.NAME_DEVAULT_DATABASE:
+                database_use = AqotecMetaV2.DATABASE_NOTES_DEVAULT
+            else:
+                database_use = AqotecMetaV2.DATABASE_NOTES%(notes_times[idx_sinc][AqotecMetaV2.NAME_NAME])
+            # --------     get new meta from notes    ----------
+            self.connectToDb()
+            cursor = self.conn.cursor()
+            if len(metas) != 0:
+                cursor.execute(AqotecMetaV2.QUREY_USE%(database_use))
+                cursor.execute(AqotecMetaV2.QUERY_NOTES%(self._getDatetimeToSqlStrTuble(sinc_time_meta)))
+                data_raw = [row for row in cursor.fetchall()]
+                try:
+                    for dat in data_raw:
+                        if str(dat[4]) not in instance_dic: continue
+                        if not dat[7] or dat[7] == "":continue
+                        if dat[7] in metas:
+                            self._patchStationMetaFromValue(value=dat[10],instance_id=instance_dic[str(dat[4])][AqotecMetaV2.NAME__ID],driver_infos=metas[dat[7]])
+                            sinc_time_meta = dat[1]
+                except:
+                    self.labled_nao.updateNoteTimeMetaByName(time=sinc_time_meta,name=sinc_name_meta)
+                    raise(KeyError("can't send notes to nao"))
+                self.labled_nao.updateNoteTimeMetaByName(time=sinc_time_meta,name=sinc_name_meta)
+            # --------     get new notes    ----------
+            if len(instance_dic) != 0:
+                cursor = self.conn.cursor()
+                try:
+                    cursor.execute(AqotecMetaV2.QUREY_USE%(database_use))
+                    cursor.execute(AqotecMetaV2.QUERY_NOTES%(self._getDatetimeToSqlStrTuble(sinc_time)))
+                except:
+                    continue
+                data_raw = [row for row in cursor.fetchall()]
+                for dat in data_raw:
+                    if str(dat[4]) not in instance_dic: continue
+                    if not dat[7] or dat[7] == "":continue
+                    if dat[16]:unit=dat[16]
+                    else:unit=""
+                    text =  AqotecMetaV2.NOTE_TEXT%(dat[7],dat[9],unit,dat[10],unit,dat[15])
+                    note_payload = self.getNoteSchema(
+                        note=text,
+                        user=self.user_id_nao,
+                        start=str(dat[1]),
+                        stop=str(dat[1]),
+                        created=str(dat[1]),
+                        instance_id=instance_dic[str(dat[4])][AqotecMetaV2.NAME__ID]
+                    )
+                    try:
+                        ret = self.nao.pushNote(asset_id=instance_dic[str(dat[4])][AqotecMetaV2.NAME_ASSET_ID],data_note=note_payload)         
+                        print("post_notes")
+                    except:
+                        self.labled_nao.updateNoteTimeByName(time=sinc_time,name=sinc_name)
+                        raise(KeyError("can't send notes to nao"))
+                    sinc_time = dat[1]
+                    print(1)
                 self.labled_nao.updateNoteTimeByName(time=sinc_time,name=sinc_name)
-                raise(KeyError("can't send notes to nao"))
-            sinc_time = dat[1]
-            print(1)
-        self.labled_nao.updateNoteTimeByName(time=sinc_time,name=sinc_name)
-        cursor.close()
-        self.disconnetToDb()
+            cursor.close()
+            self.disconnetToDb()
 
     def patchLastDataPointMeta(self):
         self.connectToDb()

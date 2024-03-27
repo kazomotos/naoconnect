@@ -15,6 +15,7 @@ class Par():
     NAME_DRIVER_SUBZ_WMZ = "driver_wmz_subz"
     NAME_DRIVER_ASSET_LAST_VALUE_META = "driver_asset_last_value_as_meta"
     NAME_DRIVER_ASSET_NOTES_META = "driver_assst_notes_meta"
+    NAME_DRIVER_NETWORK = "driver_network"
     NAME_DP_NAME = "name_dp"
     NAME_NOTES = "notes"
     NAME_DP = "dp"
@@ -51,6 +52,7 @@ class Par():
     NAME_FILE_NAMES = "file_names"
     NAME_COUNT_INSTANCE = "count_instance"
     NAME_COUNT = "count"
+    DEVAULT_TIME_FIRST_NODE = "2014-03-24 14:33:07"
 
 class Driver(Par):
 
@@ -78,6 +80,9 @@ class Driver(Par):
 
     def ceckDriverWMZfromSub(self, name_dp, dp):
         return(self._ceckDriver(Driver.NAME_DRIVER_SUBZ_WMZ,name_dp,dp))
+
+    def ceckDriverNetwork(self, name_dp, dp):
+        return(self._ceckDriver(Driver.NAME_DRIVER_NETWORK,name_dp,dp))
 
     def getAssetMeta(self):
         table = self.db.table(Driver.NAME_DRIVER_ASSET_META)
@@ -256,10 +261,14 @@ class LablingNao(Par):
         if len(res)>0:return(res[0][LablingNao.NAME__ID])
         else:return(None)
 
-    def getInstances(self,database=None):
+    def getInstances(self,database=None,workspace_id=None):
         table = self.db.table(LablingNao.NAME_TABLE_INSTANCE)
         if database: 
             ret = table.search(Query().database==database)
+            table.clear_cache()
+            return(ret)
+        elif workspace_id: 
+            ret = table.search(Query()._workspace==workspace_id)
             table.clear_cache()
             return(ret)
         else: 
@@ -286,7 +295,13 @@ class LablingNao(Par):
         ret = table.search((Query().instance_id==instance_id)&(Query().dp_pos==dp_pos)&(Query().dp==name_dp))
         table.clear_cache()
         return(ret)
-    
+
+    def getWorkspaceMetaAll(self):
+        table = self.db.table(LablingNao.NAME_TABLE_WORKSPACE)
+        ret = table.all()
+        table.clear_cache()
+        return(ret)    
+
     def getInstanceMetaAll(self):
         table = self.db.table(LablingNao.NAME_TABLE_META_INSTANCE)
         ret = table.all()
@@ -323,6 +338,17 @@ class LablingNao(Par):
     def updateNoteTimeMetaByName(self,time,name):
         table = self.db.table(LablingNao.NAME_NOTES)
         table.update({LablingNao.NAME_TIME_SYNCRONICZIED_META:str(time)}, (Query().name==name))
+        table.clear_cache()
+
+    def putEmptyNode(self, name, times=None):
+        if not times:
+            times = LablingNao.DEVAULT_TIME_FIRST_NODE
+        table = self.db.table(LablingNao.NAME_NOTES)
+        table.insert({
+            LablingNao.NAME_NAME:name,
+            LablingNao.NAME_TIME_SYNCRONICZIED:times,
+            LablingNao.NAME_TIME_SYNCRONICZIED_META:times 
+        })
         table.clear_cache()
 
 class SyncronizationStatus(Par):
