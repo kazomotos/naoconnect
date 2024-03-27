@@ -614,8 +614,16 @@ class AqotecMetaV2(AqotecConnectorV2):
             )
             meta = self.labled_nao.getInstanceMetaByAttributeInstance(instance_id,driver_infos[AqotecMetaV2.NAME_META_ID_DB])
         # ceck if meta has chanced
-        if meta[0][AqotecMetaV2.NAME_TYPE] == AqotecMetaV2.NAME_NUMBER: dat = float(value.replace(",","."))
-        elif meta[0][AqotecMetaV2.NAME_TYPE] == AqotecMetaV2.NAME_INTEGER: dat = int(value.replace(",", "."))
+        if meta[0][AqotecMetaV2.NAME_TYPE] == AqotecMetaV2.NAME_NUMBER:
+            if isinstance(value, (float,int)):
+                dat = float(dat)
+            else:
+                dat = float(value.replace(",","."))
+        elif meta[0][AqotecMetaV2.NAME_TYPE] == AqotecMetaV2.NAME_INTEGER: 
+            if isinstance(value, (float,int)):
+                dat = int(value)
+            else:
+                dat = int(value.replace(",", "."))
         else: dat = str(value)
         if meta[0][AqotecMetaV2.NAME_VALUE]!=dat:
             # patch meta data
