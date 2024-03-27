@@ -440,14 +440,6 @@ class AqotecMetaV2(AqotecConnectorV2):
             AqotecMetaV2.NOTE_STOP : stop
         })
 
-    # "notes": {
-    #     "1": {
-    #         "name": "Daten",
-    #         "time_sincronizied": "2024-03-26 09:16:11",
-    #         "time_sincronizied_meta": "2024-03-24 14:33:07"
-    #     }
-    # },
-
     def patchNotesMeta(self, check_worcspace=False):
         # get user if undefined
         if not self.user_id_nao: self.user_id_nao = self.nao.getUserId()
