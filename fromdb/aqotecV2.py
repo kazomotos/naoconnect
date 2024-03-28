@@ -398,6 +398,8 @@ class AqotecMetaV2(AqotecConnectorV2):
         if len(asset_meta) > 0:
             name_db = ""
             for instance in instances:
+                if AqotecMetaV2.INSTANCE_NAME_ADDITIVE_SUBZ in instance[AqotecMetaV2.NAME_NAME]: continue
+                if not asset_meta.get(instance[AqotecMetaV2.NAME_ASSET_ID]): continue
                 try: 
                     if instance[AqotecMetaV2.NAME_DATABASE]!=name_db:cursor.execute(AqotecMetaV2.QUREY_USE%(
                         instance[AqotecMetaV2.NAME_DATABASE].split(AqotecMetaV2.NAME_DATABASE_END_DATA)[0]+AqotecMetaV2.NAME_DATABASE_END_CUSTOMER
@@ -413,6 +415,7 @@ class AqotecMetaV2(AqotecConnectorV2):
             for instance in instances:
                 # not for subz
                 if AqotecMetaV2.INSTANCE_NAME_ADDITIVE_SUBZ in instance[AqotecMetaV2.NAME_NAME]: continue
+                if not asset_meta.get(instance[AqotecMetaV2.NAME_ASSET_ID]): continue
                 try: 
                     if instance[AqotecMetaV2.NAME_DATABASE]!=name_db:
                         cursor.execute(AqotecMetaV2.QUREY_USE%(
