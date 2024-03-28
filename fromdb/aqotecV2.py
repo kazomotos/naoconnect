@@ -395,36 +395,38 @@ class AqotecMetaV2(AqotecConnectorV2):
         instances = self.labled_nao.getInstances()
         # -------------- Stationsdaten --------------
         asset_meta, pos_dp = self._getAssetMetaQuery(number=2)
-        name_db = ""
-        for instance in instances:
-            try: 
-                if instance[AqotecMetaV2.NAME_DATABASE]!=name_db:cursor.execute(AqotecMetaV2.QUREY_USE%(
-                    instance[AqotecMetaV2.NAME_DATABASE].split(AqotecMetaV2.NAME_DATABASE_END_DATA)[0]+AqotecMetaV2.NAME_DATABASE_END_CUSTOMER
-                ))
-            except: continue
-            cursor.execute(AqotecMetaV2.QUERY_META_CUSTOMER_SELECT_2%(asset_meta[instance[AqotecMetaV2.NAME_ASSET_ID]][:-1],instance[AqotecMetaV2.NAME_NAME].split("R")[-1]))
-            data = cursor.fetchall()
-            if len(data)>0:self._patchStationMeta(data[0],instance, pos_dp, asset_meta[instance[AqotecMetaV2.NAME_ASSET_ID]].split(","), number=2)
-        # -------------- Kundendaten --------------
-        asset_meta, pos_dp = self._getAssetMetaQuery()
-        name_db = ""
-        for instance in instances:
-            # not for subz
-            if AqotecMetaV2.INSTANCE_NAME_ADDITIVE_SUBZ in instance[AqotecMetaV2.NAME_NAME]: continue
-            try: 
-                if instance[AqotecMetaV2.NAME_DATABASE]!=name_db:
-                    cursor.execute(AqotecMetaV2.QUREY_USE%(
+        if len(asset_meta) > 0:
+            name_db = ""
+            for instance in instances:
+                try: 
+                    if instance[AqotecMetaV2.NAME_DATABASE]!=name_db:cursor.execute(AqotecMetaV2.QUREY_USE%(
                         instance[AqotecMetaV2.NAME_DATABASE].split(AqotecMetaV2.NAME_DATABASE_END_DATA)[0]+AqotecMetaV2.NAME_DATABASE_END_CUSTOMER
                     ))
-                    name_db = instance[AqotecMetaV2.NAME_DATABASE]
-            except: continue
-            cursor.execute(AqotecMetaV2.QUERY_META_CUSTOMER_SELECT%(asset_meta[instance[AqotecMetaV2.NAME_ASSET_ID]][:-1],instance[AqotecMetaV2.NAME_NAME].split("R")[-1]))
-            data = cursor.fetchall()
-            if len(data)>0:self._patchStationMeta(data[0],instance, pos_dp, asset_meta[instance[AqotecMetaV2.NAME_ASSET_ID]].split(","), number=1)
-        cursor = self.conn.cursor()
+                except: continue
+                cursor.execute(AqotecMetaV2.QUERY_META_CUSTOMER_SELECT_2%(asset_meta[instance[AqotecMetaV2.NAME_ASSET_ID]][:-1],instance[AqotecMetaV2.NAME_NAME].split("R")[-1]))
+                data = cursor.fetchall()
+                if len(data)>0:self._patchStationMeta(data[0],instance, pos_dp, asset_meta[instance[AqotecMetaV2.NAME_ASSET_ID]].split(","), number=2)
+        # -------------- Kundendaten --------------
+        asset_meta, pos_dp = self._getAssetMetaQuery()
+        if len(asset_meta) > 0:
+            name_db = ""
+            for instance in instances:
+                # not for subz
+                if AqotecMetaV2.INSTANCE_NAME_ADDITIVE_SUBZ in instance[AqotecMetaV2.NAME_NAME]: continue
+                try: 
+                    if instance[AqotecMetaV2.NAME_DATABASE]!=name_db:
+                        cursor.execute(AqotecMetaV2.QUREY_USE%(
+                            instance[AqotecMetaV2.NAME_DATABASE].split(AqotecMetaV2.NAME_DATABASE_END_DATA)[0]+AqotecMetaV2.NAME_DATABASE_END_CUSTOMER
+                        ))
+                        name_db = instance[AqotecMetaV2.NAME_DATABASE]
+                except: continue
+                cursor.execute(AqotecMetaV2.QUERY_META_CUSTOMER_SELECT%(asset_meta[instance[AqotecMetaV2.NAME_ASSET_ID]][:-1],instance[AqotecMetaV2.NAME_NAME].split("R")[-1]))
+                data = cursor.fetchall()
+                if len(data)>0:self._patchStationMeta(data[0],instance, pos_dp, asset_meta[instance[AqotecMetaV2.NAME_ASSET_ID]].split(","), number=1)
+            cursor = self.conn.cursor()
 
-        cursor.close()
-        self.disconnetToDb()
+            cursor.close()
+            self.disconnetToDb()
 
     def _getDatetimeToSqlStrTuble(self, time:datetime):
         return(str((time.year,time.month,time.day,time.hour,time.minute,time.second,0,0)))
