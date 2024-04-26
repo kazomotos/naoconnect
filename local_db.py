@@ -57,7 +57,7 @@ class Par():
 class Driver(Par):
 
     def __init__(self, database_name=path.dirname(path.abspath(__file__))+"/driver.json") -> None:
-        self.db = TinyDB(database_name)
+        self.db = TinyDB(database_name, encoding='utf-8')
 
     def _ceckDriver(self, table_name, name_dp, dp):
         table = self.db.table(table_name)
@@ -129,7 +129,7 @@ class Driver(Par):
 class StationDatapoints(Par):
     
     def __init__(self, database_name=path.dirname(path.abspath(__file__))+"/station_points.json") -> None:
-        self.db = TinyDB(database_name)
+        self.db = TinyDB(database_name, encoding='utf-8')
 
     def ceckPoints(self, database, table_name, dp):
         table = self.db.table(database)
@@ -190,7 +190,7 @@ class StationDatapoints(Par):
 class LablingNao(Par):
 
     def __init__(self, database_name=path.dirname(path.abspath(__file__))+"/labling_nao.json") -> None:
-        self.db = TinyDB(database_name)
+        self.db = TinyDB(database_name, encoding='utf-8')
 
     def ceckWorkspace(self, workspace) -> Union[str, None]:
         table = self.db.table(LablingNao.NAME_TABLE_WORKSPACE)
@@ -354,7 +354,7 @@ class LablingNao(Par):
 class SyncronizationStatus(Par):
 
     def __init__(self, database_name=path.dirname(path.abspath(__file__))+"/syncronizied_status.json") -> None:
-        self.db = TinyDB(database_name)
+        self.db = TinyDB(database_name, encoding='utf-8')
 
     def getSyncStatusAll(self):
         tables = self.db.tables()
