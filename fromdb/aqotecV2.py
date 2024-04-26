@@ -612,15 +612,21 @@ class AqotecMetaV2(AqotecConnectorV2):
             meta = self.labled_nao.getInstanceMetaByAttributeInstance(instance_id,driver_infos[AqotecMetaV2.NAME_META_ID_DB])
         # ceck if meta has chanced
         if meta[0][AqotecMetaV2.NAME_TYPE] == AqotecMetaV2.NAME_NUMBER:
-            if isinstance(value, (float,int)):
-                dat = float(dat)
-            else:
-                dat = float(value.replace(",","."))
+            try:
+                if isinstance(value, (float,int)):
+                    dat = float(dat)
+                else:
+                    dat = float(value.replace(",","."))
+            except:
+                dat = None
         elif meta[0][AqotecMetaV2.NAME_TYPE] == AqotecMetaV2.NAME_INTEGER: 
-            if isinstance(value, (float,int)):
-                dat = int(value)
-            else:
-                dat = int(value.replace(",", "."))
+            try:
+                if isinstance(value, (float,int)):
+                    dat = int(value)
+                else:
+                    dat = int(value.replace(",", "."))
+            except:
+                dat = None
         else: dat = str(value)
         if meta[0][AqotecMetaV2.NAME_VALUE]!=dat:
             # patch meta data
@@ -672,8 +678,16 @@ class AqotecMetaV2(AqotecConnectorV2):
                 instance_infos = self.nao.getInstanceInfos(instance[AqotecMetaV2.NAME__ID])
                 self._saveInitialMetaData(instance_infos[AqotecMetaV2.NAME_META_VALUES], instance[AqotecMetaV2.NAME__ID],name_dp[idx],number)
                 meta = self.labled_nao.getInstanceMetaByPosInstance(instance[AqotecMetaV2.NAME__ID],pos_meta[idx],name_dp[idx])
-            if meta[0][AqotecMetaV2.NAME_TYPE] == AqotecMetaV2.NAME_NUMBER: dat = float(data[idx])
-            elif meta[0][AqotecMetaV2.NAME_TYPE] == AqotecMetaV2.NAME_INTEGER: dat = int(data[idx])
+            if meta[0][AqotecMetaV2.NAME_TYPE] == AqotecMetaV2.NAME_NUMBER:
+                try:
+                    dat = float(data[idx])
+                except:
+                    dat = None
+            elif meta[0][AqotecMetaV2.NAME_TYPE] == AqotecMetaV2.NAME_INTEGER: 
+                try:
+                    dat = int(data[idx])
+                except:
+                    dat = None
             else: dat = str(data[idx])
             if meta[0][AqotecMetaV2.NAME_VALUE]!=dat:
                 self.nao.patchInstanceMeta(meta[0][AqotecMetaV2.NAME_DB_INSTANCE_ID],meta[0][AqotecMetaV2.NAME_ID],dat)
