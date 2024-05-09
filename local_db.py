@@ -3,6 +3,7 @@ from os import path
 from datetime import datetime
 from typing import Union
 from time import sleep
+import json
 from datetime import datetime
 
 class Par():
@@ -354,6 +355,7 @@ class LablingNao(Par):
 class SyncronizationStatus(Par):
 
     def __init__(self, database_name=path.dirname(path.abspath(__file__))+"/syncronizied_status.json") -> None:
+        self.database_name = database_name
         self.db = TinyDB(database_name, encoding='utf-8')
 
     def getSyncStatusAll(self):
@@ -387,6 +389,18 @@ class SyncronizationStatus(Par):
         if timestamp: table.update({SyncronizationStatus.NAME_TIME_SYNCRONICZIED:str(timestamp)},Query().table==table_db)
         table.clear_cache()
 
+    def patchSincStatusManyMany(self,database,data,isunsinc=False):
+        if isunsinc:time_col=SyncronizationStatus.NAME_TIME_UNSYCRONICIZIED
+        else:time_col=SyncronizationStatus.NAME_TIME_SYNCRONICZIED
+        tables = list(data.keys())
+        with open(self.database_name, 'r') as f:
+            data_all = json.loads(f.read())
+        for idx in data_all[database]:
+            if data_all[database][idx][SyncronizationStatus.NAME_TABLE] in tables:
+                data_all[database][idx][time_col] = str(data[data_all[database][idx][SyncronizationStatus.NAME_TABLE]])
+        with open(self.database_name, 'w') as f:
+            f.write(json.dumps(data_all))
+
     def patchSincStatus(self,database,table_db,timestamp:datetime,isunsinc=False):
         table = self.db.table(database)
         if isunsinc:time_col=SyncronizationStatus.NAME_TIME_UNSYCRONICIZIED
@@ -394,7 +408,7 @@ class SyncronizationStatus(Par):
         table.update({time_col:str(timestamp)},Query().table==table_db)
         table.clear_cache()
         sleep(0.02)
-    
+
     def dropUnSincDps(self,database,table_dp):
         table = self.db.table(database)
         table.update({

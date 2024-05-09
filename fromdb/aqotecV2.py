@@ -95,6 +95,7 @@ class AqotecParams():
     DEFAULT_BREAK_TELEGRAF_LEN = 50000
     DEFAULT_MAX_TIMERANGE = timedelta(hours=24*5)
     DEFAULT_CHECK_ARCHIVE_TIMERANGE = timedelta(days=30)
+    DEFAULT_TRANSFER_TIME_AQOTEC = 120
     DEFAULT_AQOTEC_TIMEZONE = 'Europe/Berlin'
     DEFAULT_TRASFER_SLEEPER_SECOND = 60*2
     DEFAULT_ERROR_SLEEP_SECOND = 300
@@ -727,30 +728,39 @@ class AqotecTransferV2(AqotecConnectorV2):
         self.status = self.getSyncStatus()
         self.nao = NaoApp
         self.new_status = {}
+        self.status_count = {}
 
-    def startSyncronization(self, logfile=None):
+    def startSyncronization(self, logfile=None, sleep_data_len=1):
         count = 0
         is_sinct = False
+        sinc_timer = time()
         while 1==1:
             try:
                 if datetime.now().hour >= 23:
+                    self.setSyncStatus()
+                    self.status=self.getSyncStatus()
                     break
                 start_time = time()
-                data_telegraf = self.getTelegrafData()
+                data_telegraf, sinc_reset = self.getTelegrafData()
                 if len(data_telegraf)>0:ret=self.nao.sendTelegrafData(data_telegraf)
                 else:ret=AqotecTransferV2.STATUS_CODE_GOOD
                 if ret==AqotecTransferV2.STATUS_CODE_GOOD:
                     print(len(data_telegraf), " data posted; sec:",time()-start_time, datetime.now())
                     start_time = time()
                     count+=len(data_telegraf)
-                    self.setSyncStatus()
-                    self.status=self.getSyncStatus()
+                    if sinc_reset or time()-sinc_timer:
+                        sinc_timer = time()
+                        self.setSyncStatus()
+                        self.status=self.getSyncStatus()
                     if is_sinct:
                         sleep(AqotecTransferV2.DEFAULT_TRASFER_SLEEPER_SECOND)
-                    elif len(data_telegraf)<1:
+                    elif len(data_telegraf)<sleep_data_len:                        
+                        self.setSyncStatus()
+                        self.status=self.getSyncStatus()
                         is_sinct = True
                         sleep(AqotecTransferV2.DEFAULT_TRASFER_SLEEPER_SECOND)
-                else:sleep(AqotecTransferV2.DEFAULT_ERROR_SLEEP_SECOND)
+                else:
+                    sleep(AqotecTransferV2.DEFAULT_ERROR_SLEEP_SECOND)
             except:
                 if logfile: logfile(str(sys.exc_info()))
                 sleep(AqotecTransferV2.DEFAULT_ERROR_SLEEP_SECOND)
@@ -758,11 +768,20 @@ class AqotecTransferV2(AqotecConnectorV2):
 
     def setSyncStatus(self):
         for database in self.new_status:
-            for table_db in self.new_status[database]:
-                if self.new_status[database][table_db].get(AqotecTransferV2.NAME_TIME_UNSYCRONICIZIED):
-                    self.sync_status.patchSincStatus(database,table_db,self.new_status[database][table_db][AqotecTransferV2.NAME_TIME_UNSYCRONICIZIED],True)
-                if self.new_status[database][table_db].get(AqotecTransferV2.NAME_TIME_SYNCRONICZIED):
-                    self.sync_status.patchSincStatus(database,table_db,self.new_status[database][table_db][AqotecTransferV2.NAME_TIME_SYNCRONICZIED],False)
+            if len(self.new_status[database])<100:
+                for table_db in self.new_status[database]:
+                    if self.new_status[database][table_db].get(AqotecTransferV2.NAME_TIME_UNSYCRONICIZIED):
+                        self.sync_status.patchSincStatus(database,table_db,self.new_status[database][table_db][AqotecTransferV2.NAME_TIME_UNSYCRONICIZIED],True)
+                    if self.new_status[database][table_db].get(AqotecTransferV2.NAME_TIME_SYNCRONICZIED):
+                        self.sync_status.patchSincStatus(database,table_db,self.new_status[database][table_db][AqotecTransferV2.NAME_TIME_SYNCRONICZIED],False)
+            else:
+                sincron_time = {}
+                for table_db in self.new_status[database]:
+                    if self.new_status[database][table_db].get(AqotecTransferV2.NAME_TIME_UNSYCRONICIZIED):
+                        self.sync_status.patchSincStatus(database,table_db,self.new_status[database][table_db][AqotecTransferV2.NAME_TIME_UNSYCRONICIZIED],True)
+                    if self.new_status[database][table_db].get(AqotecTransferV2.NAME_TIME_SYNCRONICZIED):
+                        sincron_time[table_db] = self.new_status[database][table_db][AqotecTransferV2.NAME_TIME_SYNCRONICZIED]
+                self.sync_status.patchSincStatusManyMany(database=database,data=sincron_time,isunsinc=False)
         self.new_status = {}
 
     def getSyncStatus(self):
@@ -806,29 +825,39 @@ class AqotecTransferV2(AqotecConnectorV2):
         return(status)
 
     def getTelegrafData(self):
-        self.connectToDb()
-        cursor = self.conn.cursor()
-        breaker = False
-        telegraf = []
-        ext_telegraf = telegraf.extend
-        for database in self.status:
-            for status_instance in self.status[database]:
-                if status_instance["time_sincronizied"]!=None:
-                    if "WMZ" in status_instance[AqotecTransferV2.NAME_TABLE]:
-                        if  pytz.timezone(AqotecTransferV2.DEFAULT_AQOTEC_TIMEZONE).localize(datetime.fromisoformat(status_instance["time_sincronizied"])).astimezone(pytz.utc).replace(tzinfo=None) > datetime.utcnow()-timedelta(hours=26):
-                            continue
-                    else:
-                        if  pytz.timezone(AqotecTransferV2.DEFAULT_AQOTEC_TIMEZONE).localize(datetime.fromisoformat(status_instance["time_sincronizied"])).astimezone(pytz.utc).replace(tzinfo=None) > datetime.utcnow()-timedelta(minutes=120):
-                            continue
-                ext_telegraf(self._getTelegrafDataInstance(status_instance,database, cursor))
-                if len(telegraf)>=AqotecTransferV2.DEFAULT_BREAK_TELEGRAF_LEN:
-                    breaker=True
+        try:
+            self.connectToDb()
+            cursor = self.conn.cursor()
+            breaker = False
+            all_data = False
+            telegraf = []
+            ext_telegraf = telegraf.extend
+            for database in self.status:
+                if database not in self.status_count:
+                    self.status_count[database] = 0
+                if self.status_count[database] >= len(self.status[database]):
+                    all_data = True
+                    self.status_count[database] = 0
+                count_add = 0
+                for idc in range(len(self.status[database])-self.status_count[database]):
+                    status_instance = self.status[database][idc+self.status_count[database]]
+                    count_add += 1
+                    if status_instance["time_sincronizied"]!=None:
+                        if "WMZ" in status_instance[AqotecTransferV2.NAME_TABLE]:
+                            if  pytz.timezone(AqotecTransferV2.DEFAULT_AQOTEC_TIMEZONE).localize(datetime.fromisoformat(status_instance["time_sincronizied"])).astimezone(pytz.utc).replace(tzinfo=None) > datetime.utcnow()-timedelta(hours=26):
+                                continue
+                    ext_telegraf(self._getTelegrafDataInstance(status_instance,database, cursor))
+                    if len(telegraf)>=AqotecTransferV2.DEFAULT_BREAK_TELEGRAF_LEN:
+                        breaker=True
+                        break
+                self.status_count[database] += count_add
+                if breaker:
                     break
-            if breaker:
-                break
-        cursor.close()
-        self.disconnetToDb()
-        return(telegraf)
+            cursor.close()
+            self.disconnetToDb()
+            return(telegraf, all_data)
+        except: 
+            raise(ValueError("getTelegrafData"))
     
     def _getTelegrafDataInstance(self,status_instance:dict,database:str,cursor:pyodbc.Cursor):
         if len(status_instance[AqotecTransferV2.NAME_UNSYCRONICIZIED])!=0:
@@ -839,13 +868,16 @@ class AqotecTransferV2(AqotecConnectorV2):
     def _getTelegrafDataInstance2(self,status_instance:dict,database:str,cursor:pyodbc.Cursor, name_time:str, name_sync:str):
         if status_instance[name_time]: start_time=datetime.fromisoformat(status_instance[name_time])
         else: 
-            try:start_time=self._getFirstStartTime(database,status_instance[AqotecTransferV2.NAME_TABLE],cursor)
+            try:
+                start_time=self._getFirstStartTime(database,status_instance[AqotecTransferV2.NAME_TABLE],cursor)
             except:return([])
         if name_time==AqotecTransferV2.NAME_TIME_UNSYCRONICIZIED:
             stop_time=self._getStopTime(start_time,datetime.fromisoformat(status_instance[AqotecTransferV2.NAME_TIME_SYNCRONICZIED])+timedelta(hours=1))
         else:stop_time = self._getStopTime(start_time,None)
         try:database_to_use=self._ifArchiveDatabase(database,start_time,status_instance[AqotecTransferV2.NAME_TABLE],cursor)
         except:return([])
+        if (stop_time-start_time) < timedelta(seconds=AqotecTransferV2.DEFAULT_TRANSFER_TIME_AQOTEC):
+            return([])
         timeseries=self._getTimeseries(
             database=database_to_use,
             table=status_instance[AqotecTransferV2.NAME_TABLE],
@@ -913,7 +945,7 @@ class AqotecTransferV2(AqotecConnectorV2):
         return(timeseries)
 
     def _getStopTime(self,start_time:datetime,max_time:datetime=None) -> datetime:
-        if max_time==None: max_time=datetime.now()
+        if max_time==None: max_time=datetime.now()+timedelta(hours=2)
         if start_time+AqotecTransferV2.DEFAULT_MAX_TIMERANGE>max_time:return(max_time)
         else:return(start_time+AqotecTransferV2.DEFAULT_MAX_TIMERANGE)
 
