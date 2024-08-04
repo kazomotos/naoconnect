@@ -7,6 +7,10 @@ import json
 from datetime import datetime
 
 class Par():
+    NAME_DRIVER_CSV_UG06 = "driver_ug6_csv"
+    NAME_DRIVER_CSV_UG08 = "driver_ug8_csv"
+    NAME_DRIVER_CSV_UG10 = "driver_ug10_csv"
+    NAME_DRIVER_CSV_UG12 = "driver_ug12_csv"
     NAME_DRIVER_UG07 = "driver_ug07"
     NAME_DRIVER_RM360 = "driver_rm360"
     NAME_DRIVER_STATION_WMZ = "driver_wmz_station"
@@ -66,6 +70,18 @@ class Driver(Par):
         table.clear_cache()
         if res != []: res = res[0]
         return(res)
+
+    def ceckDriverCsvUG06(self, name_dp, dp):
+        return(self._ceckDriver(Driver.NAME_DRIVER_CSV_UG06,name_dp,dp))
+
+    def ceckDriverCsvUG08(self, name_dp, dp):
+        return(self._ceckDriver(Driver.NAME_DRIVER_CSV_UG08,name_dp,dp))
+
+    def ceckDriverCsvUG10(self, name_dp, dp):
+        return(self._ceckDriver(Driver.NAME_DRIVER_CSV_UG10,name_dp,dp))
+
+    def ceckDriverCsvUG12(self, name_dp, dp):
+        return(self._ceckDriver(Driver.NAME_DRIVER_CSV_UG12,name_dp,dp))
 
     def ceckDriverUG07(self, name_dp, dp):
         return(self._ceckDriver(Driver.NAME_DRIVER_UG07,name_dp,dp))
