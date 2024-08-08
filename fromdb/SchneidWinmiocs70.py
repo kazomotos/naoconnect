@@ -12,6 +12,7 @@ import re
 import pytz
 from os import path, listdir
 from io import StringIO
+from numpy import isnan
 
 ''' DOC
 
@@ -25,6 +26,7 @@ from io import StringIO
 '''
 
 class SchneidParamWinmiocs70():
+    STATUS_CODE_GOOD = 204
     HAST_FILE_FORMAT = "_prot.csv"
     DATA_FILE_FORMAT = "prot"
     NAME_UG06_CSV = "UG06"
@@ -76,6 +78,17 @@ class SchneidParamWinmiocs70():
     NAME_DB_INSTANCE_ID = "instance_id"
     NAME_META_ID_DB = "meta_id"
     NAME_SENSOR_ID = "sensor_id"
+    NAME_SYNCRONICZIED = "syncronizied"
+    NAME_UNSYCRONICIZIED = "unsyncronizied"
+    NAME_TIME_SYNCRONICZIED_META = "time_sincronizied_meta"
+    NAME_TIME_SYNCRONICZIED = "time_sincronizied"
+    NAME_TIME_UNSYCRONICIZIED = "time_unsyncronizied"
+    DEFAULT_TRANSFER_TIME_SCHNEID = 120
+    DEFAULT_SCHNEID_TIMEZONE = 'Europe/Berlin'
+    DEFAULT_TRASFER_SLEEPER_SECOND = 60*2
+    DEFAULT_ERROR_SLEEP_SECOND = 300
+    DEFAULT_BREAK_TELEGRAF_LEN = 50000
+    DEFAULT_FIRST_TIME_SCHNEID = datetime(2014,1,1)
 
 class AqotecParams():
     NAME_ENDING_TABLE_ROW_META = "_b"
@@ -224,7 +237,6 @@ class SchneidCsvWinmiocs70(SchneidParamWinmiocs70):
         self.files_infos = {}
         if self.file_path: 
             self.restetFiles()
-            self.setFileInfos()
 
     def setFilesFromDirectory(self) -> None:
         if self.file_path: self.files:list = listdir(self.file_path)
@@ -248,6 +260,7 @@ class SchneidCsvWinmiocs70(SchneidParamWinmiocs70):
     def restetFiles(self) -> None:
         self.setFilesFromDirectory()
         self.setHastFiles()
+        self.setFileInfos()
 
     def getFileHeader(self, file_name: str) -> dict:
         with open(self.file_path+"/"+file_name, mode='r', newline='', encoding=SchneidCsvWinmiocs70.CSV_ENCODING) as file:
@@ -687,7 +700,7 @@ class SchneidMeta(SchneidParamWinmiocs70):
             for dat in data[database]:
                 self.sync_status.postUnsyncroniziedValue(
                     database=database, 
-                    table_db=dat[SchneidMeta.NAME_TABLE][:-2], 
+                    table_db=dat[SchneidMeta.NAME_TABLE], 
                     value=[{dat[SchneidMeta.NAME_DP]:dat[SchneidMeta.NAME_SENSOR_ID]}], 
                     asset_id=dat[SchneidMeta.NAME_DB_ASSET_ID], 
                     instance_id=dat[SchneidMeta.NAME_DB_INSTANCE_ID])
@@ -706,22 +719,24 @@ class SchneidMeta(SchneidParamWinmiocs70):
 --------------------------------------------------------------------------------------------------------------------
 '''
 
-class SchneidTransferCsv():
+class SchneidTransferCsv(SchneidParamWinmiocs70):
 
-    def __init__(self, SyncStatus:SyncronizationStatus,NaoApp:NaoApp,SchneidCSV:SchneidCsvWinmiocs70) -> None:
+    def __init__(self,interval:timedelta,SyncStatus:SyncronizationStatus,NaoApp:NaoApp,SchneidCSV:SchneidCsvWinmiocs70) -> None:
         self.sync_status = SyncStatus
+        self.interval = interval
         self.csvs = SchneidCSV
         self.status = self.getSyncStatus()
         self.nao = NaoApp
         self.new_status = {}
         self.status_count = {}
 
-    def startSyncronization(self, logfile=None, sleep_data_len=1):
+    def startSyncronization(self, logfile=None, sleep_data_len=1, archiv_sinc=False):
         count = 0
         is_sinct = False
         sinc_timer = time()
         while 1==1:
-            try:
+            try: 
+                # TODO reset file infos on some point!!!!!! TODO
                 if datetime.now().hour >= 23:
                     self.setSyncStatus()
                     self.status=self.getSyncStatus()
@@ -738,11 +753,14 @@ class SchneidTransferCsv():
                         sinc_timer = time()
                         self.setSyncStatus()
                         self.status=self.getSyncStatus()
+                    if archiv_sinc and len(data_telegraf)==0:
+                        break
                     if is_sinct:
                         sleep(SchneidTransferCsv.DEFAULT_TRASFER_SLEEPER_SECOND)
-                    elif len(data_telegraf)<sleep_data_len:                        
+                    elif len(data_telegraf)<sleep_data_len:
+                        self.csvs.restetFiles()                       
                         self.setSyncStatus()
-                        self.status=self.getSyncStatus()
+                        self.status=self.getSyncStatus()  
                         is_sinct = True
                         sleep(SchneidTransferCsv.DEFAULT_TRASFER_SLEEPER_SECOND)
                 else:
@@ -812,8 +830,6 @@ class SchneidTransferCsv():
 
     def getTelegrafData(self):
         try:
-            self.connectToDb()
-            cursor = self.conn.cursor()
             breaker = False
             all_data = False
             telegraf = []
@@ -830,64 +846,45 @@ class SchneidTransferCsv():
                     count_add += 1
                     if status_instance["time_sincronizied"]!=None:
                         if "WMZ" in status_instance[SchneidTransferCsv.NAME_TABLE]:
-                            if  pytz.timezone(SchneidTransferCsv.DEFAULT_AQOTEC_TIMEZONE).localize(datetime.fromisoformat(status_instance["time_sincronizied"])).astimezone(pytz.utc).replace(tzinfo=None) > datetime.utcnow()-timedelta(hours=26):
+                            if  pytz.timezone(SchneidTransferCsv.DEFAULT_SCHNEID_TIMEZONE).localize(datetime.fromisoformat(status_instance["time_sincronizied"])).astimezone(pytz.utc).replace(tzinfo=None) > datetime.utcnow()-timedelta(hours=26):
                                 continue
-                    ext_telegraf(self._getTelegrafDataInstance(status_instance,database, cursor))
+                    ext_telegraf(self._getTelegrafDataInstance(status_instance,database))
                     if len(telegraf)>=SchneidTransferCsv.DEFAULT_BREAK_TELEGRAF_LEN:
                         breaker=True
                         break
                 self.status_count[database] += count_add
                 if breaker:
                     break
-            cursor.close()
-            self.disconnetToDb()
             return(telegraf, all_data)
         except: 
             raise(ValueError("getTelegrafData"))
     
-    def _getTelegrafDataInstance(self,status_instance:dict,database:str,cursor):
+    def _getTelegrafDataInstance(self,status_instance:dict,database:str):
         if len(status_instance[SchneidTransferCsv.NAME_UNSYCRONICIZIED])!=0:
-            return(self._getTelegrafDataInstance2(status_instance,database,cursor,SchneidTransferCsv.NAME_TIME_UNSYCRONICIZIED,SchneidTransferCsv.NAME_UNSYCRONICIZIED))
+            return(self._getTelegrafDataInstance2(status_instance,database,SchneidTransferCsv.NAME_TIME_UNSYCRONICIZIED,SchneidTransferCsv.NAME_UNSYCRONICIZIED))
         else:
-            return(self._getTelegrafDataInstance2(status_instance,database,cursor,SchneidTransferCsv.NAME_TIME_SYNCRONICZIED,SchneidTransferCsv.NAME_SYNCRONICZIED))
+            return(self._getTelegrafDataInstance2(status_instance,database,SchneidTransferCsv.NAME_TIME_SYNCRONICZIED,SchneidTransferCsv.NAME_SYNCRONICZIED))
         
-    def _getTelegrafDataInstance2(self,status_instance:dict,database:str,cursor, name_time:str, name_sync:str):
+    def _getTelegrafDataInstance2(self,status_instance:dict, database:str, name_time:str, name_sync:str):
         if status_instance[name_time]: start_time=datetime.fromisoformat(status_instance[name_time])
-        else: 
-            try:
-                start_time=self._getFirstStartTime(database,status_instance[SchneidTransferCsv.NAME_TABLE],cursor)
-            except:return([])
-        if name_time==SchneidTransferCsv.NAME_TIME_UNSYCRONICIZIED:
-            stop_time=self._getStopTime(start_time,datetime.fromisoformat(status_instance[SchneidTransferCsv.NAME_TIME_SYNCRONICZIED])+timedelta(hours=1))
-        else:stop_time = self._getStopTime(start_time,None)
-        try:database_to_use=self._ifArchiveDatabase(database,start_time,status_instance[SchneidTransferCsv.NAME_TABLE],cursor)
-        except:return([])
-        if (stop_time-start_time) < timedelta(seconds=SchneidTransferCsv.DEFAULT_TRANSFER_TIME_AQOTEC):
+        else: start_time = SchneidTransferCsv.DEFAULT_FIRST_TIME_SCHNEID
+        if name_time == SchneidTransferCsv.NAME_TIME_UNSYCRONICIZIED:
+            if status_instance[SchneidTransferCsv.NAME_TIME_SYNCRONICZIED]: stop_time = status_instance[SchneidTransferCsv.NAME_TIME_SYNCRONICZIED]
+            else: stop_time = self.csvs.files_infos[status_instance[SchneidTransferCsv.NAME_TABLE]][SchneidTransferCsv.DICTNAME_LAST_WRITE_TIME]
+        else: stop_time = self.csvs.files_infos[status_instance[SchneidTransferCsv.NAME_TABLE]][SchneidTransferCsv.DICTNAME_LAST_WRITE_TIME]
+        if (stop_time-start_time) < timedelta(seconds=SchneidTransferCsv.DEFAULT_TRANSFER_TIME_SCHNEID):
             return([])
         timeseries=self._getTimeseries(
-            database=database_to_use,
+            database=database,
             table=status_instance[SchneidTransferCsv.NAME_TABLE],
-            data_points=[dp for item in status_instance[name_sync] for dp in item.keys()],
+            data_points=[int(dp) for item in status_instance[name_sync] for dp in item.keys()],
             start_time=start_time,
             stop_time=stop_time,
-            cursor=cursor
         )
-        if timeseries==-1:
-            database_to_use=database
-            timeseries=[]
-        if len(timeseries)==0:
-            timeseries=self._getTimeseriesMeasureGaps(
-                database=database_to_use,
-                table=status_instance[SchneidTransferCsv.NAME_TABLE],
-                data_points=[dp for item in status_instance[name_sync] for dp in item.keys()],
-                start_time=start_time,
-                stop_time=stop_time,
-                cursor=cursor
-            )
         if len(timeseries)==0:return([])
         if database not in self.new_status:self.new_status[database]={}
         if status_instance[SchneidTransferCsv.NAME_TABLE] not in self.new_status[database]:self.new_status[database][status_instance[SchneidTransferCsv.NAME_TABLE]]={}
-        self.new_status[database][status_instance[SchneidTransferCsv.NAME_TABLE]][name_time]=timeseries[0][-1]
+        self.new_status[database][status_instance[SchneidTransferCsv.NAME_TABLE]][name_time]=timeseries.index[-1]
         return(self._formatTimeseriesToTelegrafFrame(
             timeseries=timeseries,
             sensor_ids=[id for item in status_instance[name_sync] for id in item.values()],
@@ -895,84 +892,24 @@ class SchneidTransferCsv():
             asset_id=status_instance[SchneidTransferCsv.NAME_DB_ASSET_ID]
         ))
 
-    def _ifArchiveDatabase(self, database, start_time, table, cursor):
-        if start_time >= datetime.now()-SchneidTransferCsv.DEFAULT_CHECK_ARCHIVE_TIMERANGE:return(database)
-        last_time = self._getLastTime(database+SchneidTransferCsv.NAME_ENDING_ARCHIV,table,cursor)
-        if not last_time: return(database)
-        if last_time<=start_time:return(database)
-        else: return(database+SchneidTransferCsv.NAME_ENDING_ARCHIV)
-
-    def _getTimeseries(self,database:str,table:str,data_points:list,start_time:datetime,stop_time:datetime,cursor):
-        try:cursor.execute(SchneidTransferCsv.QUREY_USE%(database))
-        except:return([])
-        try:
-            cursor.execute(SchneidConnector.QUERY_TIMESERIES%(
-                self._getDataPointStrForQuery(data_points),
-                table,
-                self._getDatetimeToSqlStrTuble(start_time),
-                self._getDatetimeToSqlStrTuble(stop_time)
-            ))
-            data = cursor.fetchall()
-        except Exception as e:
-            if SchneidConnector.ERROR_HANDLING_START_DP in str(e):return(-1)
-            else:return([])
-        return(data)
+    def _getTimeseries(self,database:str,table:str,data_points:list,start_time:datetime,stop_time:datetime):
+        try:interval=timedelta(seconds=int(self.csvs.files_infos[table]["interval"]))
+        except: interval = self.interval
+        lines_to_read = int((stop_time-start_time)/interval)
+        if lines_to_read > 500: lines_to_read = "all"
+        dataframe = self.csvs.readCsvDataReverseAsDataFrame(file_name=table,lines=lines_to_read)[data_points]
+        dataframe = dataframe[(dataframe.index>=start_time)&(dataframe.index<=stop_time)]
+        return(dataframe)
     
-    def _getTimeseriesMeasureGaps(self,database:str,table:str,data_points:list,start_time:datetime,stop_time:datetime,cursor):
-        last_time = self._getLastTime(database=database,table=table,cursor=cursor)
-        if last_time == None: return([])
-        if last_time <= start_time:return([])
-        while 1==1:
-            start_time=start_time+SchneidTransferCsv.DEFAULT_MAX_TIMERANGE
-            stop_time=self._getStopTime(start_time=start_time,max_time=last_time)
-            if stop_time==last_time:return([])
-            timeseries=self._getTimeseries(database,table,data_points,start_time,stop_time,cursor)
-            if len(timeseries)>0:break
-        return(timeseries)
-
-    def _getStopTime(self,start_time:datetime,max_time:datetime=None) -> datetime:
-        if max_time==None: max_time=datetime.now()+timedelta(hours=2)
-        if start_time+SchneidTransferCsv.DEFAULT_MAX_TIMERANGE>max_time:return(max_time)
-        else:return(start_time+SchneidTransferCsv.DEFAULT_MAX_TIMERANGE)
-
-    def _getDataPointStrForQuery(self, datapoints:list) -> str:
-        return(",".join(datapoints))
-    
-    def _getDatetimeToSqlStrTuble(self, time:datetime):
-        return(str((time.year,time.month,time.day,time.hour,time.minute,time.second,0,0)))
-    
-    def _getFirstStartTime(self,database,table,cursor):
-        try:
-            time = self._getFirstTime(database+SchneidTransferCsv.NAME_ENDING_ARCHIV,table,cursor)
-        except:
-            time = self._getFirstTime(database,table,cursor)
-        if not time: return(self._getFirstTime(database,table,cursor))
-        return(time)
-
-    def _getFirstTime(self,database,table,cursor):
-        cursor.execute(SchneidTransferCsv.QUREY_USE%(database))
-        cursor.execute(SchneidTransferCsv.QUERY_SELECT_FIRST_TIME%(table))
-        data = cursor.fetchall()
-        if len(data)==0:return(None)
-        return(data[0][1])
-
-    def _getLastTime(self,database,table,cursor):
-        try:
-            cursor.execute(SchneidTransferCsv.QUREY_USE%(database))
-            cursor.execute(SchneidTransferCsv.QUERY_SELECT_LAST_TIME%(table))
-            data = cursor.fetchall()
-        except:
-            return(None)
-        if len(data)==0:return(None)
-        return(data[0][1])
-    
-    def _formatTimeseriesToTelegrafFrame(self, timeseries, sensor_ids, instance_id, asset_id):
+    def _formatTimeseriesToTelegrafFrame(self, timeseries:pd.DataFrame, sensor_ids:list, instance_id:str, asset_id:str):
+        if len(sensor_ids)!=len(timeseries.columns): raise ValueError("bug in numer of sensors for instance-id:"+instance_id)
         telegraf_list = []
         add_telegraf = telegraf_list.append
-        for row in timeseries:
-            timestamp = str(int(pytz.timezone(SchneidTransferCsv.DEFAULT_AQOTEC_TIMEZONE).localize(row[-1]).astimezone(pytz.utc).replace(tzinfo=None).timestamp()*1e9))
-            for idx in range(len(row[:-1])):
-                if row[idx]==None:continue
-                add_telegraf(f"{asset_id},instance={instance_id} {sensor_ids[idx]}={row[idx]} {timestamp}")
-        return(telegraf_list)
+        columns = list(timeseries.columns)
+        for row in range(len(timeseries)):
+            timestamp = str(int(pytz.timezone(SchneidTransferCsv.DEFAULT_SCHNEID_TIMEZONE).localize(timeseries.index[row]).astimezone(pytz.utc).replace(tzinfo=None).timestamp()*1e9))
+            for idx in range(len(sensor_ids)):
+                if isnan(timeseries[columns[idx]].iloc[idx]):continue
+                add_telegraf(f"{asset_id},instance={instance_id} {sensor_ids[idx]}={timeseries[columns[idx]].iloc[idx]} {timestamp}")
+        return(telegraf_list)  
         
