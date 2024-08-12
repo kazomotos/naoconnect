@@ -565,6 +565,7 @@ class SchneidMeta(SchneidParamWinmiocs70):
                 meta_instances[met[SchneidMeta.NAME_DB_INSTANCE_ID]] = met[SchneidMeta.NAME_VALUE]
         for instance in instances:
             table_name = str(meta_instances[instance[SchneidMeta.NAME__ID]])+SchneidMeta.HAST_FILE_FORMAT
+            if table_name not in self.csvs.files: continue
             table_columns = self.csvs.files_columns[table_name]
             for asset_values_drive in asset_meta:
                 if asset_values_drive[SchneidMeta.NAME_DP_NAME] not in table_columns: continue
@@ -909,7 +910,7 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
         for row in range(len(timeseries)):
             timestamp = str(int(pytz.timezone(SchneidTransferCsv.DEFAULT_SCHNEID_TIMEZONE).localize(timeseries.index[row]).astimezone(pytz.utc).replace(tzinfo=None).timestamp()*1e9))
             for idx in range(len(sensor_ids)):
-                if isnan(timeseries[columns[idx]].iloc[idx]):continue
-                add_telegraf(f"{asset_id},instance={instance_id} {sensor_ids[idx]}={timeseries[columns[idx]].iloc[idx]} {timestamp}")
+                if isnan(timeseries[columns[idx]].iloc[row]):continue
+                add_telegraf(f"{asset_id},instance={instance_id} {sensor_ids[idx]}={timeseries[columns[idx]].iloc[row]} {timestamp}")
         return(telegraf_list)  
         
