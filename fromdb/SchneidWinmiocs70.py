@@ -867,6 +867,7 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
             return(self._getTelegrafDataInstance2(status_instance,database,SchneidTransferCsv.NAME_TIME_SYNCRONICZIED,SchneidTransferCsv.NAME_SYNCRONICZIED))
         
     def _getTelegrafDataInstance2(self,status_instance:dict, database:str, name_time:str, name_sync:str):
+        if status_instance[SchneidTransferCsv.NAME_TABLE] not in self.csvs.files_infos: return([])
         if status_instance[name_time]: start_time=datetime.fromisoformat(status_instance[name_time])
         else: start_time = SchneidTransferCsv.DEFAULT_FIRST_TIME_SCHNEID
         if name_time == SchneidTransferCsv.NAME_TIME_UNSYCRONICIZIED:
