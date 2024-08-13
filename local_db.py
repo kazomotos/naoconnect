@@ -382,6 +382,11 @@ class SyncronizationStatus(Par):
             ret[table]=tabl_q.all()
             tabl_q.clear_cache()
         return(ret)
+    
+    def resetSensorIdsInstance(self, database:str, table_db:str, sensors_list:dict,sic_table:str) -> None:
+        table = self.db.table(database)
+        table.update({sic_table:sensors_list}, Query().table==table_db)
+        table.clear_cache()
 
     def postUnsyncroniziedValue(self, database, table_db, value, asset_id, instance_id):
         table = self.db.table(database)

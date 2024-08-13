@@ -83,9 +83,9 @@ class SchneidParamWinmiocs70():
     NAME_TIME_SYNCRONICZIED_META = "time_sincronizied_meta"
     NAME_TIME_SYNCRONICZIED = "time_sincronizied"
     NAME_TIME_UNSYCRONICIZIED = "time_unsyncronizied"
-    DEFAULT_TRANSFER_TIME_SCHNEID = 120
+    DEFAULT_TRANSFER_TIME_SCHNEID = 300
     DEFAULT_SCHNEID_TIMEZONE = 'Europe/Berlin'
-    DEFAULT_TRASFER_SLEEPER_SECOND = 60*2
+    DEFAULT_TRASFER_SLEEPER_SECOND = 60*5
     DEFAULT_ERROR_SLEEP_SECOND = 300
     DEFAULT_BREAK_TELEGRAF_LEN = 50000
     DEFAULT_FIRST_TIME_SCHNEID = datetime(2014,1,1)
@@ -336,7 +336,13 @@ class SchneidCsvWinmiocs70(SchneidParamWinmiocs70):
         for buff in range(len(buffer)):
             if bool(SchneidCsvWinmiocs70.TIME_COMPILER.match(buffer[buff].split(SchneidCsvWinmiocs70.CSV_DELIMITER)[0])):
                 break
-        buffer = pd.read_csv(StringIO('\n'.join(buffer[buff:])), sep=SchneidCsvWinmiocs70.CSV_DELIMITER, header=None, encoding=SchneidCsvWinmiocs70.CSV_ENCODING)
+        try:
+            buffer = pd.read_csv(StringIO('\n'.join(buffer[buff:])), sep=SchneidCsvWinmiocs70.CSV_DELIMITER, header=None, encoding=SchneidCsvWinmiocs70.CSV_ENCODING)
+        except pd.errors.ParserError as e:
+            match = re.search(r'line (\d+)', str(e))
+            line_number = int(match.group(1))
+            #buffer1 = pd.read_csv(StringIO('\n'.join(buffer[buff:line_number])), sep=SchneidCsvWinmiocs70.CSV_DELIMITER, header=None, encoding=SchneidCsvWinmiocs70.CSV_ENCODING)
+            buffer = pd.read_csv(StringIO('\n'.join(buffer[line_number+buff:])), sep=SchneidCsvWinmiocs70.CSV_DELIMITER, header=None, encoding=SchneidCsvWinmiocs70.CSV_ENCODING)
         buffer[0] = pd.to_datetime(buffer[0], format=SchneidCsvWinmiocs70.TIME_FORMAT_TIMESTEPS)
         buffer.set_index(0, inplace=True)
         buffer.columns = range(len(buffer.columns))
@@ -872,6 +878,20 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
         else: stop_time = self.csvs.files_infos[status_instance[SchneidTransferCsv.NAME_TABLE]][SchneidTransferCsv.DICTNAME_LAST_WRITE_TIME]
         if (stop_time-start_time) < timedelta(seconds=SchneidTransferCsv.DEFAULT_TRANSFER_TIME_SCHNEID):
             return([])
+        # delet duplicates of sensores in sinc-status if regulator change
+        ids_sensors = [value for item in status_instance[name_sync]  for value in item.values()]
+        if len(ids_sensors)>len(set(ids_sensors)):
+            new_sensors = []
+            ids_duplicatet = []
+            idx = 0
+            for item in reversed(status_instance[name_sync]):
+                ids = list(item.values())[0]
+                if ids not in ids_duplicatet:
+                    ids_duplicatet.append(ids)
+                    idx+=1
+                    new_sensors.append(item)
+            self.sync_status.resetSensorIdsInstance(database=database,table_db=status_instance[SchneidTransferCsv.NAME_TABLE],sensors_list=new_sensors,sic_table=name_sync)
+            status_instance[name_sync] = new_sensors
         timeseries=self._getTimeseries(
             database=database,
             table=status_instance[SchneidTransferCsv.NAME_TABLE],
