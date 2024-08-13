@@ -12,7 +12,7 @@ import re
 import pytz
 from os import path, listdir
 from io import StringIO
-from numpy import isnan
+from numpy import isnan, nan
 
 ''' DOC
 
@@ -313,7 +313,7 @@ class SchneidCsvWinmiocs70(SchneidParamWinmiocs70):
             SchneidCsvWinmiocs70.DICTNAME_INTERVAL: interval
         })
 
-    def readCsvDataReverseAsDataFrame(self, file_name: str, lines: int = 10) -> dict:
+    def readCsvDataReverseAsDataFrame(self, file_name: str, lines: int = 10) -> pd.DataFrame:
         if lines == 'all':
             with open(self.file_path + "/" + file_name, 'r', encoding=SchneidCsvWinmiocs70.CSV_ENCODING) as file:
                 buffer = file.read().split("\n")
@@ -572,7 +572,7 @@ class SchneidMeta(SchneidParamWinmiocs70):
                 if asset_values_drive[SchneidMeta.NAME_DP] != table_columns[asset_values_drive[SchneidMeta.NAME_DP_NAME]][SchneidMeta.DICTNAME_POSITION]: continue
                 # if table for meta in database ?
                 try:
-                    self.check_point_buffer = self.csvs.readCsvDataReverseAsDataFrame(table_name,lines=100).reset_index(drop=True)
+                    self.check_point_buffer = self.csvs.readCsvDataReverseAsDataFrame(table_name,lines=2000).reset_index(drop=True)
                     # if a valid value in datatable ?
                     ifdata = self._ceckDataInPoint(
                         dp=asset_values_drive[SchneidMeta.NAME_DP],
@@ -736,8 +736,7 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
         is_sinct = False
         sinc_timer = time()
         while 1==1:
-            try: 
-                # TODO reset file infos on some point!!!!!! TODO
+            # try: 
                 if datetime.now().hour >= 23:
                     self.setSyncStatus()
                     self.status=self.getSyncStatus()
@@ -745,7 +744,7 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
                 start_time = time()
                 data_telegraf, sinc_reset = self.getTelegrafData()
                 if len(data_telegraf)>0:ret=self.nao.sendTelegrafData(data_telegraf)
-                else:ret=SchneidTransferCsv.STATUS_CODE_GOOD
+                else:ret=SchneidTransferCsv.STATUS_CODE_GOOD    
                 if ret==SchneidTransferCsv.STATUS_CODE_GOOD:
                     print(len(data_telegraf), " data posted; sec:",time()-start_time, datetime.now())
                     start_time = time()
@@ -766,9 +765,9 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
                         sleep(SchneidTransferCsv.DEFAULT_TRASFER_SLEEPER_SECOND)
                 else:
                     sleep(SchneidTransferCsv.DEFAULT_ERROR_SLEEP_SECOND)
-            except:
-                if logfile: logfile(str(sys.exc_info()))
-                sleep(SchneidTransferCsv.DEFAULT_ERROR_SLEEP_SECOND)
+            # except:
+            #     if logfile: logfile(str(sys.exc_info()))
+            #     sleep(SchneidTransferCsv.DEFAULT_ERROR_SLEEP_SECOND)
         if logfile:logfile(str(count)+" data sended")
 
     def setSyncStatus(self):
@@ -830,35 +829,32 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
         return(status)
 
     def getTelegrafData(self):
-        try:
-            breaker = False
-            all_data = False
-            telegraf = []
-            ext_telegraf = telegraf.extend
-            for database in self.status:
-                if database not in self.status_count:
-                    self.status_count[database] = 0
-                if self.status_count[database] >= len(self.status[database]):
-                    all_data = True
-                    self.status_count[database] = 0
-                count_add = 0
-                for idc in range(len(self.status[database])-self.status_count[database]):
-                    status_instance = self.status[database][idc+self.status_count[database]]
-                    count_add += 1
-                    if status_instance["time_sincronizied"]!=None:
-                        if "WMZ" in status_instance[SchneidTransferCsv.NAME_TABLE]:
-                            if  pytz.timezone(SchneidTransferCsv.DEFAULT_SCHNEID_TIMEZONE).localize(datetime.fromisoformat(status_instance["time_sincronizied"])).astimezone(pytz.utc).replace(tzinfo=None) > datetime.utcnow()-timedelta(hours=26):
-                                continue
-                    ext_telegraf(self._getTelegrafDataInstance(status_instance,database))
-                    if len(telegraf)>=SchneidTransferCsv.DEFAULT_BREAK_TELEGRAF_LEN:
-                        breaker=True
-                        break
-                self.status_count[database] += count_add
-                if breaker:
+        breaker = False
+        all_data = False
+        telegraf = []
+        ext_telegraf = telegraf.extend
+        for database in self.status:
+            if database not in self.status_count:
+                self.status_count[database] = 0
+            if self.status_count[database] >= len(self.status[database]):
+                all_data = True
+                self.status_count[database] = 0
+            count_add = 0
+            for idc in range(len(self.status[database])-self.status_count[database]):
+                status_instance = self.status[database][idc+self.status_count[database]]
+                count_add += 1
+                if status_instance["time_sincronizied"]!=None:
+                    if "WMZ" in status_instance[SchneidTransferCsv.NAME_TABLE]:
+                        if  pytz.timezone(SchneidTransferCsv.DEFAULT_SCHNEID_TIMEZONE).localize(datetime.fromisoformat(status_instance["time_sincronizied"])).astimezone(pytz.utc).replace(tzinfo=None) > datetime.utcnow()-timedelta(hours=26):
+                            continue
+                ext_telegraf(self._getTelegrafDataInstance(status_instance,database))
+                if len(telegraf)>=SchneidTransferCsv.DEFAULT_BREAK_TELEGRAF_LEN:
+                    breaker=True
                     break
-            return(telegraf, all_data)
-        except: 
-            raise(ValueError("getTelegrafData"))
+            self.status_count[database] += count_add
+            if breaker:
+                break
+        return(telegraf, all_data)
     
     def _getTelegrafDataInstance(self,status_instance:dict,database:str):
         if len(status_instance[SchneidTransferCsv.NAME_UNSYCRONICIZIED])!=0:
@@ -871,7 +867,7 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
         if status_instance[name_time]: start_time=datetime.fromisoformat(status_instance[name_time])
         else: start_time = SchneidTransferCsv.DEFAULT_FIRST_TIME_SCHNEID
         if name_time == SchneidTransferCsv.NAME_TIME_UNSYCRONICIZIED:
-            if status_instance[SchneidTransferCsv.NAME_TIME_SYNCRONICZIED]: stop_time = status_instance[SchneidTransferCsv.NAME_TIME_SYNCRONICZIED]
+            if status_instance[SchneidTransferCsv.NAME_TIME_SYNCRONICZIED]: stop_time = datetime.fromisoformat(status_instance[SchneidTransferCsv.NAME_TIME_SYNCRONICZIED])
             else: stop_time = self.csvs.files_infos[status_instance[SchneidTransferCsv.NAME_TABLE]][SchneidTransferCsv.DICTNAME_LAST_WRITE_TIME]
         else: stop_time = self.csvs.files_infos[status_instance[SchneidTransferCsv.NAME_TABLE]][SchneidTransferCsv.DICTNAME_LAST_WRITE_TIME]
         if (stop_time-start_time) < timedelta(seconds=SchneidTransferCsv.DEFAULT_TRANSFER_TIME_SCHNEID):
@@ -899,7 +895,15 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
         except: interval = self.interval
         lines_to_read = int((stop_time-start_time)/interval)
         if lines_to_read > 500: lines_to_read = "all"
-        dataframe = self.csvs.readCsvDataReverseAsDataFrame(file_name=table,lines=lines_to_read)[data_points]
+        dataframe = self.csvs.readCsvDataReverseAsDataFrame(file_name=table,lines=lines_to_read)
+        columns_act = dataframe.columns
+        new_cols = []
+        for point in data_points:
+            if point not in columns_act:
+                new_cols.append(point)
+        if len(new_cols)>0:
+            dataframe[new_cols] = nan
+        dataframe = dataframe[data_points]
         dataframe = dataframe[(dataframe.index>=start_time)&(dataframe.index<=stop_time)]
         return(dataframe)
     
