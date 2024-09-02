@@ -331,7 +331,7 @@ class AqotecMetaV2(AqotecConnectorV2):
                         else:
                             instance_name = instance_name_addive+table.split("_")[-2]
                         ret=self.nao.createInstance(
-                            name=instance_name,
+                            name=instance_name+" \u2014 "+ workspace_name,
                             asset_id=asset_id,
                             description=table,
                             workspace_id=workspace_id
