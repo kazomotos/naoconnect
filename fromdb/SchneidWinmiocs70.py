@@ -29,6 +29,7 @@ class SchneidParamWinmiocs70():
     STATUS_CODE_GOOD = 204
     HAST_FILE_FORMAT = "_prot.csv"
     DATA_FILE_FORMAT = "prot"
+    DATA_FILE_FORMAT_ENDING = ".csv"
     NAME_UG06_CSV = "UG06"
     NAME_UG08_CSV = "UG08"
     NAME_UG10_CSV = "UG10"
@@ -252,6 +253,7 @@ class SchneidCsvWinmiocs70(SchneidParamWinmiocs70):
     def setFileInfos(self) -> None:
         for file in self.files:
             if SchneidCsvWinmiocs70.DATA_FILE_FORMAT not in file: continue
+            if SchneidCsvWinmiocs70.DATA_FILE_FORMAT_ENDING not in file: continue
             header = self.getFileHeader(file)
             self.files_columns[file] = self.getColsFromColumnHeader(header[SchneidCsvWinmiocs70.DICTNAME_COLUMN_HEADER])
             self.files_infos[file] = self.getInfoFromInfoHeader(header[SchneidCsvWinmiocs70.DICTNAME_INFO_HEADER])
