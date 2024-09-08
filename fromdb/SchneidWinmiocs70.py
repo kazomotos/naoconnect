@@ -344,7 +344,10 @@ class SchneidCsvWinmiocs70(SchneidParamWinmiocs70):
             match = re.search(r'line (\d+)', str(e))
             line_number = int(match.group(1))
             #buffer1 = pd.read_csv(StringIO('\n'.join(buffer[buff:line_number])), sep=SchneidCsvWinmiocs70.CSV_DELIMITER, header=None, encoding=SchneidCsvWinmiocs70.CSV_ENCODING)
-            buffer = pd.read_csv(StringIO('\n'.join(buffer[line_number+buff:])), sep=SchneidCsvWinmiocs70.CSV_DELIMITER, header=None, encoding=SchneidCsvWinmiocs70.CSV_ENCODING)
+            try:
+                buffer = pd.read_csv(StringIO('\n'.join(buffer[line_number+buff:])), sep=SchneidCsvWinmiocs70.CSV_DELIMITER, header=None, encoding=SchneidCsvWinmiocs70.CSV_ENCODING)
+            except  pd.errors.ParserError as e:
+                buffer = pd.read_csv(StringIO('\n'.join(buffer[line_number+100+buff:])), sep=SchneidCsvWinmiocs70.CSV_DELIMITER, header=None, encoding=SchneidCsvWinmiocs70.CSV_ENCODING)
         buffer[0] = pd.to_datetime(buffer[0], format=SchneidCsvWinmiocs70.TIME_FORMAT_TIMESTEPS)
         buffer.set_index(0, inplace=True)
         buffer.columns = range(len(buffer.columns))
