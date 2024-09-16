@@ -55,7 +55,7 @@ class NaoApp():
         }
         self.headers = NaoApp.QUERY_TRANSFERHEADER
         self.data_per_telegraf_push=data_per_telegraf_push
-        self.__conneciton = None # type: ignore
+        self._conneciton = None # type: ignore
         self.local=local
 
     def _loginNao(self):
@@ -68,37 +68,37 @@ class NaoApp():
         ret = self._sendDataToNaoJson(NaoApp.NAME_GET,NaoApp.URL_GET_USER_INFO,{})
         return(ret[NaoApp.NAME__ID])
     
-    def pushNote(self, asset_id, data_note):
+    def pushNote(self, asset_id:str, data_note:dict):
         ret = self._sendDataToNaoJson(NaoApp.NAME_POST,url=NaoApp.URL_PUT_NOTE%(asset_id),payload=data_note)
         return(ret[NaoApp.NAME__ID])
 
     def _loginNaoLocal(self):
         try:
-            self.__conneciton = http.client.HTTPConnection(self.auth[NaoApp.NAME_HOST])
-            self.__conneciton.request(NaoApp.NAME_POST, NaoApp.URL_LOGIN, self.auth[NaoApp.NAME_PAYLOAD], NaoApp.QUERY_LOGINHEADER)
-            res = self.__conneciton.getresponse()
+            self._conneciton = http.client.HTTPConnection(self.auth[NaoApp.NAME_HOST])
+            self._conneciton.request(NaoApp.NAME_POST, NaoApp.URL_LOGIN, self.auth[NaoApp.NAME_PAYLOAD], NaoApp.QUERY_LOGINHEADER)
+            res = self._conneciton.getresponse()
             data = loads(res.read().decode(NaoApp.NAME_UTF8))
             self.headers[NaoApp.NAME_WEBAUTH] = NaoApp.QUERY_BEARER + data[NaoApp.NAME_TOKENAC]
         except:
             sleep(1) # type: ignore
-            self.__conneciton = http.client.HTTPConnection(self.auth[NaoApp.NAME_HOST])
-            self.__conneciton.request(NaoApp.NAME_POST, NaoApp.URL_LOGIN, self.auth[NaoApp.NAME_PAYLOAD], NaoApp.QUERY_LOGINHEADER)
-            res = self.__conneciton.getresponse()
+            self._conneciton = http.client.HTTPConnection(self.auth[NaoApp.NAME_HOST])
+            self._conneciton.request(NaoApp.NAME_POST, NaoApp.URL_LOGIN, self.auth[NaoApp.NAME_PAYLOAD], NaoApp.QUERY_LOGINHEADER)
+            res = self._conneciton.getresponse()
             data = loads(res.read().decode(NaoApp.NAME_UTF8))
             self.headers[NaoApp.NAME_WEBAUTH] = NaoApp.QUERY_BEARER + data[NaoApp.NAME_TOKENAC]
 
     def _loginNaoCloud(self):
         try:
-            self.__conneciton = http.client.HTTPSConnection(self.auth[NaoApp.NAME_HOST])
-            self.__conneciton.request(NaoApp.NAME_POST, NaoApp.URL_LOGIN, self.auth[NaoApp.NAME_PAYLOAD], NaoApp.QUERY_LOGINHEADER)
-            res = self.__conneciton.getresponse()
+            self._conneciton = http.client.HTTPSConnection(self.auth[NaoApp.NAME_HOST])
+            self._conneciton.request(NaoApp.NAME_POST, NaoApp.URL_LOGIN, self.auth[NaoApp.NAME_PAYLOAD], NaoApp.QUERY_LOGINHEADER)
+            res = self._conneciton.getresponse()
             data = loads(res.read().decode(NaoApp.NAME_UTF8))
             self.headers[NaoApp.NAME_WEBAUTH] = NaoApp.QUERY_BEARER + data[NaoApp.NAME_TOKENAC]
         except:
             sleep(1) # type: ignore
-            self.__conneciton = http.client.HTTPSConnection(self.auth[NaoApp.NAME_HOST])
-            self.__conneciton.request(NaoApp.NAME_POST, NaoApp.URL_LOGIN, self.auth[NaoApp.NAME_PAYLOAD], NaoApp.QUERY_LOGINHEADER)
-            res = self.__conneciton.getresponse()
+            self._conneciton = http.client.HTTPSConnection(self.auth[NaoApp.NAME_HOST])
+            self._conneciton.request(NaoApp.NAME_POST, NaoApp.URL_LOGIN, self.auth[NaoApp.NAME_PAYLOAD], NaoApp.QUERY_LOGINHEADER)
+            res = self._conneciton.getresponse()
             data = loads(res.read().decode(NaoApp.NAME_UTF8))
             self.headers[NaoApp.NAME_WEBAUTH] = NaoApp.QUERY_BEARER + data[NaoApp.NAME_TOKENAC]
 
@@ -137,16 +137,16 @@ class NaoApp():
         if payload != None:
             payload = dumps(payload)
         try:
-            self.__conneciton.request(method, url, payload, header) # type: ignore
-            data = self.__conneciton.getresponse().read() # type: ignore
-            self.__conneciton.close() # type: ignore
+            self._conneciton.request(method, url, payload, header) # type: ignore
+            data = self._conneciton.getresponse().read() # type: ignore
+            self._conneciton.close() # type: ignore
         except:
             self._loginNao()
             header = copy(self.headers)
             header[NaoApp.NAME_CONTENT_HEADER] = NaoApp.QUERY_HEADER_JSON
-            self.__conneciton.request(method, url, payload, header) # type: ignore
-            data = self.__conneciton.getresponse().read() # type: ignore
-            self.__conneciton.close() # type: ignore
+            self._conneciton.request(method, url, payload, header) # type: ignore
+            data = self._conneciton.getresponse().read() # type: ignore
+            self._conneciton.close() # type: ignore
         if data == b'':
             return('') # type: ignore
         else:
@@ -165,11 +165,11 @@ class NaoApp():
     def patchInstanceData(self, instance_id:str, payload:dict):
         return(self._sendDataToNaoJson(NaoApp.NAME_PATCH, NaoApp.URL_PATCH_INSTANCE%(instance_id), payload))
     
-    def sendTelegrafData(self, payload):
+    def sendTelegrafData(self, payload, max_sleep:float=2):
         ''' 
-        [ '<twin>,instance=<insatance>, <measurement>=<value> <timestamp>' ] 
+        [ '<twin>,instance=<insatance> <measurement>=<value> <timestamp>' ] 
                                       or
-          '<twin>,instance=<insatance>, <measurement>=<value> <timestamp>'
+          '<twin>,instance=<insatance> <measurement>=<value> <timestamp>'
         '''
         if type(payload) != list:
             return(self._sendTelegrafData(payload=payload))
@@ -181,8 +181,8 @@ class NaoApp():
                     sta = self._sendTelegrafData(payload[int(idx*self.data_per_telegraf_push):int(idx*self.data_per_telegraf_push)+self.data_per_telegraf_push])
                     if sta != 204:
                         return(sta)
-                    if 0.1+idx*0.04 > 2:
-                        sleep(2)
+                    if 0.1+idx*0.04 > max_sleep:
+                        sleep(max_sleep)
                     else:
                         sleep(0.1+idx*0.04)
                 return(self._sendTelegrafData(payload[int(last_idx*self.data_per_telegraf_push):]))
@@ -193,17 +193,17 @@ class NaoApp():
         if type(payload) == list:
             payload = NaoApp.FORMAT_TELEFRAF_FRAME_SEPERATOR.join(payload)
         try:
-            self.__conneciton.request(NaoApp.NAME_POST, NaoApp.URL_TELEGRAF, payload, self.headers) # type: ignore
-            status = self.__conneciton.getresponse().status # type: ignore
-            self.__conneciton.close() # type: ignore
+            self._conneciton.request(NaoApp.NAME_POST, NaoApp.URL_TELEGRAF, payload, self.headers) # type: ignore
+            status = self._conneciton.getresponse().status # type: ignore
+            self._conneciton.close() # type: ignore
             if status != NaoApp.STATUS_CODE_GOOD:
                 self._loginNao()
-                self.__conneciton.request(NaoApp.NAME_POST, NaoApp.URL_TELEGRAF, payload, self.headers) # type: ignore
-                status = self.__conneciton.getresponse().status # type: ignore
-                self.__conneciton.close() # type: ignore
+                self._conneciton.request(NaoApp.NAME_POST, NaoApp.URL_TELEGRAF, payload, self.headers) # type: ignore
+                status = self._conneciton.getresponse().status # type: ignore
+                self._conneciton.close() # type: ignore
         except:
             self._loginNao()
-            self.__conneciton.request(NaoApp.NAME_POST, NaoApp.URL_TELEGRAF, payload, self.headers) # type: ignore
-            status = self.__conneciton.getresponse().status # type: ignore
-            self.__conneciton.close() # type: ignore
+            self._conneciton.request(NaoApp.NAME_POST, NaoApp.URL_TELEGRAF, payload, self.headers) # type: ignore
+            status = self._conneciton.getresponse().status # type: ignore
+            self._conneciton.close() # type: ignore
         return(status)
