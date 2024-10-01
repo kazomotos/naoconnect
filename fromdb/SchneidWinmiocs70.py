@@ -417,7 +417,9 @@ class SchneidMeta(SchneidParamWinmiocs70):
                  LablingNao:LablingNao,
                  SyncStatus:SyncronizationStatus,
                  NaoApp:NaoApp,
-                 workspace_name:str) -> None:
+                 workspace_name:str,
+                 work_defalut_name_instance:str="Daten") -> None:
+        self.work_defalut_name_instance = work_defalut_name_instance
         self.workspace_name = workspace_name
         self.postgres = SchneidPostgres
         self.csvs = SchneidCSV
@@ -498,7 +500,7 @@ class SchneidMeta(SchneidParamWinmiocs70):
                     if not instance_id:
                         instance_name = instance_name_addive+table.split(".")[0]
                         ret=self.nao.createInstance(
-                            name=instance_name,
+                            name=instance_name+" \u2014 "+ self.work_defalut_name_instance,
                             asset_id=asset_id,
                             description="Schneid_"+asset_name,
                             workspace_id=workspace_id
