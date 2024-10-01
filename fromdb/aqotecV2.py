@@ -56,6 +56,7 @@ class AqotecParams():
     NAME_DB_INSTANCE_ID = "instance_id"
     NAME_DATABASE_END_CUSTOMER = "_Kunden"
     NAME_DATABASE_END_DATA = "_Daten"
+    NAME_DATABASE_END_DATA_2 = "Daten"
     NAME_TABLE_CUSTOMER = "Tbl_Abnehmer"
     NAME_META_ID = "_attribute"
     NAME_META_ID_DB = "meta_id"
@@ -203,8 +204,9 @@ class AqotecConnectorV2(AqotecParams):
 
 class AqotecMetaV2(AqotecConnectorV2):
 
-    def __init__(self,host,port,user,password,AqotecDriver:Driver,LablingPoints:StationDatapoints,LablingNao:LablingNao,SyncStatus:SyncronizationStatus,NaoApp:NaoApp,driver="{ODBC Driver 18 for SQL Server}") -> None:
+    def __init__(self,host,port,user,password,AqotecDriver:Driver,LablingPoints:StationDatapoints,LablingNao:LablingNao,SyncStatus:SyncronizationStatus,NaoApp:NaoApp,driver="{ODBC Driver 18 for SQL Server}", work_default_name:str="Daten") -> None:
         super().__init__(host, port, user, password, driver)
+        self.work_default_name = work_default_name
         self.driver_db = AqotecDriver
         self.labled_points = LablingPoints
         self.labled_nao = LablingNao
@@ -330,8 +332,12 @@ class AqotecMetaV2(AqotecConnectorV2):
                             instance_name = instance_name_addive+table[:-2]
                         else:
                             instance_name = instance_name_addive+table.split("_")[-2]
+                        if workspace_name == AqotecMetaV2.NAME_DATABASE_END_DATA_2:
+                            workspace_name_instance = self.work_default_name
+                        else:
+                            workspace_name_instance = workspace_name
                         ret=self.nao.createInstance(
-                            name=instance_name+" \u2014 "+ workspace_name,
+                            name=instance_name+" \u2014 "+ workspace_name_instance,
                             asset_id=asset_id,
                             description=table,
                             workspace_id=workspace_id
