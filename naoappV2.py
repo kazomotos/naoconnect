@@ -39,6 +39,8 @@ class NaoApp():
     URL_WORKSPACE = "/api/nao/workspace"
     URL_ACTIVATE_DATAPOINT = "/api/nao/instance/%s/datapoints"
     URL_PATCH_META_INSTANCE = "/api/nao/instance/%s/attributevalues/%s"
+    URL_WORKSPACE = "/api/nao/workspace"
+    URL_ASSET = "/api/nao/asset"
     QUERY_HEADER_JSON = 'application/json'
     QUERY_BEARER = "Bearer "
     NAME_TOKENAC = "accessToken"
@@ -47,6 +49,7 @@ class NaoApp():
     QUERY_TRANSFERHEADER = {"Authorization": "", 'Content-Type': 'text/plain', 'Cookie': ""}
     FORMAT_TELEFRAF_FRAME_SEPERATOR = "\n"
     STATUS_CODE_GOOD = 204
+    QUERY_GET = "?query="
 
     def __init__(self, host, email, password, local=False, data_per_telegraf_push:int=10000): # type: ignore
         self.auth = {
@@ -207,3 +210,38 @@ class NaoApp():
             status = self._conneciton.getresponse().status # type: ignore
             self._conneciton.close() # type: ignore
         return(status)
+
+    '''
+    GET SOME DATA FROM  NAO
+    '''
+
+    def getWorkspace(self, **args):
+        if len(args) > 0:
+            query = NaoApp.QUERY_GET
+            for arg in args:
+                query += arg + "=" + args[arg] + ","
+            query = query[:-1]
+        else:
+            query = ""
+        return(self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_WORKSPACE+query, {}))
+
+    def getAssets(self, **args):
+        if len(args) > 0:
+            query = NaoApp.QUERY_GET
+            for arg in args:
+                query += arg + "=" + args[arg] + ","
+            query = query[:-1]
+        else:
+            query = ""
+        return(self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_ASSET+query, {}))
+
+    def getInstances(self, **args):
+        if len(args) > 0:
+            query = NaoApp.QUERY_GET
+            for arg in args:
+                query += arg + "=" + args[arg] + ","
+            query = query[:-1]
+        else:
+            query = ""
+        return(self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_INSTANCE+query, {}))
+
