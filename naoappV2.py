@@ -35,6 +35,8 @@ class NaoApp():
     URL_PATCH_INSTANCE = "/api/nao/instance/%s"
     URL_TELEGRAF = "/api/telegraf"
     URL_INSTANCE = "/api/nao/instance"
+    URL_PLOT_TIMESERIES = "/api/series/data/plot"
+    URL_RAW_TIMESERIES = "/api/series/data/plot"
     URL_INSTANCE_MORE = "/api/nao/instance/more/%s"
     URL_WORKSPACE = "/api/nao/workspace"
     URL_ACTIVATE_DATAPOINT = "/api/nao/instance/%s/datapoints"
@@ -245,3 +247,8 @@ class NaoApp():
             query = ""
         return(self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_INSTANCE+query, {}))
 
+    def getPlotformatetTimeseries(self, select):
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_PLOT_TIMESERIES, payload=select))
+
+    def getRawformatetTimeseries(self, select):
+        return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_RAW_TIMESERIES, payload=select))
