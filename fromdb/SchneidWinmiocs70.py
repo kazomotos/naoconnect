@@ -506,6 +506,7 @@ class SchneidMeta(SchneidParamWinmiocs70):
                             workspace_id=workspace_id
                         )
                         instance_id=ret[SchneidMeta.NAME__ID]
+                        ret[SchneidMeta.NAME_NAME] = instance_name
                         self.labled_nao.putInstance(ret,database)
                         # if len(ret[SchneidMeta.NAME_META_VALUES])>0:
                         #     self._saveInitialMetaData(ret[SchneidMeta.NAME_META_VALUES],ret[SchneidMeta.NAME__ID],"?")

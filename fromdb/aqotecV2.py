@@ -343,6 +343,7 @@ class AqotecMetaV2(AqotecConnectorV2):
                             description=table,
                             workspace_id=workspace_id
                         )
+                        ret[AqotecMetaV2.NAME_NAME] = instance_name
                         instance_id=ret[AqotecMetaV2.NAME__ID]
                         self.labled_nao.putInstance(ret,database)
                         # if len(ret[AqotecMetaV2.NAME_META_VALUES])>0:
@@ -413,7 +414,7 @@ class AqotecMetaV2(AqotecConnectorV2):
                         instance[AqotecMetaV2.NAME_DATABASE].split(AqotecMetaV2.NAME_DATABASE_END_DATA)[0]+AqotecMetaV2.NAME_DATABASE_END_CUSTOMER
                     ))
                 except: continue
-                cursor.execute(AqotecMetaV2.QUERY_META_CUSTOMER_SELECT_2%(asset_meta[instance[AqotecMetaV2.NAME_ASSET_ID]][:-1],instance[AqotecMetaV2.NAME_NAME].split("R")[-1].split(AqotecMetaV2.INSTANCE_NAME_SPLITER_SECOND)[0]))
+                cursor.execute(AqotecMetaV2.QUERY_META_CUSTOMER_SELECT_2%(asset_meta[instance[AqotecMetaV2.NAME_ASSET_ID]][:-1],instance[AqotecMetaV2.NAME_NAME].split("R")[-1]))
                 data = cursor.fetchall()
                 if len(data)>0:self._patchStationMeta(data[0],instance, pos_dp, asset_meta[instance[AqotecMetaV2.NAME_ASSET_ID]].split(","), number=2)
         # -------------- Kundendaten --------------
@@ -431,7 +432,7 @@ class AqotecMetaV2(AqotecConnectorV2):
                         ))
                         name_db = instance[AqotecMetaV2.NAME_DATABASE]
                 except: continue
-                cursor.execute(AqotecMetaV2.QUERY_META_CUSTOMER_SELECT%(asset_meta[instance[AqotecMetaV2.NAME_ASSET_ID]][:-1],instance[AqotecMetaV2.NAME_NAME].split("R")[-1].split(AqotecMetaV2.INSTANCE_NAME_SPLITER_SECOND)[0]))
+                cursor.execute(AqotecMetaV2.QUERY_META_CUSTOMER_SELECT%(asset_meta[instance[AqotecMetaV2.NAME_ASSET_ID]][:-1],instance[AqotecMetaV2.NAME_NAME].split("R")[-1]))
                 data = cursor.fetchall()
                 if len(data)>0:self._patchStationMeta(data[0],instance, pos_dp, asset_meta[instance[AqotecMetaV2.NAME_ASSET_ID]].split(","), number=1)
             cursor = self.conn.cursor()
@@ -487,7 +488,7 @@ class AqotecMetaV2(AqotecConnectorV2):
             instances = self.labled_nao.getInstances(workspace_id=workspace_ids[notes_times[idx_sinc][AqotecMetaV2.NAME_NAME]])
             instance_dic = {}
             for instance in instances:
-                try:instance_dic[instance[AqotecMetaV2.NAME_NAME].split("R")[-1].split(AqotecMetaV2.INSTANCE_NAME_SPLITER_SECOND)[0]] = instance
+                try:instance_dic[instance[AqotecMetaV2.NAME_NAME].split("R")[-1]] = instance
                 except:continue
             metas = {}
             for asset in asset_meta:

@@ -36,7 +36,7 @@ class NaoApp():
     URL_TELEGRAF = "/api/telegraf"
     URL_INSTANCE = "/api/nao/instance"
     URL_PLOT_TIMESERIES = "/api/series/data/plot"
-    URL_RAW_TIMESERIES = "/api/series/data/plot"
+    URL_RAW_TIMESERIES = "/api/series/data/raw"
     URL_INSTANCE_MORE = "/api/nao/instance/more/%s"
     URL_WORKSPACE = "/api/nao/workspace"
     URL_ACTIVATE_DATAPOINT = "/api/nao/instance/%s/datapoints"
@@ -127,6 +127,9 @@ class NaoApp():
 
     def getInstanceInfos(self, instance_id):
         return(self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_INSTANCE_MORE%(instance_id), {}))
+
+    def deleteInstance(self, instance_id):
+        return(self._sendDataToNaoJson(NaoApp.NAME_DELETE, NaoApp.URL_INSTANCE+"/"+instance_id, {}))
 
     def activateDatapoint(self, type_sensor, sensor_id, instance_id, config:dict={}):
         payload = {
