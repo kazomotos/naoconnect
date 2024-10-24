@@ -354,8 +354,10 @@ class SchneidMeta(SchneidParamWinmiocs70):
                  NaoApp:NaoApp,
                  workspace_name:str,
                  work_defalut_name_instance:str="Daten",
-                 only_mbus_wz_as_hast:bool=False) -> None:
+                 only_mbus_wz_as_hast:bool=False,
+                 seperator_name_work_instance:str=" \u2014 ") -> None:
         self.only_mbus_wz_as_hast = only_mbus_wz_as_hast
+        self.seperator_name_work_instance = seperator_name_work_instance
         self.work_defalut_name_instance = work_defalut_name_instance
         self.workspace_name = workspace_name
         self.postgres = SchneidPostgres
@@ -443,7 +445,7 @@ class SchneidMeta(SchneidParamWinmiocs70):
                     if not instance_id:
                         instance_name = instance_name_addive+table.split(".")[0]
                         ret=self.nao.createInstance(
-                            name=instance_name+" \u2014 "+ self.work_defalut_name_instance,
+                            name=instance_name+self.seperator_name_work_instance+self.work_defalut_name_instance,
                             asset_id=asset_id,
                             description="Schneid_"+asset_name,
                             workspace_id=workspace_id
