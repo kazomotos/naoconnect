@@ -699,7 +699,7 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
         sinc_timer = time()
         while 1==1:
             # try: 
-                if datetime.now().hour >= 23:
+                if datetime.now().hour >= 23 and not archiv_sinc:
                     self.setSyncStatus()
                     self.status=self.getSyncStatus()
                     break
