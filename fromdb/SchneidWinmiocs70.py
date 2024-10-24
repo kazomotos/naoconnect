@@ -59,7 +59,7 @@ class SchneidParamWinmiocs70():
     GT = "gt"
     B1 = "b1"
     B2 = "b2"
-    NAME_ASSET_ONLY_MBUS_WMZ = "only_mbus_mwz"
+    NAME_ASSET_ONLY_MBUS_WMZ = "only_mbus_wz"
     NAME_ASSET_UG06 = "ug06"
     NAME_ASSET_UG08 = "ug08"
     NAME_ASSET_UG10 = "ug10"
