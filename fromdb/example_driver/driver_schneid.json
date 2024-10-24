@@ -1,4 +1,127 @@
-{
+{   
+    "driver_only_wz_as_hast_csv": {
+        "1": {
+            "name": "WMZ-W\u00e4rmemenge",
+            "id": "6502d0a05b1e57de2095dfd9",
+            "name_dp": "WZ W\u00e4rmemenge(kWh)",
+            "dp": 0,
+            "gt": 10,
+            "lt": null,
+            "b1": 240,
+            "b2": 266,
+            "type": "Meter"
+        },
+        "2": {
+            "name": "WMZ-Volumen",
+            "id": "6502d06e5b1e57de2095dfb1",
+            "name_dp": "WZ Volumen(m3)",
+            "dp": 1,
+            "gt": 10,
+            "lt": null,
+            "b1": 240,
+            "b2": 266,
+            "type": "Meter"
+        },
+        "3": {
+            "name": "WMZ-W\u00e4rmeleistung",
+            "id": "6502cd025b1e57de2095df66",
+            "name_dp": "WZ Leistung(kW)",
+            "dp": 2,
+            "gt": 0.25,
+            "lt": null,
+            "b1": 240,
+            "b2": 266,
+            "type": "Sensor"
+        },
+        "4": {
+            "name": "WMZ-Volumenstrom",
+            "id": "6502cfd65b1e57de2095df82",
+            "name_dp": "WZ Durchfluss(l/h)",
+            "dp": 4,
+            "gt": 1,
+            "lt": null,
+            "b1": 240,
+            "b2": 266,
+            "type": "Sensor"
+        },
+        "5": {
+            "name": "MWZ-Vorlauftemp",
+            "id": "6502cc6e5b1e57de2095df35",
+            "name_dp": "WZ Vorlauftemp.(\u00b0C)",
+            "dp": 11,
+            "gt": 5,
+            "lt": 130,
+            "b1": null,
+            "b2": null,
+            "type": "Sensor"
+        },
+        "6": {
+            "name": "WMZ-R\u00fccklauftemp",
+            "id": "6502cca35b1e57de2095df4b",
+            "name_dp": "WZ R\u00fccklauftemp.(\u00b0C)",
+            "dp": 10,
+            "gt": 5,
+            "lt": 130,
+            "b1": null,
+            "b2": null,
+            "type": "Sensor"
+        },
+        "7": {
+            "name": "MWZ-Spreizung",
+            "id": "650c812d06a13602506abb53",
+            "name_dp": "WZ Spreizung(\u00b0C)",
+            "dp": 12,
+            "gt": 2,
+            "lt": 130,
+            "b1": null,
+            "b2": null,
+            "type": "Sensor"
+        },
+        "8": {
+            "name": "Tarifz\u00e4hler W\u00e4rmemenge T1",
+            "id": "650c7fcd06a13602506ab9fe",
+            "name_dp": "WZ Tarif1(kWh)",
+            "dp": 7,
+            "gt": 10,
+            "lt": null,
+            "b1": 240,
+            "b2": 266,
+            "type": "Meter"
+        },
+        "9": {
+            "name": "Tarifz\u00e4hler W\u00e4rmemenge T2",
+            "id": "650c7ff606a13602506aba26",
+            "name_dp": "WZ Tarfi2(kWh)",
+            "dp": 8,
+            "gt": 10,
+            "lt": null,
+            "b1": 240,
+            "b2": 266,
+            "type": "Meter"
+        },
+        "10": {
+            "name": "Tarifz\u00e4hler W\u00e4rmemenge T3",
+            "id": "650c801d06a13602506aba4d",
+            "name_dp": "WZ Tarif3(kWh)",
+            "dp": 9,
+            "gt": 10,
+            "lt": null,
+            "b1": 240,
+            "b2": 266,
+            "type": "Meter"
+        },
+        "11": {
+            "name": "Seriennummer",
+            "id": "652fa5a691abc7a24b3ef80a",
+            "name_dp": "WZ Seriennummer",
+            "dp": 3,
+            "gt": 1000,
+            "lt": null,
+            "b1": null,
+            "b2": null,
+            "type": "Sensor"
+        }
+    },
     "driver_ug6_csv": {
         "1": {
             "name": "WMZ-W\u00e4rmemenge",

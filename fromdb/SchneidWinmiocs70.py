@@ -59,6 +59,7 @@ class SchneidParamWinmiocs70():
     GT = "gt"
     B1 = "b1"
     B2 = "b2"
+    NAME_ASSET_ONLY_MBUS_WMZ = "only_mbus_mwz"
     NAME_ASSET_UG06 = "ug06"
     NAME_ASSET_UG08 = "ug08"
     NAME_ASSET_UG10 = "ug10"
@@ -385,10 +386,14 @@ class SchneidMeta(SchneidParamWinmiocs70):
                 self.struct.putOther(self.workspace_name,csv)
 
     def checkStationDatapoints(self):
+        self._ceckWzMbusHast()
         self._ceckUg06()
         self._ceckUg08()
         self._ceckUg10()
         self._ceckUg12()
+
+    def _ceckWzMbusHast(self):
+        self._ceckTable(self.struct.ug06, self.driver_db.ceckDriverCsvOnlyWzAsHast, SchneidMeta.NAME_ASSET_ONLY_MBUS_WMZ, True)
 
     def _ceckUg06(self):
         self._ceckTable(self.struct.ug06, self.driver_db.ceckDriverCsvUG06, SchneidMeta.NAME_ASSET_UG06, True)
