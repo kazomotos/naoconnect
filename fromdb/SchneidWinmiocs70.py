@@ -28,6 +28,7 @@ from numpy import isnan, nan
 class SchneidParamWinmiocs70():
     STATUS_CODE_GOOD = 204
     HAST_FILE_FORMAT = "_prot.csv"
+    WZ_FILE_FORMAT = "_protWZ.csv"
     DATA_FILE_FORMAT = "prot"
     DATA_FILE_FORMAT_ENDING = ".csv"
     NAME_UG06_CSV = "UG06"
@@ -769,7 +770,7 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
                         self.status=self.getSyncStatus()
                     if archiv_sinc and len(data_telegraf)==0:
                         break
-                    if is_sinct:
+                    if is_sinct and not archiv_sinc:
                         sleep(SchneidTransferCsv.DEFAULT_TRASFER_SLEEPER_SECOND)
                     elif len(data_telegraf)<sleep_data_len:
                         self.csvs.restetFiles()                       
