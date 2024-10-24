@@ -524,7 +524,10 @@ class SchneidMeta(SchneidParamWinmiocs70):
                 meta_instances[met[SchneidMeta.NAME_DB_INSTANCE_ID]] = met[SchneidMeta.NAME_VALUE]
         for instance in instances:
             table_name = str(meta_instances[instance[SchneidMeta.NAME__ID]])+SchneidMeta.HAST_FILE_FORMAT
-            if table_name not in self.csvs.files: continue
+            if table_name not in self.csvs.files: 
+                if not self.only_mbus_wz_as_hast: continue
+                table_name = str(meta_instances[instance[SchneidMeta.NAME__ID]])+SchneidMeta.WZ_FILE_FORMAT
+                if table_name not in self.csvs.files: continue
             table_columns = self.csvs.files_columns[table_name]
             for asset_values_drive in asset_meta:
                 if asset_values_drive[SchneidMeta.NAME_DP_NAME] not in table_columns: continue
