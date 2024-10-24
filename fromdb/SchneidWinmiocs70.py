@@ -393,7 +393,7 @@ class SchneidMeta(SchneidParamWinmiocs70):
         self._ceckUg12()
 
     def _ceckWzMbusHast(self):
-        self._ceckTable(self.struct.ug06, self.driver_db.ceckDriverCsvOnlyWzAsHast, SchneidMeta.NAME_ASSET_ONLY_MBUS_WMZ, True)
+        self._ceckTable(self.struct.wzmbushast, self.driver_db.ceckDriverCsvOnlyWzAsHast, SchneidMeta.NAME_ASSET_ONLY_MBUS_WMZ, True)
 
     def _ceckUg06(self):
         self._ceckTable(self.struct.ug06, self.driver_db.ceckDriverCsvUG06, SchneidMeta.NAME_ASSET_UG06, True)
