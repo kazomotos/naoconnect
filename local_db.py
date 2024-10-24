@@ -11,6 +11,7 @@ class Par():
     NAME_DRIVER_CSV_UG08 = "driver_ug8_csv"
     NAME_DRIVER_CSV_UG10 = "driver_ug10_csv"
     NAME_DRIVER_CSV_UG12 = "driver_ug12_csv"
+    NAME_DRIVER_CSV_ONLY_WZ_AS_HAST = "driver_only_wz_as_hast_csv"
     NAME_DRIVER_UG07 = "driver_ug07"
     NAME_DRIVER_RM360 = "driver_rm360"
     NAME_DRIVER_STATION_WMZ = "driver_wmz_station"
@@ -82,6 +83,9 @@ class Driver(Par):
 
     def ceckDriverCsvUG12(self, name_dp, dp):
         return(self._ceckDriver(Driver.NAME_DRIVER_CSV_UG12,name_dp,dp))
+
+    def ceckDriverCsvOnlyWzAsHast(self, name_dp, dp):
+        return(self._ceckDriver(Driver.NAME_DRIVER_CSV_ONLY_WZ_AS_HAST,name_dp,dp))
 
     def ceckDriverUG07(self, name_dp, dp):
         return(self._ceckDriver(Driver.NAME_DRIVER_UG07,name_dp,dp))

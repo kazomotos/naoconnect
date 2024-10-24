@@ -35,6 +35,8 @@ class SchneidParamWinmiocs70():
     NAME_UG08_CSV = "UG08"
     NAME_UG10_CSV = "UG10"
     NAME_UG12_CSV = "UG12"
+    NAME_ACT_WMZ = "ACT_WMZ"
+    NAME_ONLY_MBUS = "GEN_MBUS_"
     DICTNAME_INFO_HEADER = "info_header"
     DICTNAME_COLUMN_HEADER = "column_header"
     DICTNAME_DB_NUMBER = "database_number"
@@ -92,81 +94,6 @@ class SchneidParamWinmiocs70():
     DEFAULT_BREAK_TELEGRAF_LEN = 50000
     DEFAULT_FIRST_TIME_SCHNEID = datetime(2014,1,1)
 
-class AqotecParams():
-    NAME_ENDING_TABLE_ROW_META = "_b"
-    NAME_TABLE_START = "table_start"
-    NAME_STARTING_TABLE_UG07 = "UG07_"
-    NAME_BASE_DATABASE = "aqotec_Daten"
-    NAME_STARTING_TABLE_RM360 = "RM360_"
-    NAME_BETWEEN_TABLE_BHKW = "BHKW"
-    NAME_BETWEEN_TABLE_SUBZ = "SubZ_"
-    NAME_SENSOR_ID = "sensor_id"
-    NAME_NAME = "name"
-    NAME_STARTING_TABLE_WMZ = "WMZ_"
-    NAME_BETWEEN_NETWORK = "Netz"
-    NAME_DB_INSTANCE_ID = "instance_id"
-    NAME_DATABASE_END_CUSTOMER = "_Kunden"
-    NAME_DATABASE_END_DATA = "_Daten"
-    NAME_TABLE_CUSTOMER = "Tbl_Abnehmer"
-    NAME_META_ID = "_attribute"
-    NAME_META_ID_DB = "meta_id"
-    NAME_DP_POS = "dp_pos"
-    NAME_META_VALUES = "attributevalues"
-    NAME_ASSET_ID = "_asset"
-    NAME_ASSET_UG07 = "ug07"
-    NAME_ASSET_RM360 = "rm360"
-    NAME_ASSET_SZBZ = "subz"
-    NAME_ASSET_NETWORK = "network"
-    NAME_TYPE = "type"
-    NAME_VALUE = "value"
-    NAME_ID = "id"
-    NAME_ASSET_WMZ = "wmz"
-    NAME_NAME = "name"
-    NAME_DATABASE = "database"
-    NAME_ENDING_ARCHIV = "_archiv"
-    NAME_DB_ASSET_ID = "asset_id"
-    NAME_TABLE = "table"
-    NAME_ORGANIZATION = "_organization"
-    NAME_DP = "dp"
-    NAME_SYNCRONICZIED = "syncronizied"
-    NAME_UNSYCRONICIZIED = "unsyncronizied"
-    NAME_TIME_SYNCRONICZIED_META = "time_sincronizied_meta"
-    NAME_TIME_SYNCRONICZIED = "time_sincronizied"
-    NAME_TIME_UNSYCRONICIZIED = "time_unsyncronizied"
-    NAME_DP_NAME = "name_dp"
-    NAME_NUMBER = "number"
-    NAME_INTEGER = "integer"
-    NAME__ID = "_id"
-    LT = "lt"
-    GT= "gt"
-    B1 = "b1"
-    B2 = "b2"
-    POS_NAME_DP = 5
-    POS_DP = 1
-    DEFAULT_BREAK_TELEGRAF_LEN = 50000
-    DEFAULT_MAX_TIMERANGE = timedelta(hours=24*5)
-    DEFAULT_CHECK_ARCHIVE_TIMERANGE = timedelta(days=30)
-    DEFAULT_TRANSFER_TIME_AQOTEC = 120
-    DEFAULT_AQOTEC_TIMEZONE = 'Europe/Berlin'
-    DEFAULT_TRASFER_SLEEPER_SECOND = 60*2
-    DEFAULT_ERROR_SLEEP_SECOND = 300
-    STATUS_CODE_GOOD = 204
-    ERROR_HANDLING_START_DP = "DP_"
-    INSTANCE_NAME_ADDITIVE_SUBZ = "SubZ-"
-    DATABASE_NOTES_DEVAULT = "aqotec_Alarme"
-    DATABASE_NOTES = "aqotec_%s_Alarme"
-    NOTE_CREATED = "created"
-    NOTE_NOTE = "note"
-    NOTE_VISIB = "visibility"
-    NOTE_INSTANCE = "_instance"
-    NOTE_START = "start"
-    NOTE_STOP = "stop"
-    NOTE_USER = "_user"
-    NOTE_TEXT = 'Änderung des Reglerwert "%s" von %s%s auf %s%s (Benutzer:%s)'
-    NAME_DEVAULT_DATABASE = "Daten"
-    NAME_NUMBER = "number"
-    NAME_INTEGER = "integer"
-
 '''
 --------------------------------------------------------------------------------------------------------------------
                                                    Database Struct
@@ -180,6 +107,7 @@ class DbStruct():
         self.ug08 = {}
         self.ug10 = {}
         self.ug12 = {}
+        self.wzmbushast = {}
         self.other = {}
 
     def putUg06(self, database, table):
@@ -201,6 +129,11 @@ class DbStruct():
         if database not in self.ug12:
             self.ug12[database] = []
         self.ug12[database].append(table)
+    
+    def putWzMbusHast(self, database, table):
+        if database not in self.wzmbushast:
+            self.wzmbushast[database] = []
+        self.wzmbushast[database].append(table)
 
     def putOther(self, database, table):
         if database not in self.other:
@@ -419,7 +352,9 @@ class SchneidMeta(SchneidParamWinmiocs70):
                  SyncStatus:SyncronizationStatus,
                  NaoApp:NaoApp,
                  workspace_name:str,
-                 work_defalut_name_instance:str="Daten") -> None:
+                 work_defalut_name_instance:str="Daten",
+                 only_mbus_wz_as_hast:bool=False) -> None:
+        self.only_mbus_wz_as_hast = only_mbus_wz_as_hast
         self.work_defalut_name_instance = work_defalut_name_instance
         self.workspace_name = workspace_name
         self.postgres = SchneidPostgres
@@ -444,6 +379,8 @@ class SchneidMeta(SchneidParamWinmiocs70):
                 self.struct.putUg10(self.workspace_name,csv)
             elif SchneidMeta.NAME_UG12_CSV in self.csvs.files_infos[csv][SchneidMeta.DICTNAME_SCHNEID_STATION_TYPE]:
                 self.struct.putUg12(self.workspace_name,csv)
+            elif SchneidMeta.NAME_ACT_WMZ in self.csvs.files_infos[csv][SchneidMeta.DICTNAME_SCHNEID_STATION_TYPE] and SchneidMeta.NAME_ONLY_MBUS in self.csvs.files_infos[csv][SchneidMeta.DICTNAME_SCHNEID_TB_ID] and self.only_mbus_wz_as_hast:
+                self.struct.putWzMbusHast(self.workspace_name,csv)
             else:
                 self.struct.putOther(self.workspace_name,csv)
 
