@@ -417,7 +417,7 @@ class SchneidMeta(SchneidParamWinmiocs70):
             for table in table_struct[database]:
                 instance_id = self.labled_nao.ceckInstance(instance_name_addive+table.split(".")[0],database=database,asset_id=asset_id)
                 if not instance_id and not create_instance: continue
-                self.check_point_buffer = self.csvs.readCsvDataReverseAsDataFrame(table,lines=2000).reset_index(drop=True)
+                self.check_point_buffer = self.csvs.readCsvDataReverseAsDataFrame(table,lines=3000).reset_index(drop=True)
                 data_points = self.csvs.files_columns[table]
                 for point in data_points:
                     # -------------------------------------------data point in driver ?---------------------------------------------------------
@@ -523,6 +523,7 @@ class SchneidMeta(SchneidParamWinmiocs70):
             if met[SchneidMeta.NAME_DP]==SchneidMeta.DICTNAME_SCHNEID_ANID:
                 meta_instances[met[SchneidMeta.NAME_DB_INSTANCE_ID]] = met[SchneidMeta.NAME_VALUE]
         for instance in instances:
+            if instance[SchneidMeta.NAME__ID] not in meta_instances: continue
             table_name = str(meta_instances[instance[SchneidMeta.NAME__ID]])+SchneidMeta.HAST_FILE_FORMAT
             if table_name not in self.csvs.files: 
                 if not self.only_mbus_wz_as_hast: continue
@@ -534,7 +535,7 @@ class SchneidMeta(SchneidParamWinmiocs70):
                 if asset_values_drive[SchneidMeta.NAME_DP] != table_columns[asset_values_drive[SchneidMeta.NAME_DP_NAME]][SchneidMeta.DICTNAME_POSITION]: continue
                 # if table for meta in database ?
                 try:
-                    self.check_point_buffer = self.csvs.readCsvDataReverseAsDataFrame(table_name,lines=2000).reset_index(drop=True)
+                    self.check_point_buffer = self.csvs.readCsvDataReverseAsDataFrame(table_name,lines=3000).reset_index(drop=True)
                     # if a valid value in datatable ?
                     ifdata = self._ceckDataInPoint(
                         dp=asset_values_drive[SchneidMeta.NAME_DP],
