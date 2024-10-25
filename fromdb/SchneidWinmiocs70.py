@@ -720,7 +720,7 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
                         break
                     if is_sinct and not archiv_sinc:
                         sleep(SchneidTransferCsv.DEFAULT_TRASFER_SLEEPER_SECOND)
-                    elif len(data_telegraf)<sleep_data_len:
+                    elif len(data_telegraf)<sleep_data_len and not archiv_sinc:
                         self.csvs.restetFiles()                       
                         self.setSyncStatus()
                         self.status=self.getSyncStatus()  
@@ -881,7 +881,7 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
         if len(new_cols)>0:
             dataframe[new_cols] = nan
         dataframe = dataframe[data_points]
-        dataframe = dataframe[(dataframe.index>=start_time)&(dataframe.index<=stop_time)]
+        dataframe = dataframe[(dataframe.index>start_time)&(dataframe.index<=stop_time)]
         return(dataframe)
     
     def _formatTimeseriesToTelegrafFrame(self, timeseries:pd.DataFrame, sensor_ids:list, instance_id:str, asset_id:str):
