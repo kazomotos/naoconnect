@@ -699,7 +699,7 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
         is_sinct = False
         sinc_timer = time()
         while 1==1:
-            # try: 
+            try: 
                 if datetime.now().hour >= 23 and not archiv_sinc:
                     self.setSyncStatus()
                     self.status=self.getSyncStatus()
@@ -728,9 +728,9 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
                         sleep(SchneidTransferCsv.DEFAULT_TRASFER_SLEEPER_SECOND)
                 else:
                     sleep(SchneidTransferCsv.DEFAULT_ERROR_SLEEP_SECOND)
-            # except:
-            #     if logfile: logfile(str(sys.exc_info()))
-            #     sleep(SchneidTransferCsv.DEFAULT_ERROR_SLEEP_SECOND)
+            except:
+                if logfile: logfile(str(sys.exc_info()))
+                break
         if logfile:logfile(str(count)+" data sended")
 
     def setSyncStatus(self):
