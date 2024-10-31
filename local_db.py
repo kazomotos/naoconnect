@@ -233,6 +233,21 @@ class LablingNao(Par):
         })
         table.clear_cache()
 
+    def getInstanceSlitOnR(self, instance_name_split_r, database, asset_id) -> Union[str, None]:
+        table = self.db.table(LablingNao.NAME_TABLE_INSTANCE)
+        try:
+            res = table.search(
+                (Query().database == database) &
+                (Query()._asset == asset_id) &
+                (Query().name.test(lambda name: name.split("R")[-1] == instance_name_split_r))
+            )
+            table.clear_cache()
+        except:
+            table.clear_cache()
+            return(None)
+        if len(res)>0:return(res[0])
+        else:return(None)
+
     def ceckInstance(self, instance_name, database, asset_id) -> Union[str, None]:
         table = self.db.table(LablingNao.NAME_TABLE_INSTANCE)
         try:

@@ -205,7 +205,7 @@ class AqotecConnectorV2(AqotecParams):
 
 class AqotecMetaV2(AqotecConnectorV2):
 
-    def __init__(self,host,port,user,password,AqotecDriver:Driver,LablingPoints:StationDatapoints,LablingNao:LablingNao,SyncStatus:SyncronizationStatus,NaoApp:NaoApp,driver="{ODBC Driver 18 for SQL Server}", work_default_name:str="Daten") -> None:
+    def __init__(self,host,port,user,password,AqotecDriver:Driver,LablingPoints:StationDatapoints,LablingNao:LablingNao,SyncStatus:SyncronizationStatus,NaoApp:NaoApp,driver="{ODBC Driver 18 for SQL Server}", work_default_name:str="Daten",aqotec_save_customer_id=False) -> None:
         super().__init__(host, port, user, password, driver)
         self.work_default_name = work_default_name
         self.driver_db = AqotecDriver
@@ -219,6 +219,7 @@ class AqotecMetaV2(AqotecConnectorV2):
         self._getTableStucture()
         self.disconnetToDb()
         self.user_id_nao=None
+        self.aqotec_save_customer_id = aqotec_save_customer_id
     
     def _getDatabases(self):
         cursor = self.conn.cursor()
@@ -258,12 +259,12 @@ class AqotecMetaV2(AqotecConnectorV2):
                 self.struct.putOher(database,table)
 
     def checkStationDatapoints(self):
+        self._ceckRm360()        
+        self._ceckUg07()
+        self._ceckStationWmz()        
         self._ceckNetwork()
         self._ceckSubWmz()
         self._ceckWmzFromSubz()
-        self._ceckUg07()
-        self._ceckRm360()
-        self._ceckStationWmz()
 
     def _ceckNetwork(self):
         self._ceckTable(self.struct.network, self.driver_db.ceckDriverNetwork, AqotecMetaV2.NAME_ASSET_NETWORK, True, "", True)
@@ -298,17 +299,26 @@ class AqotecMetaV2(AqotecConnectorV2):
                     instance_id = self.labled_nao.ceckInstance(instance_name_addive+table[:-2],database=database,asset_id=asset_id)
                 else:
                     instance_id = self.labled_nao.ceckInstance(instance_name_addive+table.split("_")[-2],database=database,asset_id=asset_id)
+                # ---------------------------------------- only for aqotec instances with save r-i -------------------------------------------------
+                if not instance_id and self.aqotec_save_customer_id:
+                    if len(table.split("_")[-2].split("R")) == 2:
+                        ret_r = self.labled_nao.getInstanceSlitOnR(instance_name_addive+table.split("_")[-2].split("R")[1],database=database,asset_id=asset_id)
+                        if ret_r:
+                            ret_r[AqotecMetaV2.NAME_NAME] = instance_name_addive+table.split("_")[-2]
+                            self.labled_nao.putInstance(ret_r,database)
+                            instance_id = self.labled_nao.ceckInstance(instance_name_addive+table.split("_")[-2],database=database,asset_id=asset_id)
+                # ---------------------------------------- ceck if asset to create ------------------------------------------------------------------
                 if not instance_id and not create_instance: continue
                 try:cursor.execute(AqotecMetaV2.QUERY_TABLE_COL_NAMES%(table))
                 except:continue
                 data_points = cursor.fetchall()
                 for point in data_points:
-                    # -------------------------------------------data point in driver ?---------------------------------------------------------
+                    # -------------------------------------------data point in driver ?--------------------------------------------------------------
                     driver_meta = ceckDriver(point[AqotecMetaV2.POS_NAME_DP],point[AqotecMetaV2.POS_DP])
                     if len(driver_meta)==0:continue 
                     # -------------------------------------------data point already in use ?---------------------------------------------------------
                     if not self.labled_points.ceckPoints(database, table, point[AqotecMetaV2.POS_DP]):continue
-                    # -------------------------------------------data in aqotec database for this point ?---------------------------------------------------------
+                    # -------------------------------------------data in aqotec database for this point ?--------------------------------------------
                     ifdata = self._ceckDataInPoint(
                         cursor=cursor,
                         dp=point[AqotecMetaV2.POS_DP],
@@ -319,7 +329,7 @@ class AqotecMetaV2(AqotecConnectorV2):
                         b2=driver_meta[AqotecMetaV2.B2]
                     )
                     if not ifdata: continue
-                    # -------------------------------------------creat workspace if not been created---------------------------------------------------------
+                    # -------------------------------------------creat workspace if not been created--------------------------------------------------
                     if not workspace_id:
                         workspace_name = database.split("_")[1]
                         workspace_id = self.labled_nao.ceckWorkspace(workspace_name)
@@ -327,7 +337,7 @@ class AqotecMetaV2(AqotecConnectorV2):
                             ret=self.nao.createWorkspace(workspace_name)
                             workspace_id=ret[AqotecMetaV2.NAME__ID]
                             self.labled_nao.putWorkspace(ret)
-                    # -------------------------------------------creat instance if not been created---------------------------------------------------------
+                    # -------------------------------------------creat instance if not been created---------------------------------------------------
                     if not instance_id:
                         if full_name:
                             instance_name = instance_name_addive+table[:-2]
@@ -546,7 +556,6 @@ class AqotecMetaV2(AqotecConnectorV2):
                         self.labled_nao.updateNoteTimeByName(time=sinc_time,name=sinc_name)
                         raise(KeyError("can't send notes to nao"))
                     sinc_time = dat[1]
-                    print(1)
                 self.labled_nao.updateNoteTimeByName(time=sinc_time,name=sinc_name)
             cursor.close()
             self.disconnetToDb()
@@ -603,22 +612,25 @@ class AqotecMetaV2(AqotecConnectorV2):
             # get data from nao if not labled before
             instance_infos = self.nao.getInstanceInfos(instance_id)
             id_att = ""
-            for info in instance_infos[AqotecMetaV2.NAME_META_VALUES]:
-                if info[AqotecMetaV2.NAME_META_ID] == driver_infos[AqotecMetaV2.NAME_META_ID_DB]:
-                    id_att = info[AqotecMetaV2.NAME__ID]
-            if id_att=="":return(-1)
-            # put initial meta data to local labling db
-            self.labled_nao.putMetaInstance(
-                value=None,
-                meta_id=driver_infos[AqotecMetaV2.NAME_META_ID_DB],
-                dp=driver_infos[AqotecMetaV2.NAME_DP],
-                id=id_att,
-                asset_id=driver_infos[AqotecMetaV2.NAME_DB_ASSET_ID],
-                type=driver_infos[AqotecMetaV2.NAME_TYPE],
-                dp_pos=None,
-                instance_id=instance_id
-            )
-            meta = self.labled_nao.getInstanceMetaByAttributeInstance(instance_id,driver_infos[AqotecMetaV2.NAME_META_ID_DB])
+            try:
+                for info in instance_infos[AqotecMetaV2.NAME_META_VALUES]:
+                    if info[AqotecMetaV2.NAME_META_ID] == driver_infos[AqotecMetaV2.NAME_META_ID_DB]:
+                        id_att = info[AqotecMetaV2.NAME__ID]
+                if id_att=="":return(-1)
+                # put initial meta data to local labling db
+                self.labled_nao.putMetaInstance(
+                    value=None,
+                    meta_id=driver_infos[AqotecMetaV2.NAME_META_ID_DB],
+                    dp=driver_infos[AqotecMetaV2.NAME_DP],
+                    id=id_att,
+                    asset_id=driver_infos[AqotecMetaV2.NAME_DB_ASSET_ID],
+                    type=driver_infos[AqotecMetaV2.NAME_TYPE],
+                    dp_pos=None,
+                    instance_id=instance_id
+                )
+                meta = self.labled_nao.getInstanceMetaByAttributeInstance(instance_id,driver_infos[AqotecMetaV2.NAME_META_ID_DB])
+            except:
+                return(-1)
         # ceck if meta has chanced
         if meta[0][AqotecMetaV2.NAME_TYPE] == AqotecMetaV2.NAME_NUMBER:
             try:
