@@ -4,6 +4,7 @@ from urllib.parse import quote
 from json import loads, dumps
 from copy import copy
 from time import sleep
+from datetime import datetime, timezone
 from math import ceil
 
 class NaoApp():
@@ -52,8 +53,9 @@ class NaoApp():
     FORMAT_TELEFRAF_FRAME_SEPERATOR = "\n"
     STATUS_CODE_GOOD = 204
     QUERY_GET = "?query="
+    TELEGRAF_FORMATER = "%s,instance=%s %s=%s %s"
 
-    def __init__(self, host, email, password, local=False, data_per_telegraf_push:int=10000): # type: ignore
+    def __init__(self, host, email, password, local=False, data_per_telegraf_push:int=10000, Messager=False): # type: ignore
         self.auth = {
             NaoApp.NAME_HOST:host,
             NaoApp.NAME_PAYLOAD:NaoApp.NAME_EMAIL+"="+quote(email)+"&"+NaoApp.NAME_PASSWD+"="+quote(password)
@@ -62,6 +64,11 @@ class NaoApp():
         self.data_per_telegraf_push=data_per_telegraf_push
         self._conneciton = None # type: ignore
         self.local=local
+        self.Messager=Messager
+
+    def sendSingleData(self, asset:str, instance:str, sensor:str, value:float, timestamp_use:datetime=datetime.now(timezone.utc)) -> int:
+        time_int = str(int(timestamp_use.timestamp()*1000000000))
+        return(self._sendTelegrafData(NaoApp.TELEGRAF_FORMATER%(asset,instance,sensor,value,time_int)))
 
     def _loginNao(self):
         if self.local:
@@ -180,9 +187,14 @@ class NaoApp():
           '<twin>,instance=<insatance> <measurement>=<value> <timestamp>'
         '''
         if type(payload) != list:
-            return(self._sendTelegrafData(payload=payload))
+            sta = self._sendTelegrafData(payload=payload)
+            if self.Messager:
+                count = len(payload.split("\n"))
+                self.Messager.sendCount(count)
+            return(sta)
         else:
-            if len(payload) > self.data_per_telegraf_push:
+            count = len(payload)
+            if count > self.data_per_telegraf_push:
                 last_idx = 0
                 for idx in range(int(ceil(len(payload)/self.data_per_telegraf_push))-1):
                     last_idx = idx
@@ -193,9 +205,12 @@ class NaoApp():
                         sleep(max_sleep)
                     else:
                         sleep(0.1+idx*0.04)
-                return(self._sendTelegrafData(payload[int(last_idx*self.data_per_telegraf_push):]))
+                sta = self._sendTelegrafData(payload[int(last_idx*self.data_per_telegraf_push):])
             else:
-                return(self._sendTelegrafData(payload))
+                sta = self._sendTelegrafData(payload)
+            if self.Messager:
+                self.Messager.sendCount(count)
+            return(sta)
 
     def _sendTelegrafData(self, payload):
         if type(payload) == list:
@@ -255,3 +270,22 @@ class NaoApp():
 
     def getRawformatetTimeseries(self, select):
         return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_RAW_TIMESERIES, payload=select))
+
+
+class NaoLoggerMessage(NaoApp):
+
+    def __init__(self, host, email, password, asset:str, instance:str, count_series:str, restart_series:str, local=False):
+        super().__init__(host, email, password, local)
+        self.asset = asset
+        self.instance = instance
+        self.count_series = count_series
+        self.restart_series = restart_series
+
+    def sendCount(self, count) -> None:
+        try:self.sendSingleData(asset=self.asset,instance=self.instance,sensor=self.count_series,value=count)
+        except:pass
+
+    def sendRestart(self) -> None:
+        try:self.sendSingleData(asset=self.asset,instance=self.instance,sensor=self.restart_series,value=1)
+        except:pass
+
