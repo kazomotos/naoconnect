@@ -66,7 +66,8 @@ class NaoApp():
         self.local=local
         self.Messager=Messager
 
-    def sendSingleData(self, asset:str, instance:str, sensor:str, value:float, timestamp_use:datetime=datetime.now(timezone.utc)) -> int:
+    def sendSingleData(self, asset:str, instance:str, sensor:str, value:float, timestamp_use:datetime=None) -> int:
+        if not timestamp_use: timestamp_use=datetime.now(timezone.utc)
         time_int = str(int(timestamp_use.timestamp()*1000000000))
         return(self._sendTelegrafData(NaoApp.TELEGRAF_FORMATER%(asset,instance,sensor,value,time_int)))
 
