@@ -696,7 +696,6 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
 
     def startSyncronization(self, logfile=None, sleep_data_len=1, archiv_sinc=False):
         count = 0
-        is_sinct = False
         sinc_timer = time()
         while 1==1:
             try: 
@@ -718,14 +717,11 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
                         self.status=self.getSyncStatus()
                     if archiv_sinc and len(data_telegraf)==0:
                         break
-                    if is_sinct and not archiv_sinc:
-                        sleep(SchneidTransferCsv.DEFAULT_TRASFER_SLEEPER_SECOND)
-                    elif len(data_telegraf)<sleep_data_len and not archiv_sinc:
-                        self.csvs.restetFiles()                       
+                    elif len(data_telegraf)<sleep_data_len and not archiv_sinc:                    
                         self.setSyncStatus()
                         self.status=self.getSyncStatus()  
-                        is_sinct = True
                         sleep(SchneidTransferCsv.DEFAULT_TRASFER_SLEEPER_SECOND)
+                        self.csvs.restetFiles()   
                 else:
                     sleep(SchneidTransferCsv.DEFAULT_ERROR_SLEEP_SECOND)
             except:
