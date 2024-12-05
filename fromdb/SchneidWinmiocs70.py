@@ -425,21 +425,22 @@ class ScheindPostgresWinmiocs70(SchneidParamWinmiocs70):
         meter from the Schneid PostgreSQL database.
 
         This function queries the database to return a pandas DataFrame 
-        containing the serial numbers and potential error messages of a heat 
-        meter associated with a specific controller ID. The DataFrame uses 
-        timestamps as the index and includes the following columns:
-        - `serial`: The serial number of the heat meter.
-        - `error`: Any error messages associated with the heat meter.
+        containing the serial numbers, error messages, and timestamps associated
+        with a specific controller ID. The DataFrame includes the following columns:
+        - `serial` (str): The serial number of the heat meter.
+        - `error` (str): Any error messages associated with the heat meter.
+        - `time` (datetime): The timestamp of the associated data.
 
         Args:
             controller_id (int): The ID of the controller to query for 
                                 associated serial data.
-            start_time (datetime): The starting point in time for the query
+            start_time (datetime): The starting point in time for the query.
 
         Returns:
-            pd.DataFrame: A DataFrame indexed by timestamp with columns:
+            pd.DataFrame: A DataFrame with columns:
                 - `serial` (str): The serial number of the heat meter.
                 - `error` (str): The error message, if any.
+                - `time` (datetime): The timestamp of the associated data.
 
         Raises:
             Any exception raised during database connection or query execution 
@@ -452,15 +453,15 @@ class ScheindPostgresWinmiocs70(SchneidParamWinmiocs70):
         rows = cur.fetchall()
         cur.close()
         self.disconnectToDb()
-        index_list = []
+        time_list = []
         serial_list = []
         error_list = []
         for row in rows:
             if row[2]==None or row[1]==None:continue
-            index_list.append(row[0])
+            time_list.append(row[0])
             serial_list.append(row[1])
             error_list.append(row[2])
-        result_frame = pd.DataFrame({"serial":serial_list,"error":error_list}, index=index_list)
+        result_frame = pd.DataFrame({"serial":serial_list,"error":error_list, "time":time_list})
         return( result_frame )
 
 
@@ -1048,21 +1049,41 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
 
 class StructSincPoint():
     '''
+    Represents a synchronization point containing information about a controller and its associated data.
+
+    This class is designed to store and serialize data for synchronization points,
+    including a controller ID, asset ID, instance ID, series ID, and the last synchronization timestamp.
+    It provides a method for JSON serialization.
     '''
 
     def __init__(self, controller_id:int, asset_id:str, instance_id:str, 
                  series_id:str, last_time:Union[str,datetime]) -> None:
         '''
+        Initializes a StructSincPoint object.
+
+        Args: also Attributes:
+            controller_id (int): The unique ID of the controller, always stored as an integer.
+            last_time (datetime): The last synchronization timestamp stored as a datetime object.
+            asset_id (str): The ID of the associated asset.
+            instance_id (str): The ID of the associated instance.
+            series_id (str): The series ID for the synchronization.
         '''
-        self.contoller_id = controller_id if isinstance(controller_id,int) else int(controller_id)
+        self.controller_id = controller_id if isinstance(controller_id,int) else int(controller_id)
         self.last_time = last_time if isinstance(last_time,datetime) else datetime.fromisoformat(last_time)
         self.asset_id = asset_id
         self.instance_id = instance_id
         self.series_id = series_id
 
+
     def __json__(self):
+        '''
+        Serializes the StructSincPoint object into a dictionary suitable for JSON serialization.
+
+        Returns:
+            dict: A dictionary containing the object's data with `last_time` formatted as an ISO string.
+        '''
         return({
-            "contoller_id": self.contoller_id,
+            "controller_id": self.controller_id,
             "last_time": self.last_time.isoformat(),
             "asset_id": self.asset_id,
             "instance_id": self.instance_id,
@@ -1072,38 +1093,52 @@ class StructSincPoint():
 
 class ControllerIdSincTime():
     '''
+    Manages synchronization data for controllers, including their IDs and last synchronization timestamps.
+
+    This class reads and writes synchronization data from/to a JSON file, 
+    manages controller IDs, and ensures new controller IDs are added with a default synchronization timestamp.
     '''
 
 
     def __init__(self, file_path:str, default_start_time:datetime=datetime(2010,1,1)) -> None:
         '''
-        file path ist der path und der filename der sic datei
-        dafult_start_time ist der erste zeipunkt der gesetzt wird für sic falls noch nicht sincronisiert
+        Initializes the ControllerIdSincTime object and reads the current synchronization status.
+
+        Args:
+            file_path (str): Path to the JSON file storing the synchronization data.
+            default_start_time (datetime): The default timestamp for new synchronization entries.
+
+        Attributes:
+            file_path (str): The path to the synchronization status file.
+            default_start_time (datetime): The default synchronization start time.
+            sinc_dic (dict): A dictionary mapping controller IDs to `StructSincPoint` objects.
+            controller_ids (list): A list of all controller IDs currently managed.
         '''
         self.file_path:str = file_path
         self.default_start_time = default_start_time
         self.sinc_dic:Dict[str,StructSincPoint]={}
         self.controller_ids:list=[]
+        self.readSincStatus()
 
 
     def readSincStatus(self) -> dict:
         '''
-        liest die sic file und schreibt setzt alle dazugehörgien Varibalen
-        1. file lesen (wenn icht vorhanden oder leer dann {})
-            -> aufbau der datei {"sinc_time":[eigenlich wie StructSincPoint]}
-        2. setze variablen
-            - self.sinc_dic ist eien dict mit regler id und dazugeöhrigen StructSincPoint
-            - self.controller_ids ist eine liste mit den contorller ids
+        Reads the synchronization status from the file and initializes internal variables.
+
+        This method:
+        1. Reads the file (if it exists).
+        2. Parses the synchronization data into `StructSincPoint` objects.
+        3. Updates the `sinc_dic` dictionary and `controller_ids` list.
+        If the file is missing or empty, an empty structure is initialized.
         '''
         try:
-            fi = open(self.file_path,mode="r")
-            result = fi.read()
-            fi.close()
-        except:
+            with open(self.file_path, mode="r") as fi:
+                result = fi.read()
+        except FileNotFoundError:
             result=""
 
         if result=="":
-            result = {}
+            result = {"sinc_time":[]}
         else:
             result = loads(result)
 
@@ -1120,23 +1155,28 @@ class ControllerIdSincTime():
             self.controller_ids.append(sinc["controller_id"])
         
 
-    def readSincStatus(self) -> None:
+    def writeSincStatus(self) -> None:
         '''
-        schreibt den aktullen sinc status in eine json datei.
-        '''
-        file_data = {"sinc_time": [
-            [ point.__json__() for point in list( self.sinc_dic.values() ) ]
-        ]}
+        Writes the current synchronization status to the JSON file.
 
-        fi = open(self.file_path,mode="w")
-        fi.write(dumps(file_data))
-        fi.close()
+        This method serializes the `sinc_dic` dictionary to a JSON structure and saves it to the file path.
+        '''
+        file_data = {"sinc_time": [ point.__json__() for point in list( self.sinc_dic.values() ) ] }
+
+        with open(self.file_path, mode="w") as fi:
+            fi.write(dumps(file_data))
 
     
     def checkAndSetNewControllerIdsWithDefaultTime(self, controller_ids:list, asset_ids:list, instance_ids:list,
                                                     serial_id:str) -> None:
         '''
-        setzt instancen die es noch nicht gibt
+        Adds new controller IDs to the synchronization dictionary with a default timestamp.
+
+        Args:
+            controller_ids (list): A list of controller IDs to check and add if missing.
+            asset_ids (list): Corresponding asset IDs for the controllers.
+            instance_ids (list): Corresponding instance IDs for the controllers.
+            serial_id (str): The series ID associated with these controllers.
         '''
         new_controller_ids = list( set( controller_ids ) - set( self.controller_ids ) )
         for idx in range(len(new_controller_ids)):
@@ -1156,13 +1196,18 @@ class SchneidPostgresHeatMeterSinc(SchneidParamWinmiocs70):
     '''
 
 
-    def __init__(self, path_and_file_sinc_status:"str",NaoApp:NaoApp,SchneidPostgres:ScheindPostgresWinmiocs70,LablingNaoInstance:LablingNao, serial_id:str) -> None:
+    def __init__(self, path_and_file_sinc_status:"str",NaoApp:NaoApp,SchneidPostgres:ScheindPostgresWinmiocs70,
+                 LablingNaoInstance:LablingNao, serial_id:str, error_id:Union[str,None]=None) -> None:
+        '''
+        '''
         self.sinc_file = path_and_file_sinc_status
         self.serial_id = serial_id
+        self.error_id = error_id
         self.naoapp = NaoApp
         self.postgres = SchneidPostgres
         self.naolabiling = LablingNaoInstance
         self.sinc_status = ControllerIdSincTime(self.sinc_file)
+        self.checkLabledInstances()
 
     
     def checkLabledInstances(self) -> None:
@@ -1178,7 +1223,7 @@ class SchneidPostgresHeatMeterSinc(SchneidParamWinmiocs70):
         for instance in instances:
             asset_ids.append(instance["_asset"])
             instance_ids.append(instance["_id"])
-            controller_ids.append(instance["name"].split("_prot")[0])
+            controller_ids.append(int(instance["name"].split("_prot")[0]))
 
         self.sinc_status.checkAndSetNewControllerIdsWithDefaultTime(
             controller_ids=controller_ids, 
@@ -1186,5 +1231,42 @@ class SchneidPostgresHeatMeterSinc(SchneidParamWinmiocs70):
             instance_ids=instance_ids, 
             serial_id=self.serial_id
         )
+
+    
+    def sincTimeseries(self) -> None:
+        '''
+        nacheinader die contorller durchgenen
+        1. neue daten von der postgres datenbank von Schneid Winmiocs 70 holen
+        2. überprufen ob neue daten vorhanden
+        3. aus Seriensummer einen Telegraf-frame machen
+        (4.) letze serienummer abspeichern !?
+        4. falls id für error vorhanden (self.error_id) die errors zum telegraf frame hinzufügen
+        5. telegrafframe an nao schiecken
+        '''
+        for controller_id in self.sinc_status.sinc_dic:
+            sinc_data = self.sinc_status.sinc_dic[controller_id]
+
+            dataframe = self.postgres.getSerialSeriesByControllerId(
+                controller_id=controller_id,
+                start_time=sinc_data.last_time
+            )
+            
+            if len(dataframe) == 0: 
+                continue
+
+            telegraf_frame = dataframe[["time", "serial"]].dropna().apply(
+                lambda row: f'{sinc_data.asset_id},instance={sinc_data.instance_id} {sinc_data.series_id}={repr(row["serial"])} {int(row["time"])}',axis=1
+            ).to_list()
+
+            if self.error_id!=None:
+                telegraf_frame.extend(dataframe[["time", "error"]].dropna().apply(
+                    lambda row: f'{sinc_data.asset_id},instance={sinc_data.instance_id} {sinc_data.series_id}={repr(row["error"])} {int(row["time"])}',axis=1
+                ).to_list())
+            
+            res = self.naoapp.sendTelegrafData(
+                payload=telegraf_frame
+            )
+            
+            last_serial = dataframe["serial"].iloc[-1]
 
 

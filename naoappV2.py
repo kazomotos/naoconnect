@@ -181,7 +181,7 @@ class NaoApp():
     def patchInstanceData(self, instance_id:str, payload:dict):
         return(self._sendDataToNaoJson(NaoApp.NAME_PATCH, NaoApp.URL_PATCH_INSTANCE%(instance_id), payload))
     
-    def sendTelegrafData(self, payload, max_sleep:float=2):
+    def sendTelegrafData(self, payload:list, max_sleep:float=2):
         ''' 
         [ '<twin>,instance=<insatance> <measurement>=<value> <timestamp>' ] 
                                       or
