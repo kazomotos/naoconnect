@@ -1346,6 +1346,7 @@ class SchneidPostgresHeatMeterSerialSinc(SchneidParamWinmiocs70):
                 controller_id=controller_id,
                 start_time=sinc_data.last_time
             )
+            dataframe["time"] = dataframe["time"].astype(int)
             
             if len(dataframe) == 0: 
                 continue
