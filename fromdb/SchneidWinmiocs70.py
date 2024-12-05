@@ -333,7 +333,7 @@ class ScheindPostgresWinmiocs70(SchneidParamWinmiocs70):
     SQL_GET_NODES = "SELECT * FROM node;"
     SQL_TIME_FORMATTER = '%Y-%m-%d %H:%M:%S'
     SQL_GET_SERIAL_BY_ID = '''
-        SELECT time, node, ser, err
+        SELECT time, ser, err
         FROM cnt
         WHERE node = '%s' AND time > '%s'
         ORDER BY time;
@@ -1338,6 +1338,7 @@ class SchneidPostgresHeatMeterSerialSinc(SchneidParamWinmiocs70):
         7. Überprüfen ob last_serial vorhanden ansonsten continue
         8. falls für den controller id noch kein metadatatenpunkt lokal hinterlegt ist, vom NAO-Server einen holen
         9. falls sich die serieal nummer geändert hat erst in NAO patchten, dann local
+        am ende sic status wieder abspeichern
         '''
         for controller_id in self.sinc_status.sinc_dic:
             sinc_data = self.sinc_status.sinc_dic[controller_id]
@@ -1346,19 +1347,19 @@ class SchneidPostgresHeatMeterSerialSinc(SchneidParamWinmiocs70):
                 controller_id=controller_id,
                 start_time=sinc_data.last_time
             )
-            dataframe["time"] = dataframe["time"].astype(int)
+            dataframe["time2"] = dataframe["time"].astype(int)
             
             if len(dataframe) == 0: 
                 continue
 
-            telegraf_frame = dataframe[["time", "serial"]].dropna().apply(
-                lambda row: f'{sinc_data.asset_id},instance={sinc_data.instance_id} {sinc_data.series_id}={repr(row["serial"])} {int(row["time"])}',
+            telegraf_frame = dataframe[["time2", "serial"]].dropna().apply(
+                lambda row: f'{sinc_data.asset_id},instance={sinc_data.instance_id} {sinc_data.series_id}={repr(int(row["serial"]))} {int(row["time2"])}',
                 axis=1
             ).to_list()
 
             if self.error_id!=None:
-                telegraf_frame.extend(dataframe[["time", "error"]].dropna().apply(
-                    lambda row: f'{sinc_data.asset_id},instance={sinc_data.instance_id} {sinc_data.series_id}={repr(row["error"])} {int(row["time"])}',
+                telegraf_frame.extend(dataframe[["time2", "error"]].dropna().apply(
+                    lambda row: f'{sinc_data.asset_id},instance={sinc_data.instance_id} {sinc_data.series_id}={repr(row["error"])} {int(row["time2"])}',
                     axis=1
                 ).to_list())
             
@@ -1367,7 +1368,7 @@ class SchneidPostgresHeatMeterSerialSinc(SchneidParamWinmiocs70):
             )
 
             if status == 204:
-                sinc_data.last_time = telegraf_frame["time"].iloc[-1]
+                sinc_data.last_time = dataframe["time"].iloc[-1]
             
             last_serial = dataframe["serial"].iloc[-1]
             if last_serial==None:
@@ -1398,7 +1399,12 @@ class SchneidPostgresHeatMeterSerialSinc(SchneidParamWinmiocs70):
                     value = last_serial
                 )
 
-                meta_data.value = last_serial
+                if isinstance(res,dict):
+                    if "_id" in res:
+                        meta_data.value = last_serial
+    
+        self.sinc_status.writeSincStatus()
+
 
             
 
