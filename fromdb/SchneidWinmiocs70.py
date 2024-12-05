@@ -1176,8 +1176,8 @@ class SchneidPostgresHeatMeterSinc(SchneidParamWinmiocs70):
         instance_ids = []
         instances = self.naolabiling.getInstances()
         for instance in instances:
-            asset_ids.append(instance["asset_id"])
-            instance_ids.append(instance["instance_id"])
+            asset_ids.append(instance["_asset"])
+            instance_ids.append(instance["_id"])
             controller_ids.append(instance["name"].split("_prot")[0])
 
         self.sinc_status.checkAndSetNewControllerIdsWithDefaultTime(
