@@ -2,6 +2,7 @@
 import psycopg2
 from naoconnect.local_db import Driver, StationDatapoints, LablingNao, SyncronizationStatus
 from pandas import Series
+from typing import Dict, Union
 import pandas as pd
 from datetime import datetime, timedelta
 from naoconnect.naoappV2 import NaoApp
@@ -11,6 +12,7 @@ import csv
 import re
 import pytz
 from os import path, listdir
+from json import loads, dumps
 from io import StringIO
 from numpy import isnan, nan
 
@@ -19,11 +21,16 @@ from numpy import isnan, nan
 '''
 
 
-'''
---------------------------------------------------------------------------------------------------------------------
-                                                        Params
---------------------------------------------------------------------------------------------------------------------
-'''
+
+# '''
+# --------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
+#                                                         Params
+# --------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
+# '''
 
 class SchneidParamWinmiocs70():
     STATUS_CODE_GOOD = 204
@@ -95,11 +102,18 @@ class SchneidParamWinmiocs70():
     DEFAULT_BREAK_TELEGRAF_LEN = 50000
     DEFAULT_FIRST_TIME_SCHNEID = datetime(2014,1,1)
 
-'''
---------------------------------------------------------------------------------------------------------------------
-                                                   Database Struct
---------------------------------------------------------------------------------------------------------------------
-'''
+
+
+
+# '''
+# --------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
+#                                                    Database Struct
+# --------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
+# '''
 
 class DbStruct():
     
@@ -141,12 +155,18 @@ class DbStruct():
             self.other[database] = []
         self.other[database].append(table)  
 
-'''
---------------------------------------------------------------------------------------------------------------------
-                                                       CSV Data Class
---------------------------------------------------------------------------------------------------------------------
-'''
 
+
+
+# '''
+# --------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
+#                                                        CSV Data Class
+# --------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
+# '''
 
 class SchneidCsvWinmiocs70(SchneidParamWinmiocs70):
     CSV_ENCODING = 'ISO-8859-1'
@@ -287,11 +307,18 @@ class SchneidCsvWinmiocs70(SchneidParamWinmiocs70):
         buffer.columns = range(len(buffer.columns))
         return(buffer)
 
-'''
---------------------------------------------------------------------------------------------------------------------
-                                                   Connetct to Db Data Class
---------------------------------------------------------------------------------------------------------------------
-'''
+
+
+
+# '''
+# --------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
+#                                                    Connetct to Db Data Class
+# --------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
+# '''
 
 class ScheindPostgresWinmiocs70(SchneidParamWinmiocs70):
     '''
@@ -437,11 +464,15 @@ class ScheindPostgresWinmiocs70(SchneidParamWinmiocs70):
         return( result_frame )
 
 
-'''
---------------------------------------------------------------------------------------------------------------------
-                                                   Meta Data Class
---------------------------------------------------------------------------------------------------------------------
-'''
+# '''
+# --------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
+#                                                    Meta Data Class
+# --------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
+# '''
 
 class SchneidMeta(SchneidParamWinmiocs70):
 
@@ -778,11 +809,19 @@ class SchneidMeta(SchneidParamWinmiocs70):
         self.patchLastDataPointMeta()
         self.patchSyncStatus()
 
-'''
---------------------------------------------------------------------------------------------------------------------
-                                                Data Transfer Class
---------------------------------------------------------------------------------------------------------------------
-'''
+
+
+
+
+# '''
+# --------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
+#                                          Data Transfer Class for CSV
+# --------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
+# '''
 
 class SchneidTransferCsv(SchneidParamWinmiocs70):
 
@@ -994,3 +1033,151 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
                 add_telegraf(f"{asset_id},instance={instance_id} {sensor_ids[idx]}={timeseries[columns[idx]].iloc[row]} {timestamp}")
         return(telegraf_list)  
         
+
+
+# '''
+# --------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
+#                                                    Meta Data Postgres
+# --------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------
+# '''
+
+
+class StructSincPoint():
+    '''
+    '''
+
+    def __init__(self, controller_id:int, asset_id:str, instance_id:str, 
+                 series_id:str, last_time:Union[str,datetime]) -> None:
+        '''
+        '''
+        self.contoller_id = controller_id if isinstance(controller_id,int) else int(controller_id)
+        self.last_time = last_time if isinstance(last_time,datetime) else datetime.fromisoformat(last_time)
+        self.asset_id = asset_id
+        self.instance_id = instance_id
+        self.series_id = series_id
+
+    def __json__(self):
+        return({
+            "contoller_id": self.contoller_id,
+            "last_time": self.last_time.isoformat(),
+            "asset_id": self.asset_id,
+            "instance_id": self.instance_id,
+            "series_id": self.series_id
+        })
+
+
+class ControllerIdSincTime():
+    '''
+    '''
+
+
+    def __init__(self, file_path:str, default_start_time:datetime=datetime(2010,1,1)) -> None:
+        '''
+        file path ist der path und der filename der sic datei
+        dafult_start_time ist der erste zeipunkt der gesetzt wird für sic falls noch nicht sincronisiert
+        '''
+        self.file_path:str = file_path
+        self.default_start_time = default_start_time
+        self.sinc_dic:Dict[str,StructSincPoint]={}
+        self.controller_ids:list=[]
+
+
+    def readSincStatus(self) -> dict:
+        '''
+        liest die sic file und schreibt setzt alle dazugehörgien Varibalen
+        1. file lesen (wenn icht vorhanden oder leer dann {})
+            -> aufbau der datei {"sinc_time":[eigenlich wie StructSincPoint]}
+        2. setze variablen
+            - self.sinc_dic ist eien dict mit regler id und dazugeöhrigen StructSincPoint
+            - self.controller_ids ist eine liste mit den contorller ids
+        '''
+        try:
+            fi = open(self.file_path,mode="r")
+            result = fi.read()
+            fi.close()
+        except:
+            result=""
+
+        if result=="":
+            result = {}
+        else:
+            result = loads(result)
+
+        self.sinc_dic = {}
+        self.controller_ids = []
+        for sinc in result["sinc_time"]:
+            self.sinc_dic[sinc["controller_id"]] = StructSincPoint(
+                controller_id=sinc["controller_id"],
+                asset_id=sinc["asset_id"],
+                instance_id=sinc["instance_id"],
+                series_id=sinc["series_id"],
+                last_time=sinc["last_time"]
+            )
+            self.controller_ids.append(sinc["controller_id"])
+        
+
+    def readSincStatus(self) -> None:
+        '''
+        schreibt den aktullen sinc status in eine json datei.
+        '''
+        file_data = {"sinc_time": [
+            [ point.__json__() for point in list( self.sinc_dic.values() ) ]
+        ]}
+
+        fi = open(self.file_path,mode="w")
+        fi.write(dumps(file_data))
+        fi.close()
+
+    
+    def checkAndSetNewControllerIdsWithDefaultTime(self, controller_ids:list, asset_ids, instance_ids, serial_id) -> None:
+        '''
+        setzt instancen die es noch nicht gibt
+        '''
+        new_controller_ids = list( set( controller_ids ) - set( self.controller_ids ) )
+        for controller_id in new_controller_ids:
+            self.controller_ids.append( controller_id )
+            self.sinc_dic[controller_id] = self.default_start_time
+        
+
+class SchneidPostgresHeatMeterSinc(SchneidParamWinmiocs70):
+    '''
+    Sincronisiert bei ausfühurng Zählernummer und errorcode aus Postgres datenbank von Schneid Winmiocs 70
+    '''
+
+
+    def __init__(self, path_and_file_sinc_status:"str",NaoApp:NaoApp,SchneidPostgres:ScheindPostgresWinmiocs70,LablingNaoInstance:LablingNao, serial_id:str) -> None:
+        self.sinc_file = path_and_file_sinc_status
+        self.serial_id = serial_id
+        self.naoapp = NaoApp
+        self.postgres = SchneidPostgres
+        self.naolabiling = LablingNaoInstance
+        self.sinc_status = ControllerIdSincTime(self.sinc_file)
+
+    
+    def checkLabledInstances(self) -> None:
+        '''
+        überüft ob neue instancen für assets in Nao angelegt worden sind
+        1. hole alle angelegtn instancen
+        2. überprüft welche instancen noch nicht angelegt wurden und setzt sie
+        '''
+        controller_ids = []
+        asset_ids = []
+        instance_ids = []
+        instances = self.naolabiling.getInstances()
+        for instance in instances:
+            asset_ids.append(instance["asset_id"])
+            instance_ids.append(instance["instance_id"])
+            controller_ids.append(instance["name"].split("_prot")[0])
+
+        self.sinc_status.checkAndSetNewControllerIdsWithDefaultTime(
+            controller_ids=controller_ids, 
+            asset_ids=asset_ids, 
+            instance_ids=instance_ids, 
+            serial_id=self.serial_id
+        )
+
+
