@@ -1133,14 +1133,21 @@ class ControllerIdSincTime():
         fi.close()
 
     
-    def checkAndSetNewControllerIdsWithDefaultTime(self, controller_ids:list, asset_ids, instance_ids, serial_id) -> None:
+    def checkAndSetNewControllerIdsWithDefaultTime(self, controller_ids:list, asset_ids:list, instance_ids:list,
+                                                    serial_id:str) -> None:
         '''
         setzt instancen die es noch nicht gibt
         '''
         new_controller_ids = list( set( controller_ids ) - set( self.controller_ids ) )
-        for controller_id in new_controller_ids:
-            self.controller_ids.append( controller_id )
-            self.sinc_dic[controller_id] = self.default_start_time
+        for idx in range(len(new_controller_ids)):
+            self.controller_ids.append( controller_ids[idx] )
+            self.sinc_dic[controller_ids[idx]] = StructSincPoint(
+                controller_id=controller_ids[idx],
+                asset_id=asset_ids[idx],
+                instance_id=instance_ids[idx],
+                series_id=serial_id,
+                last_time=self.default_start_time
+            )
         
 
 class SchneidPostgresHeatMeterSinc(SchneidParamWinmiocs70):
