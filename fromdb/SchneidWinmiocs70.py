@@ -278,7 +278,6 @@ class SchneidCsvWinmiocs70(SchneidParamWinmiocs70):
         except pd.errors.ParserError as e:
             match = re.search(r'line (\d+)', str(e))
             line_number = int(match.group(1))
-            #buffer1 = pd.read_csv(StringIO('\n'.join(buffer[buff:line_number])), sep=SchneidCsvWinmiocs70.CSV_DELIMITER, header=None, encoding=SchneidCsvWinmiocs70.CSV_ENCODING)
             try:
                 buffer = pd.read_csv(StringIO('\n'.join(buffer[line_number+buff:])), sep=SchneidCsvWinmiocs70.CSV_DELIMITER, header=None, encoding=SchneidCsvWinmiocs70.CSV_ENCODING)
             except  pd.errors.ParserError as e:
@@ -295,9 +294,34 @@ class SchneidCsvWinmiocs70(SchneidParamWinmiocs70):
 '''
 
 class ScheindPostgresWinmiocs70(SchneidParamWinmiocs70):
+    '''
+    A class to interact with the Schneid Winmiocs 70 software's PostgreSQL database.
+
+    This class provides methods to establish a connection to the PostgreSQL database,
+    execute queries to retrieve and manipulate data related to the Winmiocs 70 system, 
+    and disconnect from the database. It uses specific SQL queries defined in the 
+    class variables to extract data from the system, such as node and serial information 
+    for heat meters, as well as metadata about the system's nodes.   
+    '''
     SQL_GET_NODES = "SELECT * FROM node;"
+    SQL_TIME_FORMATTER = '%Y-%m-%d %H:%M:%S'
+    SQL_GET_SERIAL_BY_ID = '''
+        SELECT time, node, ser, err
+        FROM cnt
+        WHERE node = '%s' AND time > '%s'
+        ORDER BY time;
+    '''
 
     def __init__(self, hostname: str = "localhost", database: str = "postgres", username: str = "winmiocs", password: str = "") -> None:
+        '''
+        Initializes the database connection parameters.
+
+        Args:
+            hostname (str): The hostname of the database server (default is "localhost").
+            database (str): The name of the database to connect to (default is "postgres").
+            username (str): The username for database authentication (default is "winmiocs").
+            password (str): The password for database authentication (default is an empty string).
+        '''
         self.hostname = hostname
         self.database = database
         self.username = username
@@ -305,6 +329,10 @@ class ScheindPostgresWinmiocs70(SchneidParamWinmiocs70):
         self.conn = None
 
     def connectToDb(self) -> None:
+        '''
+        Establishes a connection to the PostgreSQL database using the provided 
+        connection parameters.
+        '''
         self.conn = psycopg2.connect(
             host=self.hostname,
             dbname=self.database,
@@ -313,9 +341,36 @@ class ScheindPostgresWinmiocs70(SchneidParamWinmiocs70):
         )
 
     def disconnectToDb(self) -> None:
+        '''
+        Closes the connection to the PostgreSQL database.
+        '''
         self.conn.close()
 
-    def getMetaDataByID(self) -> dict:
+    def getMetaDataGroupedById(self) -> dict:
+        '''
+        Retrieves metadata from the Schneid PostgreSQL database, grouped by 
+        controller ID.
+
+        This function queries the database for metadata records and organizes 
+        them into a dictionary, where each key represents a controller ID 
+        (`AnID`) and its value is a sub-dictionary containing associated metadata.
+
+        Returns:
+            dict: A dictionary containing metadata grouped by controller ID. 
+                  Each key is the controller ID (`AnID`), and the value is a 
+                  dictionary with the following keys:
+                  - `AnID`: The controller ID.
+                  - `customer_name`: The customer's name.
+                  - `streed`: The street address.
+                  - `tel_number`: The customer's telephone number.
+                  - `customer_second_name`: A secondary name for the customer.
+                  - `meter_type`: The type of meter.
+
+        Notes:
+            If an error occurs during the database connection or query 
+            execution, the function catches the exception and returns an 
+            empty dictionary `{}`.
+        '''
         try:
             self.connectToDb()
             cur = self.conn.cursor()
@@ -334,7 +389,53 @@ class ScheindPostgresWinmiocs70(SchneidParamWinmiocs70):
                     ScheindPostgresWinmiocs70.DICTNAME_METER_TYPE: row[7]
                 }
             return(meta)
-        except: return({})
+        except: 
+            return({})
+
+    def getSerialSeriesByControllerId(self, controller_id:int, start_time:datetime) -> pd.DataFrame:
+        ''' 
+        Retrieves a time series of serial numbers and error states for a heat 
+        meter from the Schneid PostgreSQL database.
+
+        This function queries the database to return a pandas DataFrame 
+        containing the serial numbers and potential error messages of a heat 
+        meter associated with a specific controller ID. The DataFrame uses 
+        timestamps as the index and includes the following columns:
+        - `serial`: The serial number of the heat meter.
+        - `error`: Any error messages associated with the heat meter.
+
+        Args:
+            controller_id (int): The ID of the controller to query for 
+                                associated serial data.
+            start_time (datetime): The starting point in time for the query
+
+        Returns:
+            pd.DataFrame: A DataFrame indexed by timestamp with columns:
+                - `serial` (str): The serial number of the heat meter.
+                - `error` (str): The error message, if any.
+
+        Raises:
+            Any exception raised during database connection or query execution 
+            will propagate upwards unless handled outside this function.
+        '''
+        str_start_time = start_time.strftime(ScheindPostgresWinmiocs70.SQL_TIME_FORMATTER)
+        self.connectToDb()
+        cur = self.conn.cursor()
+        cur.execute(ScheindPostgresWinmiocs70.SQL_GET_SERIAL_BY_ID%(controller_id,str_start_time))
+        rows = cur.fetchall()
+        cur.close()
+        self.disconnectToDb()
+        index_list = []
+        serial_list = []
+        error_list = []
+        for row in rows:
+            if row[2]==None or row[1]==None:continue
+            index_list.append(row[0])
+            serial_list.append(row[1])
+            error_list.append(row[2])
+        result_frame = pd.DataFrame({"serial":serial_list,"error":error_list}, index=index_list)
+        return( result_frame )
+
 
 '''
 --------------------------------------------------------------------------------------------------------------------
@@ -503,7 +604,7 @@ class SchneidMeta(SchneidParamWinmiocs70):
         # -------------- Kundendaten --------------
         asset_meta = self._getAssetMetaQuery()
         if len(asset_meta) > 0:
-            meta_postgres = self.postgres.getMetaDataByID()
+            meta_postgres = self.postgres.getMetaDataGroupedById()
             for instance in instances:
                 instance_anid = instance[SchneidMeta.NAME_NAME].split("_")
                 if len(instance_anid)==2: instance_anid=instance_anid[0]
