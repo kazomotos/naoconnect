@@ -1075,7 +1075,7 @@ class StructSincPoint():
         self.series_id = series_id
 
 
-    def __json__(self):
+    def toDict(self):
         '''
         Serializes the StructSincPoint object into a dictionary suitable for JSON serialization.
 
@@ -1089,7 +1089,40 @@ class StructSincPoint():
             "instance_id": self.instance_id,
             "series_id": self.series_id
         })
+    
 
+class StructSincMetaPoint():
+    '''
+    '''
+
+    def __init__(self, value:Union[str,int,float,None], attribute_id:str, asset_id:str, 
+                 instance_id:str, self_id:str, controller_id:str) -> None:
+        '''
+        '''
+        self.value = value
+        self.attribute_id = attribute_id
+        self.asset_id =  asset_id
+        self.instance_id = instance_id
+        self.self_id = self_id
+        self.controller_id = controller_id
+
+
+    def toDict(self):
+        '''
+        Serializes the StructSincPoint object into a dictionary suitable for JSON serialization.
+
+        Returns:
+            dict: A dictionary containing the object's data-
+        '''
+        return({
+            "value": self.value,
+            "attribute_id": self.attribute_id,
+            "asset_id":  self.asset_id,
+            "instance_id": self.instance_id,
+            "self_id": self.self_id,
+            "controller_id": self.controller_id
+        })
+    
 
 class ControllerIdSincTime():
     '''
@@ -1112,11 +1145,13 @@ class ControllerIdSincTime():
             file_path (str): The path to the synchronization status file.
             default_start_time (datetime): The default synchronization start time.
             sinc_dic (dict): A dictionary mapping controller IDs to `StructSincPoint` objects.
+            meta_dict (dict): A dictionary mapping controller IDs to `StructSincMetaPoint` objects.
             controller_ids (list): A list of all controller IDs currently managed.
         '''
         self.file_path:str = file_path
         self.default_start_time = default_start_time
         self.sinc_dic:Dict[str,StructSincPoint]={}
+        self.meta_dic:Dict[str,StructSincMetaPoint]={}
         self.controller_ids:list=[]
         self.readSincStatus()
 
@@ -1126,10 +1161,15 @@ class ControllerIdSincTime():
         Reads the synchronization status from the file and initializes internal variables.
 
         This method:
-        1. Reads the file (if it exists).
-        2. Parses the synchronization data into `StructSincPoint` objects.
-        3. Updates the `sinc_dic` dictionary and `controller_ids` list.
-        If the file is missing or empty, an empty structure is initialized.
+        1. Reads the synchronization file (if it exists).
+        2. Parses the synchronization data into two separate dictionaries:
+            - `sinc_dic`: Maps controller IDs to `StructSincPoint` objects representing synchronization points.
+            - `meta_dic`: Maps controller IDs to `StructSincPoint` objects containing meta-information.
+        3. Updates the `controller_ids` list with all controller IDs from `sinc_dic`.
+
+        If the file is missing or empty, default structures are initialized:
+        - `sinc_dic` and `meta_dic` are empty dictionaries.
+        - `controller_ids` is an empty list.
         '''
         try:
             with open(self.file_path, mode="r") as fi:
@@ -1138,7 +1178,7 @@ class ControllerIdSincTime():
             result=""
 
         if result=="":
-            result = {"sinc_time":[]}
+            result = {"sinc_time":[], "meta_data":[]}
         else:
             result = loads(result)
 
@@ -1154,17 +1194,39 @@ class ControllerIdSincTime():
             )
             self.controller_ids.append(sinc["controller_id"])
         
+        self.meta_dic = {}
+        for sinc in result["meta_data"]:
+            self.meta_dic[sinc["controller_id"]] = StructSincPoint(
+                controller_id=sinc["controller_id"],
+                asset_id=sinc["asset_id"],
+                instance_id=sinc["instance_id"],
+                series_id=sinc["attribute_id"],
+                last_time=sinc["self_id"]
+            )
+        
 
     def writeSincStatus(self) -> None:
         '''
         Writes the current synchronization status to the JSON file.
 
-        This method serializes the `sinc_dic` dictionary to a JSON structure and saves it to the file path.
+        This method:
+        1. Serializes the following dictionaries into JSON format:
+            - `sinc_dic`: Contains synchronization point data.
+            - `meta_dic`: Contains meta-information data.
+        2. Saves the serialized data to the file at `self.file_path`.
+
+        The JSON structure written to the file includes:
+        - `sinc_time`: A list of serialized synchronization points from `sinc_dic`.
+        - `meta_data`: A list of serialized meta-information points from `meta_dic`.
+
+        Raises:
+            Any exceptions during file writing will propagate upwards unless handled externally.
         '''
-        file_data = {"sinc_time": [ point.__json__() for point in list( self.sinc_dic.values() ) ] }
+        sinc_time = [ point.toDict() for point in list( self.sinc_dic.values() ) ] 
+        meta_data = [ point.toDict() for point in list( self.meta_dic.values() ) ] 
 
         with open(self.file_path, mode="w") as fi:
-            fi.write(dumps(file_data))
+            fi.write(dumps( { "sinc_time": sinc_time, "meta_data": meta_data } ))
 
     
     def checkAndSetNewControllerIdsWithDefaultTime(self, controller_ids:list, asset_ids:list, instance_ids:list,
@@ -1188,21 +1250,38 @@ class ControllerIdSincTime():
                 series_id=serial_id,
                 last_time=self.default_start_time
             )
+
+        
+    def setMetaPoint(self, value:Union[str,int,float,None], attribute_id:str, asset_id:str, 
+                 instance_id:str, self_id:str, controller_id:str) -> None:
+        '''
+        '''
+        self.meta_dic[controller_id] = StructSincMetaPoint(
+            value=value,
+            attribute_id=attribute_id,
+            asset_id=asset_id,
+            instance_id=instance_id,
+            self_id=self_id,
+            controller_id=controller_id
+        )
         
 
-class SchneidPostgresHeatMeterSinc(SchneidParamWinmiocs70):
+
+class SchneidPostgresHeatMeterSerialSinc(SchneidParamWinmiocs70):
     '''
     Sincronisiert bei ausfühurng Zählernummer und errorcode aus Postgres datenbank von Schneid Winmiocs 70
     '''
 
 
     def __init__(self, path_and_file_sinc_status:"str",NaoApp:NaoApp,SchneidPostgres:ScheindPostgresWinmiocs70,
-                 LablingNaoInstance:LablingNao, serial_id:str, error_id:Union[str,None]=None) -> None:
+                 LablingNaoInstance:LablingNao, serial_id:str, error_id:Union[str,None] = None, 
+                 attribute_id:Union[str,None] = None) -> None:
         '''
         '''
         self.sinc_file = path_and_file_sinc_status
         self.serial_id = serial_id
         self.error_id = error_id
+        self.attribute_id = attribute_id
         self.naoapp = NaoApp
         self.postgres = SchneidPostgres
         self.naolabiling = LablingNaoInstance
@@ -1232,6 +1311,20 @@ class SchneidPostgresHeatMeterSinc(SchneidParamWinmiocs70):
             serial_id=self.serial_id
         )
 
+
+    def getSelfSeriealIdFromNao(self, instance_id) -> str:
+        '''
+        gibt die metadaten id für die seriennummer des zählers der spezifischen nao instanz zurück.
+        '''
+        instance_infos = self.naoapp.getInstanceInfos(instance_id)
+
+        id_att = ""
+        for info in instance_infos[SchneidMeta.NAME_META_VALUES]:
+            if info[SchneidMeta.NAME_META_ID] == self.attribute_id:
+                id_att = info[SchneidMeta.NAME__ID]
+
+        return( id_att )
+
     
     def sincTimeseries(self) -> None:
         '''
@@ -1239,9 +1332,12 @@ class SchneidPostgresHeatMeterSinc(SchneidParamWinmiocs70):
         1. neue daten von der postgres datenbank von Schneid Winmiocs 70 holen
         2. überprufen ob neue daten vorhanden
         3. aus Seriensummer einen Telegraf-frame machen
-        (4.) letze serienummer abspeichern !?
         4. falls id für error vorhanden (self.error_id) die errors zum telegraf frame hinzufügen
         5. telegrafframe an nao schiecken
+        6. falls übertragung erfoglreich status = 204, sinc_status aktualisieren
+        7. Überprüfen ob last_serial vorhanden ansonsten continue
+        8. falls für den controller id noch kein metadatatenpunkt lokal hinterlegt ist, vom NAO-Server einen holen
+        9. falls sich die serieal nummer geändert hat erst in NAO patchten, dann local
         '''
         for controller_id in self.sinc_status.sinc_dic:
             sinc_data = self.sinc_status.sinc_dic[controller_id]
@@ -1255,18 +1351,58 @@ class SchneidPostgresHeatMeterSinc(SchneidParamWinmiocs70):
                 continue
 
             telegraf_frame = dataframe[["time", "serial"]].dropna().apply(
-                lambda row: f'{sinc_data.asset_id},instance={sinc_data.instance_id} {sinc_data.series_id}={repr(row["serial"])} {int(row["time"])}',axis=1
+                lambda row: f'{sinc_data.asset_id},instance={sinc_data.instance_id} {sinc_data.series_id}={repr(row["serial"])} {int(row["time"])}',
+                axis=1
             ).to_list()
 
             if self.error_id!=None:
                 telegraf_frame.extend(dataframe[["time", "error"]].dropna().apply(
-                    lambda row: f'{sinc_data.asset_id},instance={sinc_data.instance_id} {sinc_data.series_id}={repr(row["error"])} {int(row["time"])}',axis=1
+                    lambda row: f'{sinc_data.asset_id},instance={sinc_data.instance_id} {sinc_data.series_id}={repr(row["error"])} {int(row["time"])}',
+                    axis=1
                 ).to_list())
             
-            res = self.naoapp.sendTelegrafData(
+            status = self.naoapp.sendTelegrafData(
                 payload=telegraf_frame
             )
+
+            if status == 204:
+                sinc_data.last_time = telegraf_frame["time"].iloc[-1]
             
             last_serial = dataframe["serial"].iloc[-1]
+            if last_serial==None:
+                continue
+            else:
+                last_serial = int(last_serial)
 
+            if controller_id not in self.sinc_status.meta_dic:
+                meta_id = self.getSelfSeriealIdFromNao(instance_id=sinc_data.instance_id)
+                
+                if meta_id == "":
+                    continue
+
+                self.sinc_status.setMetaPoint(
+                    value=None,
+                    attribute_id=self.attribute_id,
+                    instance_id=sinc_data.instance_id,
+                    asset_id=sinc_data.asset_id,
+                    controller_id=controller_id,
+                    self_id=meta_id
+                )
+
+            meta_data = self.sinc_status.meta_dic[controller_id]
+            if meta_data.value != last_serial:
+                res = self.naoapp.patchInstanceMeta(
+                    instance_id = meta_data.instance_id,
+                    meta_id = meta_data.self_id,
+                    value = last_serial
+                )
+
+                meta_data.value = last_serial
+
+            
+
+
+
+
+            
 
