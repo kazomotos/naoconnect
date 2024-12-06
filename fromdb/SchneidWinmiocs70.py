@@ -691,7 +691,7 @@ class ScheindPostgresWinmiocs70(SchneidParamWinmiocs70):
         serial_list = []
         error_list = []
         for row in rows:
-            if row[2]==None or row[1]==None:continue
+            if row[0]==None or row[1]==None:continue
             time_list.append(row[0])
             serial_list.append(row[1])
             error_list.append(row[2])
