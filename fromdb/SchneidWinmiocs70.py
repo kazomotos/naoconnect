@@ -1026,7 +1026,7 @@ class SchneidMeta(SchneidParamWinmiocs70):
                 print("patch meta")
 
     def patchSyncStatus(self):
-        data = self.labled_points.getNoSyncPoints()
+        data = self.labled_points.getNoSincPoints()
         for database in data:
             for dat in data[database]:
                 self.sync_status.postUnsyncroniziedValue(
