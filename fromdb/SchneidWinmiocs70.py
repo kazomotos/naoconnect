@@ -1178,9 +1178,9 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
             for idc in range(len(self.status[database])-self.status_count[database]):
                 status_instance = self.status[database][idc+self.status_count[database]]
                 count_add += 1
-                if status_instance["time_syncronizied"]!=None:
+                if status_instance[SchneidTransferCsv.NAME_TIME_SYNCRONICZIED]!=None:
                     if "WMZ" in status_instance[SchneidTransferCsv.NAME_TABLE]:
-                        if  pytz.timezone(SchneidTransferCsv.DEFAULT_SCHNEID_TIMEZONE).localize(datetime.fromisoformat(status_instance["time_syncronizied"])).astimezone(pytz.utc).replace(tzinfo=None) > datetime.utcnow()-timedelta(hours=26):
+                        if  pytz.timezone(SchneidTransferCsv.DEFAULT_SCHNEID_TIMEZONE).localize(datetime.fromisoformat(status_instance[SchneidTransferCsv.NAME_TIME_SYNCRONICZIED])).astimezone(pytz.utc).replace(tzinfo=None) > datetime.utcnow()-timedelta(hours=26):
                             continue
                 ext_telegraf(self._getTelegrafDataInstance(status_instance,database))
                 if len(telegraf)>=SchneidTransferCsv.DEFAULT_BREAK_TELEGRAF_LEN:
