@@ -1430,12 +1430,13 @@ class ControllerIdSyncTime():
         
         self.meta_dic = {}
         for sync in result["meta_data"]:
-            self.meta_dic[sync["controller_id"]] = StructSyncPoint(
-                controller_id=sync["controller_id"],
-                asset_id=sync["asset_id"],
+            self.meta_dic[sync["controller_id"]] = StructSyncMetaPoint(
+                value=sync["value"],
+                attribute_id=sync["attribute_id"],
                 instance_id=sync["instance_id"],
-                series_id=sync["attribute_id"],
-                last_time=sync["self_id"]
+                asset_id=sync["asset_id"],
+                self_id=sync["self_id"],
+                controller_id=sync["controller_id"]
             )
         
 
