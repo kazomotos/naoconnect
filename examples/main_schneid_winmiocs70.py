@@ -1,9 +1,9 @@
-from os import path, listdir
+from os import path
+from datetime import datetime, timedelta
+
 from naoconnect.local_db import Driver, StationDatapoints, LablingNao, SyncronizationStatus
 from naoconnect.fromdb.SchneidWinmiocs70 import SchneidMeta, ScheindPostgresWinmiocs70, SchneidCsvWinmiocs70, SchneidTransferCsv, SchneidPostgresHeatMeterSerialSync
 from naoconnect.naoappV2 import NaoApp, NaoLoggerMessage
-from datetime import datetime, timedelta
-import sys
 
 
 '''
