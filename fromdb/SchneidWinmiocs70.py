@@ -33,6 +33,25 @@ from numpy import isnan, nan
 # '''
 
 class SchneidParamWinmiocs70():
+    '''
+    Base class that provides shared constants and parameters for interacting with Schneid Winmiocs 70 devices and data.
+
+    This class defines various constants, configuration parameters, and metadata identifiers that are commonly 
+    used across all subclasses that interact with Schneid Winmiocs 70 systems. These values help standardize the 
+    communication with Winmiocs 70 devices, data handling, and synchronization processes.
+
+    Key attributes include:
+        - **File formats** for different types of data (`HAST_FILE_FORMAT`, `WZ_FILE_FORMAT`, etc.).
+        - **Database identifiers** and metadata keys (e.g., `DICTNAME_INFO_HEADER`, `DICTNAME_DB_NUMBER`).
+        - **Synchronization-related constants** such as default times and sleep intervals for transferring data.
+        - **Metadata fields** like serial numbers, station types, and customer names that are used for asset management.
+    
+    This class is designed to be inherited by other classes that need access to these shared variables.
+
+    **Note**:
+        If the scope of the class grows significantly in the future, it may be more appropriate to switch to using
+        `dataclasses` or other data structures to handle attributes in a more modular and maintainable way.
+    '''
     STATUS_CODE_GOOD = 204
     HAST_FILE_FORMAT = "_prot.csv"
     WZ_FILE_FORMAT = "_protWZ.csv"
@@ -92,8 +111,8 @@ class SchneidParamWinmiocs70():
     NAME_SENSOR_ID = "sensor_id"
     NAME_SYNCRONICZIED = "syncronizied"
     NAME_UNSYCRONICIZIED = "unsyncronizied"
-    NAME_TIME_SYNCRONICZIED_META = "time_sincronizied_meta"
-    NAME_TIME_SYNCRONICZIED = "time_sincronizied"
+    NAME_TIME_SYNCRONICZIED_META = "time_syncronizied_meta"
+    NAME_TIME_SYNCRONICZIED = "time_syncronizied"
     NAME_TIME_UNSYCRONICIZIED = "time_unsyncronizied"
     DEFAULT_TRANSFER_TIME_SCHNEID = 300
     DEFAULT_SCHNEID_TIMEZONE = 'Europe/Berlin'
@@ -116,41 +135,109 @@ class SchneidParamWinmiocs70():
 # '''
 
 class DbStruct():
+    '''
+    A class to manage and categorize database tables based on Schneid station types.
+    
+    This class organizes tables into different station types (e.g., `ug06`, `ug08`, etc.), 
+    where each station type contains a list of tables associated with a specific database.
+    The station types represent different types of Schneid systems, and each category 
+    stores the related tables for further processing.
+    '''
     
     def __init__(self) -> None:
-        self.ug06 = {}
-        self.ug08 = {}
-        self.ug10 = {}
-        self.ug12 = {}
-        self.wzmbushast = {}
-        self.other = {}
+        '''
+        Initializes the DbStruct object with empty dictionaries for each station type category.
+        
+        Each station type (e.g., `ug06`, `ug08`, etc.) is represented as a dictionary,
+        where the key is the database name and the value is a list of tables.
+        '''
+        self.ug06 = {}  # Represents UG06 station type tables
+        self.ug08 = {}  # Represents UG08 station type tables
+        self.ug10 = {}  # Represents UG10 station type tables
+        self.ug12 = {}  # Represents UG12 station type tables
+        self.wzmbushast = {}  # Represents heat meter MBus as station type tables
+        self.other = {}  # Represents other station types
 
     def putUg06(self, database, table):
+        '''
+        Adds a table to the 'ug06' category under the specified database.
+        
+        If the database is not already in the 'ug06' category, a new entry is created.
+        
+        Args:
+            database (str): The name of the database.
+            table (str): The name of the table to be added.
+        '''
         if database not in self.ug06:
             self.ug06[database] = []
         self.ug06[database].append(table)
 
     def putUg08(self, database, table):
+        '''
+        Adds a table to the 'ug08' category under the specified database.
+        
+        If the database is not already in the 'ug08' category, a new entry is created.
+        
+        Args:
+            database (str): The name of the database.
+            table (str): The name of the table to be added.
+        '''
         if database not in self.ug08:
             self.ug08[database] = []
         self.ug08[database].append(table)
 
     def putUg10(self, database, table):
+        '''
+        Adds a table to the 'ug10' category under the specified database.
+        
+        If the database is not already in the 'ug10' category, a new entry is created.
+        
+        Args:
+            database (str): The name of the database.
+            table (str): The name of the table to be added.
+        '''
         if database not in self.ug10:
             self.ug10[database] = []
         self.ug10[database].append(table)
 
     def putUg12(self, database, table):
+        '''
+        Adds a table to the 'ug12' category under the specified database.
+        
+        If the database is not already in the 'ug12' category, a new entry is created.
+        
+        Args:
+            database (str): The name of the database.
+            table (str): The name of the table to be added.
+        '''
         if database not in self.ug12:
             self.ug12[database] = []
         self.ug12[database].append(table)
     
     def putWzMbusHast(self, database, table):
+        '''
+        Adds a table to the 'wzmbushast' category under the specified database.
+        
+        If the database is not already in the 'wzmbushast' category, a new entry is created.
+        
+        Args:
+            database (str): The name of the database.
+            table (str): The name of the table to be added.
+        '''
         if database not in self.wzmbushast:
             self.wzmbushast[database] = []
         self.wzmbushast[database].append(table)
 
     def putOther(self, database, table):
+        '''
+        Adds a table to the 'other' category under the specified database.
+        
+        If the database is not already in the 'other' category, a new entry is created.
+        
+        Args:
+            database (str): The name of the database.
+            table (str): The name of the table to be added.
+        '''
         if database not in self.other:
             self.other[database] = []
         self.other[database].append(table)  
@@ -169,6 +256,17 @@ class DbStruct():
 # '''
 
 class SchneidCsvWinmiocs70(SchneidParamWinmiocs70):
+    '''
+    A class for handling the reading and processing of Schneid time series data stored in custom CSV formats.
+    
+    Schneid stores high-resolution time series data (5-minute intervals) in CSV files, which have a special header format. 
+    The CSV files may change in structure when the station controller is updated, which means the number of columns may vary. 
+    This class addresses such cases by managing the files, parsing their headers, and reading the latest data efficiently without 
+    the need to process the entire file.
+    
+    The class can read data from various asset types, including house stations, heat generators, grid injection, heat meters, 
+    electricity meters, and more. It can filter and process relevant assets based on their file names and metadata.
+    '''
     CSV_ENCODING = 'ISO-8859-1'
     CSV_DELIMITER = ";"
     REVERSED_BUFFER_SIZE = 600
@@ -185,63 +283,125 @@ class SchneidCsvWinmiocs70(SchneidParamWinmiocs70):
     TIME_FORMAT_LAST_TIME = '%d.%m.%Y %H:%M:%S'
     TIME_FORMAT_TIMESTEPS = '%Y-%m-%d %H:%M:%S'
 
+
     def __init__(self, file_path: str = None) -> None:
+        '''
+        Initializes the SchneidCsvWinmiocs70 object, optionally setting the file path to the CSV data directory.
+        
+        Args:
+            file_path (str, optional): The directory path where the CSV files are stored.
+        '''
         self.file_path = file_path
         self.files = []
         self.hast_files = []
         self.files_columns = {}
         self.files_infos = {}
+
         if self.file_path: 
             self.restetFiles()
 
+
     def setFilesFromDirectory(self) -> None:
-        if self.file_path: self.files:list = listdir(self.file_path)
-        else: self.files:list = []
+        '''
+        Sets the list of files from the directory specified in `self.file_path`.
+        
+        If no file path is provided, the list will be empty.
+        '''
+        if self.file_path: 
+            self.files:list = listdir(self.file_path)
+        else: 
+            self.files:list = []
 
     def setHastFiles(self) -> None:
+        '''
+        Filters the files to identify the "HAST" files, which are stored in `self.hast_files`.
+        
+        These files are filtered based on the `HAST_FILE_FORMAT` keyword in the filename.
+        '''
         hast_files = []
-        if not self.files: self.hast_files:list=hast_files; return(-1)
+        if not self.files: 
+            self.hast_files:list=hast_files; return(-1)
+        
         for file in self.files:
             if SchneidCsvWinmiocs70.HAST_FILE_FORMAT in file: hast_files.append(file)
+
         self.hast_files = hast_files
     
     def setFileInfos(self) -> None:
+        '''
+        Collects and stores the header information and columns from the CSV files that match the `DATA_FILE_FORMAT`.
+        
+        The header information is used to identify the structure of each file, and the column headers are parsed for each CSV.
+        '''
         for file in self.files:
             if SchneidCsvWinmiocs70.DATA_FILE_FORMAT not in file: continue
             if SchneidCsvWinmiocs70.DATA_FILE_FORMAT_ENDING not in file: continue
-            header = self.getFileHeader(file)
-            self.files_columns[file] = self.getColsFromColumnHeader(header[SchneidCsvWinmiocs70.DICTNAME_COLUMN_HEADER])
-            self.files_infos[file] = self.getInfoFromInfoHeader(header[SchneidCsvWinmiocs70.DICTNAME_INFO_HEADER])
-        pass
+            header = self.getFileHeader( file )
+            self.files_columns[file] = self.getColsFromColumnHeader( header[SchneidCsvWinmiocs70.DICTNAME_COLUMN_HEADER] )
+            self.files_infos[file] = self.getInfoFromInfoHeader( header[SchneidCsvWinmiocs70.DICTNAME_INFO_HEADER] )
+
 
     def restetFiles(self) -> None:
+        '''
+        Resets the file lists and refreshes the file information by calling `setFilesFromDirectory`, 
+        `setHastFiles`, and `setFileInfos`.
+        '''
         self.setFilesFromDirectory()
         self.setHastFiles()
         self.setFileInfos()
 
+
     def getFileHeader(self, file_name: str) -> dict:
+        '''
+        Retrieves the header information from a given CSV file.
+        
+        The header includes the info header and column header, which are used for further processing.
+        
+        Args:
+            file_name (str): The name of the CSV file.
+        
+        Returns:
+            dict: A dictionary containing the info and column headers.
+        '''
         with open(self.file_path+"/"+file_name, mode='r', newline='', encoding=SchneidCsvWinmiocs70.CSV_ENCODING) as file:
             csv_reader = csv.reader(file, delimiter=SchneidCsvWinmiocs70.CSV_DELIMITER)
-            try: header = next(csv_reader)
-            except: header = ["", ""]
+            try: 
+                header = next(csv_reader)
+            except: 
+                header = ["", ""]
+
         return({SchneidCsvWinmiocs70.DICTNAME_INFO_HEADER:header[0],SchneidCsvWinmiocs70.DICTNAME_COLUMN_HEADER:header[1]})
 
+
     def getColsFromColumnHeader(self, header: str):
+        '''
+        Parses the column header to extract the sensor names, N, D, and SH values.
+        
+        Args:
+            header (str): The column header string.
+        
+        Returns:
+            dict: A dictionary of parsed column data with the sensor's name, N, D, and SH values.
+        '''
         cols = SchneidCsvWinmiocs70.COLUMN_COMPILER.findall(header)
         cols_data = {}
         position_col = 0
+
         for nr, content in cols:
             name = re.search(SchneidCsvWinmiocs70.COLUMN_SENSOR_NAME_REG, content)
             name = name.group(1) if name else None
+
             if name == None: 
                 position_col += 1
                 continue
+
             n = re.search(SchneidCsvWinmiocs70.COLUMN_N_REG, content)
             n = n.group(1) if n else None
             d = re.search(SchneidCsvWinmiocs70.COLUMN_D_REG, content)
             d = d.group(1) if d else None
             sh = re.search(SchneidCsvWinmiocs70.COLUMN_SH_REG, content)
             sh = sh.group(1) if sh else None
+
             cols_data[name] = {
                 SchneidCsvWinmiocs70.DICTNAME_DB_NUMBER: nr,
                 SchneidCsvWinmiocs70.DICTNAME_DATAPOINT_NAME: name,
@@ -250,19 +410,35 @@ class SchneidCsvWinmiocs70(SchneidParamWinmiocs70):
                 SchneidCsvWinmiocs70.DICTNAME_SH: sh,
                 SchneidCsvWinmiocs70.DICTNAME_POSITION: position_col
             }
+
             position_col += 1
+
         return(cols_data)
 
     def getInfoFromInfoHeader(self, header: str) -> dict:
+        '''
+        Extracts and parses the information from the info header.
+        
+        Args:
+            header (str): The info header string.
+        
+        Returns:
+            dict: A dictionary containing the parsed table ID, station type, last write time, and interval.
+        '''
         internal_id = re.search(SchneidCsvWinmiocs70.TABLE_ID_REG, header)
         internal_id = internal_id.group(1) if internal_id else None
         station_type = re.search(SchneidCsvWinmiocs70.TABLE_STATION_REG, header)
         station_type = station_type.group(1) if station_type else None
         last_write_time = re.search(SchneidCsvWinmiocs70.TABLE_LAST_WRITE_TIME_REG, header)
-        try: last_write_time = datetime.strptime(last_write_time.group(1).split(">")[1],SchneidCsvWinmiocs70.TIME_FORMAT_LAST_TIME) if last_write_time else None
-        except: last_write_time = None
+
+        try: 
+            last_write_time = datetime.strptime(last_write_time.group(1).split(">")[1],SchneidCsvWinmiocs70.TIME_FORMAT_LAST_TIME) if last_write_time else None
+        except: 
+            last_write_time = None
+
         interval = re.search(SchneidCsvWinmiocs70.TABLE_INTERVAL_REG, header)
         interval = interval.group(1) if interval else None
+
         return({
             SchneidCsvWinmiocs70.DICTNAME_SCHNEID_TB_ID: internal_id,
             SchneidCsvWinmiocs70.DICTNAME_SCHNEID_STATION_TYPE: station_type,
@@ -271,12 +447,57 @@ class SchneidCsvWinmiocs70(SchneidParamWinmiocs70):
         })
 
     def readCsvDataReverseAsDataFrame(self, file_name: str, lines: int = 10) -> pd.DataFrame:
+        '''
+        Reads the CSV file and returns the most recent lines of data as a DataFrame.
+
+        This method optimizes the process by reading the file in reverse, starting from the end of the file, 
+        to avoid loading the entire file when only the latest data is needed. This is particularly useful for 
+        large CSV files where only the most recent entries are required, thus saving memory and processing time.
+
+        The file is read in chunks, and the method attempts to load only the required number of lines. If errors 
+        occur while parsing the CSV, the method will attempt to recover by re-reading the file starting from the 
+        error location.
+
+        Args:
+            file_name (str): The name of the CSV file to read.
+            lines (int): The number of lines to read (default is 10). If 'all' is passed, the entire file is read.
+
+        Returns:
+            pd.DataFrame: The data read from the CSV file, converted into a Pandas DataFrame. The DataFrame will 
+            have the following characteristics:
+                - The first column will be converted to datetime format and set as the index.
+                - The columns will be automatically numbered starting from 0.
+                - The data will be read in reverse order, starting from the most recent entries.
+
+        Detailed Explanation:
+            - The method reads the file in reverse order by adjusting the file pointer to read from the end of 
+            the file, which improves performance by not loading the entire file into memory when only the 
+            most recent data is needed.
+            - The file is read in chunks, and a loop is used to ensure that enough data is fetched to cover the 
+            specified number of lines.
+            - If the file contains errors or is not correctly formatted, the method tries to detect the error by 
+            examining the line number and then attempts to reload the data from the error location onward.
+            - Error locations typically occur when Schneid switches the controller (Regler), as this may cause 
+            changes to the CSV structure. In such cases, the CSV format may change (e.g., different headers, 
+            missing columns), leading to parsing errors. The method will attempt to handle these changes by 
+            reading the file from the error point onward to ensure correct data extraction.
+            - After reading the data, the method converts the first column (assumed to be the timestamp) into 
+            a datetime object, which is essential for time series data.
+            - The DataFrame's index is set to this datetime column, and the columns are automatically numbered 
+            to maintain consistency in the DataFrame structure.
+
+            This approach is designed for high-performance data processing, especially when working with large 
+            time series data stored in CSV files where only the most recent records are required.
+        '''
         if lines == 'all':
             with open(self.file_path + "/" + file_name, 'r', encoding=SchneidCsvWinmiocs70.CSV_ENCODING) as file:
                 buffer = file.read().split("\n")
+
         else:
             muli = 1
+
             while 1==1:
+
                 with open(self.file_path + "/" + file_name, 'r', encoding=SchneidCsvWinmiocs70.CSV_ENCODING) as file:
                     file.seek(0, 2)
                     file_end = file.tell()
@@ -284,27 +505,40 @@ class SchneidCsvWinmiocs70(SchneidParamWinmiocs70):
                     position = max([0,position])
                     file.seek(position)
                     buffer = file.read(file_end - position)
+
                 buffer = buffer.split("\n")
                 muli+=1
+
                 if len(buffer) > lines+1 or position==0:
                     break
-                if buffer[-1]=="":buffer=buffer[-lines-1:-1]
-                else: buffer = buffer[-lines:]
+
+                if buffer[-1]=="":
+                    buffer=buffer[-lines-1:-1]
+
+                else: 
+                    buffer = buffer[-lines:]
+
         for buff in range(len(buffer)):
             if bool(SchneidCsvWinmiocs70.TIME_COMPILER.match(buffer[buff].split(SchneidCsvWinmiocs70.CSV_DELIMITER)[0])):
                 break
+
         try:
             buffer = pd.read_csv(StringIO('\n'.join(buffer[buff:])), sep=SchneidCsvWinmiocs70.CSV_DELIMITER, header=None, encoding=SchneidCsvWinmiocs70.CSV_ENCODING)
+
         except pd.errors.ParserError as e:
             match = re.search(r'line (\d+)', str(e))
             line_number = int(match.group(1))
+
             try:
                 buffer = pd.read_csv(StringIO('\n'.join(buffer[line_number+buff:])), sep=SchneidCsvWinmiocs70.CSV_DELIMITER, header=None, encoding=SchneidCsvWinmiocs70.CSV_ENCODING)
+            
             except  pd.errors.ParserError as e:
                 buffer = pd.read_csv(StringIO('\n'.join(buffer[line_number+100+buff:])), sep=SchneidCsvWinmiocs70.CSV_DELIMITER, header=None, encoding=SchneidCsvWinmiocs70.CSV_ENCODING)
+        
         buffer[0] = pd.to_datetime(buffer[0], format=SchneidCsvWinmiocs70.TIME_FORMAT_TIMESTEPS)
         buffer.set_index(0, inplace=True)
         buffer.columns = range(len(buffer.columns))
+
         return(buffer)
 
 
@@ -792,7 +1026,7 @@ class SchneidMeta(SchneidParamWinmiocs70):
                 print("patch meta")
 
     def patchSyncStatus(self):
-        data = self.labled_points.getNoSincPoints()
+        data = self.labled_points.getNoSyncPoints()
         for database in data:
             for dat in data[database]:
                 self.sync_status.postUnsyncroniziedValue(
@@ -801,8 +1035,8 @@ class SchneidMeta(SchneidParamWinmiocs70):
                     value=[{dat[SchneidMeta.NAME_DP]:dat[SchneidMeta.NAME_SENSOR_ID]}], 
                     asset_id=dat[SchneidMeta.NAME_DB_ASSET_ID], 
                     instance_id=dat[SchneidMeta.NAME_DB_INSTANCE_ID])
-                self.labled_points.patchPointToSinc(dat[SchneidMeta.NAME_TABLE], dat[SchneidMeta.NAME_DP])
-        #self.labled_points.patchAllPointsToSinc()
+                self.labled_points.patchPointToSync(dat[SchneidMeta.NAME_TABLE], dat[SchneidMeta.NAME_DP])
+        #self.labled_points.patchAllPointsToSync()
             
     def startCheckAllMetaData(self):
         self.checkStationDatapoints()
@@ -835,31 +1069,31 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
         self.new_status = {}
         self.status_count = {}
 
-    def startSyncronization(self, logfile=None, sleep_data_len=1, archiv_sinc=False, transfer_sleeper_sec:int=None):
+    def startSyncronization(self, logfile=None, sleep_data_len=1, archiv_sync=False, transfer_sleeper_sec:int=None):
         if not transfer_sleeper_sec: transfer_sleeper_sec = SchneidTransferCsv.DEFAULT_TRASFER_SLEEPER_SECOND
         count = 0
-        sinc_timer = time()
+        sync_timer = time()
         while 1==1:
             try: 
-                if datetime.now().hour >= 23 and not archiv_sinc:
+                if datetime.now().hour >= 23 and not archiv_sync:
                     self.setSyncStatus()
                     self.status=self.getSyncStatus()
                     break
                 start_time = time()
-                data_telegraf, sinc_reset = self.getTelegrafData()
+                data_telegraf, sync_reset = self.getTelegrafData()
                 if len(data_telegraf)>0:ret=self.nao.sendTelegrafData(data_telegraf)
                 else:ret=SchneidTransferCsv.STATUS_CODE_GOOD    
                 if ret==SchneidTransferCsv.STATUS_CODE_GOOD:
                     print(len(data_telegraf), " data posted; sec:",time()-start_time, datetime.now())
                     start_time = time()
                     count+=len(data_telegraf)
-                    if sinc_reset or time()-sinc_timer:
-                        sinc_timer = time()
+                    if sync_reset or time()-sync_timer:
+                        sync_timer = time()
                         self.setSyncStatus()
                         self.status=self.getSyncStatus()
-                    if archiv_sinc and len(data_telegraf)==0:
+                    if archiv_sync and len(data_telegraf)==0:
                         break
-                    elif len(data_telegraf)<sleep_data_len and not archiv_sinc:                    
+                    elif len(data_telegraf)<sleep_data_len and not archiv_sync:                    
                         self.setSyncStatus()
                         self.status=self.getSyncStatus()  
                         sleep(transfer_sleeper_sec)
@@ -876,17 +1110,17 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
             if len(self.new_status[database])<100:
                 for table_db in self.new_status[database]:
                     if self.new_status[database][table_db].get(SchneidTransferCsv.NAME_TIME_UNSYCRONICIZIED):
-                        self.sync_status.patchSincStatus(database,table_db,self.new_status[database][table_db][SchneidTransferCsv.NAME_TIME_UNSYCRONICIZIED],True)
+                        self.sync_status.patchSyncStatus(database,table_db,self.new_status[database][table_db][SchneidTransferCsv.NAME_TIME_UNSYCRONICIZIED],True)
                     if self.new_status[database][table_db].get(SchneidTransferCsv.NAME_TIME_SYNCRONICZIED):
-                        self.sync_status.patchSincStatus(database,table_db,self.new_status[database][table_db][SchneidTransferCsv.NAME_TIME_SYNCRONICZIED],False)
+                        self.sync_status.patchSyncStatus(database,table_db,self.new_status[database][table_db][SchneidTransferCsv.NAME_TIME_SYNCRONICZIED],False)
             else:
-                sincron_time = {}
+                syncron_time = {}
                 for table_db in self.new_status[database]:
                     if self.new_status[database][table_db].get(SchneidTransferCsv.NAME_TIME_UNSYCRONICIZIED):
-                        self.sync_status.patchSincStatus(database,table_db,self.new_status[database][table_db][SchneidTransferCsv.NAME_TIME_UNSYCRONICIZIED],True)
+                        self.sync_status.patchSyncStatus(database,table_db,self.new_status[database][table_db][SchneidTransferCsv.NAME_TIME_UNSYCRONICIZIED],True)
                     if self.new_status[database][table_db].get(SchneidTransferCsv.NAME_TIME_SYNCRONICZIED):
-                        sincron_time[table_db] = self.new_status[database][table_db][SchneidTransferCsv.NAME_TIME_SYNCRONICZIED]
-                self.sync_status.patchSincStatusManyMany(database=database,data=sincron_time,isunsinc=False)
+                        syncron_time[table_db] = self.new_status[database][table_db][SchneidTransferCsv.NAME_TIME_SYNCRONICZIED]
+                self.sync_status.patchSyncStatusManyMany(database=database,data=syncron_time,isunsync=False)
         self.new_status = {}
 
     def getSyncStatus(self):
@@ -903,7 +1137,7 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
                             value=table_dic[SchneidTransferCsv.NAME_UNSYCRONICIZIED],
                             timestamp=table_dic[SchneidTransferCsv.NAME_TIME_UNSYCRONICIZIED]
                         )
-                        self.sync_status.dropUnSincDps(database=database,table_dp=table_dic[SchneidTransferCsv.NAME_TABLE])
+                        self.sync_status.dropUnSyncDps(database=database,table_dp=table_dic[SchneidTransferCsv.NAME_TABLE])
                 if table_dic[SchneidTransferCsv.NAME_SYNCRONICZIED]==[] and table_dic[SchneidTransferCsv.NAME_UNSYCRONICIZIED]!=[]:
                     reset=True
                     self.sync_status.postSyncroniziedValue(
@@ -912,7 +1146,7 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
                         value=table_dic[SchneidTransferCsv.NAME_UNSYCRONICIZIED],
                         timestamp=table_dic[SchneidTransferCsv.NAME_TIME_UNSYCRONICIZIED]
                     )
-                    self.sync_status.dropUnSincDps(database=database,table_dp=table_dic[SchneidTransferCsv.NAME_TABLE])
+                    self.sync_status.dropUnSyncDps(database=database,table_dp=table_dic[SchneidTransferCsv.NAME_TABLE])
                 elif table_dic.get(SchneidTransferCsv.NAME_TIME_UNSYCRONICIZIED):
                      if datetime.fromisoformat(table_dic[SchneidTransferCsv.NAME_TIME_SYNCRONICZIED])<=datetime.fromisoformat(table_dic[SchneidTransferCsv.NAME_TIME_UNSYCRONICIZIED]):
                         self.sync_status.postSyncroniziedValue(
@@ -921,10 +1155,10 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
                             value=table_dic[SchneidTransferCsv.NAME_UNSYCRONICIZIED],
                             timestamp=table_dic[SchneidTransferCsv.NAME_TIME_SYNCRONICZIED]
                         )
-                        self.sync_status.dropUnSincDps(database=database,table_dp=table_dic[SchneidTransferCsv.NAME_TABLE])
+                        self.sync_status.dropUnSyncDps(database=database,table_dp=table_dic[SchneidTransferCsv.NAME_TABLE])
                         reset=True
                 if table_dic[SchneidTransferCsv.NAME_UNSYCRONICIZIED]==[] and table_dic[SchneidTransferCsv.NAME_TIME_UNSYCRONICIZIED] != None:
-                    self.sync_status.dropUnSincDps(database=database,table_dp=table_dic[SchneidTransferCsv.NAME_TABLE])
+                    self.sync_status.dropUnSyncDps(database=database,table_dp=table_dic[SchneidTransferCsv.NAME_TABLE])
                     reset=True              
         if reset: status=self.sync_status.getSyncStatusAll()
         return(status)
@@ -944,9 +1178,9 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
             for idc in range(len(self.status[database])-self.status_count[database]):
                 status_instance = self.status[database][idc+self.status_count[database]]
                 count_add += 1
-                if status_instance["time_sincronizied"]!=None:
+                if status_instance["time_syncronizied"]!=None:
                     if "WMZ" in status_instance[SchneidTransferCsv.NAME_TABLE]:
-                        if  pytz.timezone(SchneidTransferCsv.DEFAULT_SCHNEID_TIMEZONE).localize(datetime.fromisoformat(status_instance["time_sincronizied"])).astimezone(pytz.utc).replace(tzinfo=None) > datetime.utcnow()-timedelta(hours=26):
+                        if  pytz.timezone(SchneidTransferCsv.DEFAULT_SCHNEID_TIMEZONE).localize(datetime.fromisoformat(status_instance["time_syncronizied"])).astimezone(pytz.utc).replace(tzinfo=None) > datetime.utcnow()-timedelta(hours=26):
                             continue
                 ext_telegraf(self._getTelegrafDataInstance(status_instance,database))
                 if len(telegraf)>=SchneidTransferCsv.DEFAULT_BREAK_TELEGRAF_LEN:
@@ -973,7 +1207,7 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
         else: stop_time = self.csvs.files_infos[status_instance[SchneidTransferCsv.NAME_TABLE]][SchneidTransferCsv.DICTNAME_LAST_WRITE_TIME]
         if (stop_time-start_time) < timedelta(seconds=SchneidTransferCsv.DEFAULT_TRANSFER_TIME_SCHNEID):
             return([])
-        # delet duplicates of sensores in sinc-status if regulator change
+        # delet duplicates of sensores in sync-status if regulator change
         ids_sensors = [value for item in status_instance[name_sync]  for value in item.values()]
         if len(ids_sensors)>len(set(ids_sensors)):
             new_sensors = []
@@ -1047,7 +1281,7 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
 # '''
 
 
-class StructSincPoint():
+class StructSyncPoint():
     '''
     Represents a synchronization point containing information about a controller and its associated data.
 
@@ -1059,7 +1293,7 @@ class StructSincPoint():
     def __init__(self, controller_id:int, asset_id:str, instance_id:str, 
                  series_id:str, last_time:Union[str,datetime]) -> None:
         '''
-        Initializes a StructSincPoint object.
+        Initializes a StructSyncPoint object.
 
         Args: also Attributes:
             controller_id (int): The unique ID of the controller, always stored as an integer.
@@ -1077,7 +1311,7 @@ class StructSincPoint():
 
     def toDict(self):
         '''
-        Serializes the StructSincPoint object into a dictionary suitable for JSON serialization.
+        Serializes the StructSyncPoint object into a dictionary suitable for JSON serialization.
 
         Returns:
             dict: A dictionary containing the object's data with `last_time` formatted as an ISO string.
@@ -1091,7 +1325,7 @@ class StructSincPoint():
         })
     
 
-class StructSincMetaPoint():
+class StructSyncMetaPoint():
     '''
     '''
 
@@ -1109,7 +1343,7 @@ class StructSincMetaPoint():
 
     def toDict(self):
         '''
-        Serializes the StructSincPoint object into a dictionary suitable for JSON serialization.
+        Serializes the StructSyncPoint object into a dictionary suitable for JSON serialization.
 
         Returns:
             dict: A dictionary containing the object's data-
@@ -1124,7 +1358,7 @@ class StructSincMetaPoint():
         })
     
 
-class ControllerIdSincTime():
+class ControllerIdSyncTime():
     '''
     Manages synchronization data for controllers, including their IDs and last synchronization timestamps.
 
@@ -1135,7 +1369,7 @@ class ControllerIdSincTime():
 
     def __init__(self, file_path:str, default_start_time:datetime=datetime(2010,1,1)) -> None:
         '''
-        Initializes the ControllerIdSincTime object and reads the current synchronization status.
+        Initializes the ControllerIdSyncTime object and reads the current synchronization status.
 
         Args:
             file_path (str): Path to the JSON file storing the synchronization data.
@@ -1144,31 +1378,31 @@ class ControllerIdSincTime():
         Attributes:
             file_path (str): The path to the synchronization status file.
             default_start_time (datetime): The default synchronization start time.
-            sinc_dic (dict): A dictionary mapping controller IDs to `StructSincPoint` objects.
-            meta_dict (dict): A dictionary mapping controller IDs to `StructSincMetaPoint` objects.
+            sync_dic (dict): A dictionary mapping controller IDs to `StructSyncPoint` objects.
+            meta_dict (dict): A dictionary mapping controller IDs to `StructSyncMetaPoint` objects.
             controller_ids (list): A list of all controller IDs currently managed.
         '''
         self.file_path:str = file_path
         self.default_start_time = default_start_time
-        self.sinc_dic:Dict[str,StructSincPoint]={}
-        self.meta_dic:Dict[str,StructSincMetaPoint]={}
+        self.sync_dic:Dict[str,StructSyncPoint]={}
+        self.meta_dic:Dict[str,StructSyncMetaPoint]={}
         self.controller_ids:list=[]
-        self.readSincStatus()
+        self.readSyncStatus()
 
 
-    def readSincStatus(self) -> dict:
+    def readSyncStatus(self) -> dict:
         '''
         Reads the synchronization status from the file and initializes internal variables.
 
         This method:
         1. Reads the synchronization file (if it exists).
         2. Parses the synchronization data into two separate dictionaries:
-            - `sinc_dic`: Maps controller IDs to `StructSincPoint` objects representing synchronization points.
-            - `meta_dic`: Maps controller IDs to `StructSincPoint` objects containing meta-information.
-        3. Updates the `controller_ids` list with all controller IDs from `sinc_dic`.
+            - `sync_dic`: Maps controller IDs to `StructSyncPoint` objects representing synchronization points.
+            - `meta_dic`: Maps controller IDs to `StructSyncPoint` objects containing meta-information.
+        3. Updates the `controller_ids` list with all controller IDs from `sync_dic`.
 
         If the file is missing or empty, default structures are initialized:
-        - `sinc_dic` and `meta_dic` are empty dictionaries.
+        - `sync_dic` and `meta_dic` are empty dictionaries.
         - `controller_ids` is an empty list.
         '''
         try:
@@ -1178,55 +1412,55 @@ class ControllerIdSincTime():
             result=""
 
         if result=="":
-            result = {"sinc_time":[], "meta_data":[]}
+            result = {"sync_time":[], "meta_data":[]}
         else:
             result = loads(result)
 
-        self.sinc_dic = {}
+        self.sync_dic = {}
         self.controller_ids = []
-        for sinc in result["sinc_time"]:
-            self.sinc_dic[sinc["controller_id"]] = StructSincPoint(
-                controller_id=sinc["controller_id"],
-                asset_id=sinc["asset_id"],
-                instance_id=sinc["instance_id"],
-                series_id=sinc["series_id"],
-                last_time=sinc["last_time"]
+        for sync in result["sync_time"]:
+            self.sync_dic[sync["controller_id"]] = StructSyncPoint(
+                controller_id=sync["controller_id"],
+                asset_id=sync["asset_id"],
+                instance_id=sync["instance_id"],
+                series_id=sync["series_id"],
+                last_time=sync["last_time"]
             )
-            self.controller_ids.append(sinc["controller_id"])
+            self.controller_ids.append(sync["controller_id"])
         
         self.meta_dic = {}
-        for sinc in result["meta_data"]:
-            self.meta_dic[sinc["controller_id"]] = StructSincPoint(
-                controller_id=sinc["controller_id"],
-                asset_id=sinc["asset_id"],
-                instance_id=sinc["instance_id"],
-                series_id=sinc["attribute_id"],
-                last_time=sinc["self_id"]
+        for sync in result["meta_data"]:
+            self.meta_dic[sync["controller_id"]] = StructSyncPoint(
+                controller_id=sync["controller_id"],
+                asset_id=sync["asset_id"],
+                instance_id=sync["instance_id"],
+                series_id=sync["attribute_id"],
+                last_time=sync["self_id"]
             )
         
 
-    def writeSincStatus(self) -> None:
+    def writeSyncStatus(self) -> None:
         '''
         Writes the current synchronization status to the JSON file.
 
         This method:
         1. Serializes the following dictionaries into JSON format:
-            - `sinc_dic`: Contains synchronization point data.
+            - `sync_dic`: Contains synchronization point data.
             - `meta_dic`: Contains meta-information data.
         2. Saves the serialized data to the file at `self.file_path`.
 
         The JSON structure written to the file includes:
-        - `sinc_time`: A list of serialized synchronization points from `sinc_dic`.
+        - `sync_time`: A list of serialized synchronization points from `sync_dic`.
         - `meta_data`: A list of serialized meta-information points from `meta_dic`.
 
         Raises:
             Any exceptions during file writing will propagate upwards unless handled externally.
         '''
-        sinc_time = [ point.toDict() for point in list( self.sinc_dic.values() ) ] 
+        sync_time = [ point.toDict() for point in list( self.sync_dic.values() ) ] 
         meta_data = [ point.toDict() for point in list( self.meta_dic.values() ) ] 
 
         with open(self.file_path, mode="w") as fi:
-            fi.write(dumps( { "sinc_time": sinc_time, "meta_data": meta_data } ))
+            fi.write(dumps( { "sync_time": sync_time, "meta_data": meta_data } ))
 
     
     def checkAndSetNewControllerIdsWithDefaultTime(self, controller_ids:list, asset_ids:list, instance_ids:list,
@@ -1243,7 +1477,7 @@ class ControllerIdSincTime():
         new_controller_ids = list( set( controller_ids ) - set( self.controller_ids ) )
         for idx in range(len(new_controller_ids)):
             self.controller_ids.append( controller_ids[idx] )
-            self.sinc_dic[controller_ids[idx]] = StructSincPoint(
+            self.sync_dic[controller_ids[idx]] = StructSyncPoint(
                 controller_id=controller_ids[idx],
                 asset_id=asset_ids[idx],
                 instance_id=instance_ids[idx],
@@ -1256,7 +1490,7 @@ class ControllerIdSincTime():
                  instance_id:str, self_id:str, controller_id:str) -> None:
         '''
         '''
-        self.meta_dic[controller_id] = StructSincMetaPoint(
+        self.meta_dic[controller_id] = StructSyncMetaPoint(
             value=value,
             attribute_id=attribute_id,
             asset_id=asset_id,
@@ -1267,7 +1501,7 @@ class ControllerIdSincTime():
         
 
 
-class SchneidPostgresHeatMeterSerialSinc(SchneidParamWinmiocs70):
+class SchneidPostgresHeatMeterSerialSync(SchneidParamWinmiocs70):
     '''
     Synchronizes meter serial numbers and error codes from the Schneid Winmiocs 70 PostgreSQL database 
     with the NAO system.
@@ -1290,14 +1524,14 @@ class SchneidPostgresHeatMeterSerialSinc(SchneidParamWinmiocs70):
     - Manages metadata for serial numbers, ensuring any changes in the serial numbers are patched both locally and 
       in the NAO system.
     '''
-    def __init__(self, path_and_file_sinc_status:"str",NaoApp:NaoApp,SchneidPostgres:ScheindPostgresWinmiocs70,
+    def __init__(self, path_and_file_sync_status:"str",NaoApp:NaoApp,SchneidPostgres:ScheindPostgresWinmiocs70,
                  LablingNaoInstance:LablingNao, serial_id:str, error_id:Union[str,None] = None, 
                  attribute_id:Union[str,None] = None) -> None:
         '''
         Initializes the synchronization manager with necessary configurations.
 
         Args:
-            path_and_file_sinc_status (str): Path to the synchronization status file.
+            path_and_file_sync_status (str): Path to the synchronization status file.
             NaoApp (NaoApp): Instance of the NAO application for data transmission.
             SchneidPostgres (ScheindPostgresWinmiocs70): Instance of the Schneid PostgreSQL database handler.
             LablingNaoInstance (LablingNao): Instance of the NAO labeling manager.
@@ -1305,14 +1539,14 @@ class SchneidPostgresHeatMeterSerialSinc(SchneidParamWinmiocs70):
             error_id (Union[str, None], optional): ID of the error series, if applicable.
             attribute_id (Union[str, None], optional): ID of the attribute for metadata synchronization.
         '''
-        self.sinc_file = path_and_file_sinc_status
+        self.sync_file = path_and_file_sync_status
         self.serial_id = serial_id
         self.error_id = error_id
         self.attribute_id = attribute_id
         self.naoapp = NaoApp
         self.postgres = SchneidPostgres
         self.naolabiling = LablingNaoInstance
-        self.sinc_status = ControllerIdSincTime(self.sinc_file)
+        self.sync_status = ControllerIdSyncTime(self.sync_file)
         self.checkLabledInstances()
 
     
@@ -1334,7 +1568,7 @@ class SchneidPostgresHeatMeterSerialSinc(SchneidParamWinmiocs70):
             instance_ids.append(instance["_id"])
             controller_ids.append(int(instance["name"].split("_prot")[0]))
 
-        self.sinc_status.checkAndSetNewControllerIdsWithDefaultTime(
+        self.sync_status.checkAndSetNewControllerIdsWithDefaultTime(
             controller_ids=controller_ids, 
             asset_ids=asset_ids, 
             instance_ids=instance_ids, 
@@ -1362,7 +1596,7 @@ class SchneidPostgresHeatMeterSerialSinc(SchneidParamWinmiocs70):
         return( id_att )
 
     
-    def sincTimeseries(self) -> None:
+    def syncTimeseries(self) -> None:
         '''
         Synchronizes time series data for each controller ID.
 
@@ -1381,12 +1615,12 @@ class SchneidPostgresHeatMeterSerialSinc(SchneidParamWinmiocs70):
             - Fetch the corresponding metadata ID from NAO.
             - Update the serial number metadata on the NAO server and locally.
         '''
-        for controller_id in self.sinc_status.sinc_dic:
-            sinc_data = self.sinc_status.sinc_dic[controller_id]
+        for controller_id in self.sync_status.sync_dic:
+            sync_data = self.sync_status.sync_dic[controller_id]
 
             dataframe = self.postgres.getSerialSeriesByControllerId(
                 controller_id=controller_id,
-                start_time=sinc_data.last_time
+                start_time=sync_data.last_time
             )
             dataframe["time2"] = dataframe["time"].astype(int)
             
@@ -1394,13 +1628,13 @@ class SchneidPostgresHeatMeterSerialSinc(SchneidParamWinmiocs70):
                 continue
 
             telegraf_frame = dataframe[["time2", "serial"]].dropna().apply(
-                lambda row: f'{sinc_data.asset_id},instance={sinc_data.instance_id} {sinc_data.series_id}={repr(int(row["serial"]))} {int(row["time2"])}',
+                lambda row: f'{sync_data.asset_id},instance={sync_data.instance_id} {sync_data.series_id}={repr(int(row["serial"]))} {int(row["time2"])}',
                 axis=1
             ).to_list()
 
             if self.error_id!=None:
                 telegraf_frame.extend(dataframe[["time2", "error"]].dropna().apply(
-                    lambda row: f'{sinc_data.asset_id},instance={sinc_data.instance_id} {sinc_data.series_id}={repr(row["error"])} {int(row["time2"])}',
+                    lambda row: f'{sync_data.asset_id},instance={sync_data.instance_id} {sync_data.series_id}={repr(row["error"])} {int(row["time2"])}',
                     axis=1
                 ).to_list())
             
@@ -1409,7 +1643,7 @@ class SchneidPostgresHeatMeterSerialSinc(SchneidParamWinmiocs70):
             )
 
             if status == 204:
-                sinc_data.last_time = dataframe["time"].iloc[-1]
+                sync_data.last_time = dataframe["time"].iloc[-1]
             
             last_serial = dataframe["serial"].iloc[-1]
             if last_serial==None:
@@ -1417,22 +1651,22 @@ class SchneidPostgresHeatMeterSerialSinc(SchneidParamWinmiocs70):
             else:
                 last_serial = int(last_serial)
 
-            if controller_id not in self.sinc_status.meta_dic:
-                meta_id = self.getSelfSeriealIdFromNao(instance_id=sinc_data.instance_id)
+            if controller_id not in self.sync_status.meta_dic:
+                meta_id = self.getSelfSeriealIdFromNao(instance_id=sync_data.instance_id)
                 
                 if meta_id == "":
                     continue
 
-                self.sinc_status.setMetaPoint(
+                self.sync_status.setMetaPoint(
                     value=None,
                     attribute_id=self.attribute_id,
-                    instance_id=sinc_data.instance_id,
-                    asset_id=sinc_data.asset_id,
+                    instance_id=sync_data.instance_id,
+                    asset_id=sync_data.asset_id,
                     controller_id=controller_id,
                     self_id=meta_id
                 )
 
-            meta_data = self.sinc_status.meta_dic[controller_id]
+            meta_data = self.sync_status.meta_dic[controller_id]
             if meta_data.value != last_serial:
                 res = self.naoapp.patchInstanceMeta(
                     instance_id = meta_data.instance_id,
@@ -1444,7 +1678,7 @@ class SchneidPostgresHeatMeterSerialSinc(SchneidParamWinmiocs70):
                     if "_id" in res:
                         meta_data.value = last_serial
     
-        self.sinc_status.writeSincStatus()
+        self.sync_status.writeSyncStatus()
 
 
             
