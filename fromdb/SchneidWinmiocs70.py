@@ -16,7 +16,7 @@ from json import loads, dumps
 from io import StringIO
 from numpy import isnan, nan
 
-''' DOC
+'''
 
 '''
 
@@ -1269,14 +1269,41 @@ class ControllerIdSincTime():
 
 class SchneidPostgresHeatMeterSerialSinc(SchneidParamWinmiocs70):
     '''
-    Sincronisiert bei ausfühurng Zählernummer und errorcode aus Postgres datenbank von Schneid Winmiocs 70
+    Synchronizes meter serial numbers and error codes from the Schneid Winmiocs 70 PostgreSQL database 
+    with the NAO system.
+
+    **Purpose:**
+    The existence of this class is necessitated by a limitation in the Schneid Winmiocs 70 system. In its primary 
+    CSV-based database, meter serial numbers are incorrectly stored. Due to formatting issues, the last two 
+    digits of large integers are replaced with "00" (e.g., a serial number like 9123456789 is stored as 9.1234567e7, 
+    which truncates to 9123456700). As a result, the serial numbers must be retrieved from the PostgreSQL database, 
+    which correctly stores them. 
+
+    The PostgreSQL database for Schneid Winmiocs 70, however, only contains time series data for meter serial 
+    numbers and error codes. Other time series data are not stored in this database. Consequently, this class 
+    is solely responsible for synchronizing meter serial numbers and related error codes with the NAO system.
+
+    **Functionality:**
+    - Retrieves and processes time series data (serial numbers and error codes) from the PostgreSQL database.
+    - Converts the data into Telegraf frames and sends them to the NAO system.
+    - Ensures local synchronization status and metadata are updated to maintain consistency between the databases.
+    - Manages metadata for serial numbers, ensuring any changes in the serial numbers are patched both locally and 
+      in the NAO system.
     '''
-
-
     def __init__(self, path_and_file_sinc_status:"str",NaoApp:NaoApp,SchneidPostgres:ScheindPostgresWinmiocs70,
                  LablingNaoInstance:LablingNao, serial_id:str, error_id:Union[str,None] = None, 
                  attribute_id:Union[str,None] = None) -> None:
         '''
+        Initializes the synchronization manager with necessary configurations.
+
+        Args:
+            path_and_file_sinc_status (str): Path to the synchronization status file.
+            NaoApp (NaoApp): Instance of the NAO application for data transmission.
+            SchneidPostgres (ScheindPostgresWinmiocs70): Instance of the Schneid PostgreSQL database handler.
+            LablingNaoInstance (LablingNao): Instance of the NAO labeling manager.
+            serial_id (str): ID of the series to be synchronized.
+            error_id (Union[str, None], optional): ID of the error series, if applicable.
+            attribute_id (Union[str, None], optional): ID of the attribute for metadata synchronization.
         '''
         self.sinc_file = path_and_file_sinc_status
         self.serial_id = serial_id
@@ -1291,9 +1318,12 @@ class SchneidPostgresHeatMeterSerialSinc(SchneidParamWinmiocs70):
     
     def checkLabledInstances(self) -> None:
         '''
-        überüft ob neue instancen für assets in Nao angelegt worden sind
-        1. hole alle angelegtn instancen
-        2. überprüft welche instancen noch nicht angelegt wurden und setzt sie
+        Verifies and registers new NAO instances for assets.
+
+        This method:
+        1. Retrieves all labeled instances from NAO.
+        2. Checks for instances that are not yet registered locally.
+        3. Adds missing instances with default synchronization timestamps to the local synchronization dictionary.
         '''
         controller_ids = []
         asset_ids = []
@@ -1314,7 +1344,13 @@ class SchneidPostgresHeatMeterSerialSinc(SchneidParamWinmiocs70):
 
     def getSelfSeriealIdFromNao(self, instance_id) -> str:
         '''
-        gibt die metadaten id für die seriennummer des zählers der spezifischen nao instanz zurück.
+        Retrieves the metadata ID for the meter's serial number for a specific NAO instance.
+
+        Args:
+            instance_id (str): The ID of the NAO instance.
+
+        Returns:
+            str: The metadata ID for the serial number, or an empty string if not found.
         '''
         instance_infos = self.naoapp.getInstanceInfos(instance_id)
 
@@ -1328,17 +1364,22 @@ class SchneidPostgresHeatMeterSerialSinc(SchneidParamWinmiocs70):
     
     def sincTimeseries(self) -> None:
         '''
-        nacheinader die contorller durchgenen
-        1. neue daten von der postgres datenbank von Schneid Winmiocs 70 holen
-        2. überprufen ob neue daten vorhanden
-        3. aus Seriensummer einen Telegraf-frame machen
-        4. falls id für error vorhanden (self.error_id) die errors zum telegraf frame hinzufügen
-        5. telegrafframe an nao schiecken
-        6. falls übertragung erfoglreich status = 204, sinc_status aktualisieren
-        7. Überprüfen ob last_serial vorhanden ansonsten continue
-        8. falls für den controller id noch kein metadatatenpunkt lokal hinterlegt ist, vom NAO-Server einen holen
-        9. falls sich die serieal nummer geändert hat erst in NAO patchten, dann local
-        am ende sic status wieder abspeichern
+        Synchronizes time series data for each controller ID.
+
+        This method:
+        1. Fetches new data from the Schneid PostgreSQL database starting from the last synchronization time.
+        2. Processes the data into Telegraf frames for serial numbers and errors.
+        3. Sends the Telegraf frames to NAO.
+        4. Updates the local synchronization status upon successful data transmission.
+        5. Manages metadata for serial numbers, ensuring synchronization with NAO.
+
+        Detailed Steps:
+        - Retrieve new data from the database using the last synchronization timestamp.
+        - Convert the data to Telegraf frames and send them to NAO.
+        - Update the local synchronization status and save it to the synchronization status file.
+        - If a new serial number is detected for a controller:
+            - Fetch the corresponding metadata ID from NAO.
+            - Update the serial number metadata on the NAO server and locally.
         '''
         for controller_id in self.sinc_status.sinc_dic:
             sinc_data = self.sinc_status.sinc_dic[controller_id]
