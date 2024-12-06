@@ -112,7 +112,7 @@ class SchneidParamWinmiocs70():
     NAME_SYNCRONICZIED = "syncronizied"
     NAME_UNSYCRONICIZIED = "unsyncronizied"
     NAME_TIME_SYNCRONICZIED_META = "time_syncronizied_meta"
-    NAME_TIME_SYNCRONICZIED = "time_syncronizied"
+    NAME_TIME_SYNCRONICZIED = "time_sincronizied"
     NAME_TIME_UNSYCRONICIZIED = "time_unsyncronizied"
     DEFAULT_TRANSFER_TIME_SCHNEID = 300
     DEFAULT_SCHNEID_TIMEZONE = 'Europe/Berlin'
@@ -1035,7 +1035,7 @@ class SchneidMeta(SchneidParamWinmiocs70):
                     value=[{dat[SchneidMeta.NAME_DP]:dat[SchneidMeta.NAME_SENSOR_ID]}], 
                     asset_id=dat[SchneidMeta.NAME_DB_ASSET_ID], 
                     instance_id=dat[SchneidMeta.NAME_DB_INSTANCE_ID])
-                self.labled_points.patchPointToSync(dat[SchneidMeta.NAME_TABLE], dat[SchneidMeta.NAME_DP])
+                self.labled_points.patchPointToSinc(dat[SchneidMeta.NAME_TABLE], dat[SchneidMeta.NAME_DP])
         #self.labled_points.patchAllPointsToSync()
             
     def startCheckAllMetaData(self):
@@ -1110,17 +1110,17 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
             if len(self.new_status[database])<100:
                 for table_db in self.new_status[database]:
                     if self.new_status[database][table_db].get(SchneidTransferCsv.NAME_TIME_UNSYCRONICIZIED):
-                        self.sync_status.patchSyncStatus(database,table_db,self.new_status[database][table_db][SchneidTransferCsv.NAME_TIME_UNSYCRONICIZIED],True)
+                        self.sync_status.patchSincStatus(database,table_db,self.new_status[database][table_db][SchneidTransferCsv.NAME_TIME_UNSYCRONICIZIED],True)
                     if self.new_status[database][table_db].get(SchneidTransferCsv.NAME_TIME_SYNCRONICZIED):
-                        self.sync_status.patchSyncStatus(database,table_db,self.new_status[database][table_db][SchneidTransferCsv.NAME_TIME_SYNCRONICZIED],False)
+                        self.sync_status.patchSincStatus(database,table_db,self.new_status[database][table_db][SchneidTransferCsv.NAME_TIME_SYNCRONICZIED],False)
             else:
                 syncron_time = {}
                 for table_db in self.new_status[database]:
                     if self.new_status[database][table_db].get(SchneidTransferCsv.NAME_TIME_UNSYCRONICIZIED):
-                        self.sync_status.patchSyncStatus(database,table_db,self.new_status[database][table_db][SchneidTransferCsv.NAME_TIME_UNSYCRONICIZIED],True)
+                        self.sync_status.patchSincStatus(database,table_db,self.new_status[database][table_db][SchneidTransferCsv.NAME_TIME_UNSYCRONICIZIED],True)
                     if self.new_status[database][table_db].get(SchneidTransferCsv.NAME_TIME_SYNCRONICZIED):
                         syncron_time[table_db] = self.new_status[database][table_db][SchneidTransferCsv.NAME_TIME_SYNCRONICZIED]
-                self.sync_status.patchSyncStatusManyMany(database=database,data=syncron_time,isunsync=False)
+                self.sync_status.patchSincStatusManyMany(database=database,data=syncron_time,isunsinc=False)
         self.new_status = {}
 
     def getSyncStatus(self):
@@ -1137,7 +1137,7 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
                             value=table_dic[SchneidTransferCsv.NAME_UNSYCRONICIZIED],
                             timestamp=table_dic[SchneidTransferCsv.NAME_TIME_UNSYCRONICIZIED]
                         )
-                        self.sync_status.dropUnSyncDps(database=database,table_dp=table_dic[SchneidTransferCsv.NAME_TABLE])
+                        self.sync_status.dropUnSincDps(database=database,table_dp=table_dic[SchneidTransferCsv.NAME_TABLE])
                 if table_dic[SchneidTransferCsv.NAME_SYNCRONICZIED]==[] and table_dic[SchneidTransferCsv.NAME_UNSYCRONICIZIED]!=[]:
                     reset=True
                     self.sync_status.postSyncroniziedValue(
@@ -1146,7 +1146,7 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
                         value=table_dic[SchneidTransferCsv.NAME_UNSYCRONICIZIED],
                         timestamp=table_dic[SchneidTransferCsv.NAME_TIME_UNSYCRONICIZIED]
                     )
-                    self.sync_status.dropUnSyncDps(database=database,table_dp=table_dic[SchneidTransferCsv.NAME_TABLE])
+                    self.sync_status.dropUnSincDps(database=database,table_dp=table_dic[SchneidTransferCsv.NAME_TABLE])
                 elif table_dic.get(SchneidTransferCsv.NAME_TIME_UNSYCRONICIZIED):
                      if datetime.fromisoformat(table_dic[SchneidTransferCsv.NAME_TIME_SYNCRONICZIED])<=datetime.fromisoformat(table_dic[SchneidTransferCsv.NAME_TIME_UNSYCRONICIZIED]):
                         self.sync_status.postSyncroniziedValue(
@@ -1155,10 +1155,10 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
                             value=table_dic[SchneidTransferCsv.NAME_UNSYCRONICIZIED],
                             timestamp=table_dic[SchneidTransferCsv.NAME_TIME_SYNCRONICZIED]
                         )
-                        self.sync_status.dropUnSyncDps(database=database,table_dp=table_dic[SchneidTransferCsv.NAME_TABLE])
+                        self.sync_status.dropUnSincDps(database=database,table_dp=table_dic[SchneidTransferCsv.NAME_TABLE])
                         reset=True
                 if table_dic[SchneidTransferCsv.NAME_UNSYCRONICIZIED]==[] and table_dic[SchneidTransferCsv.NAME_TIME_UNSYCRONICIZIED] != None:
-                    self.sync_status.dropUnSyncDps(database=database,table_dp=table_dic[SchneidTransferCsv.NAME_TABLE])
+                    self.sync_status.dropUnSincDps(database=database,table_dp=table_dic[SchneidTransferCsv.NAME_TABLE])
                     reset=True              
         if reset: status=self.sync_status.getSyncStatusAll()
         return(status)
