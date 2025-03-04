@@ -115,6 +115,7 @@ class AqotecParams():
     NOTE_TEXT = 'Änderung des Reglerwert "%s" von %s%s auf %s%s (Benutzer:%s)'
     NAME_DEVAULT_DATABASE = "Daten"
     INSTANCE_NAME_SPLITER_SECOND = " \u2014 "
+    NOTE_VISIB = "visibility"
 
 '''
 --------------------------------------------------------------------------------------------------------------------
@@ -221,6 +222,17 @@ class AqotecMetaV2(AqotecConnectorV2):
         self.user_id_nao=None
         self.aqotec_save_customer_id = aqotec_save_customer_id
     
+    def getNoteSchema(self, created=None, start=None, stop=None, visiblity=1, instance_id=None, note=None):
+        return({
+            AqotecMetaV2.NOTE_CREATED: created,
+            AqotecMetaV2.NOTE_USER : self.user_id_nao,
+            AqotecMetaV2.NOTE_INSTANCE : instance_id,
+            AqotecMetaV2.NOTE_VISIB : visiblity,
+            AqotecMetaV2.NOTE_NOTE : note,
+            AqotecMetaV2.NOTE_START : start,
+            AqotecMetaV2.NOTE_STOP : stop
+        })
+
     def _getDatabases(self):
         cursor = self.conn.cursor()
         cursor.execute(self.QUERY_DATABASES)
@@ -356,6 +368,14 @@ class AqotecMetaV2(AqotecConnectorV2):
                         ret[AqotecMetaV2.NAME_NAME] = instance_name
                         instance_id=ret[AqotecMetaV2.NAME__ID]
                         self.labled_nao.putInstance(ret,database)
+                        note = self.getNoteSchema(
+                            created=str(datetime.now()),
+                            start=str(datetime.now()),
+                            stop=str(datetime.now()),
+                            note=f"Neues Asset mit dem Namen {instance_name} automatisch erstellt (ID:{instance_id})",
+                            instance_id=instance_id
+                        )
+                        self.nao.pushNote(asset_id=asset_id,data_note=note)
                         # if len(ret[AqotecMetaV2.NAME_META_VALUES])>0:
                         #     self._saveInitialMetaData(ret[AqotecMetaV2.NAME_META_VALUES],ret[AqotecMetaV2.NAME__ID],"?")
                         print(instance_name)
