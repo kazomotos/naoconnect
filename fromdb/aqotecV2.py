@@ -512,20 +512,23 @@ class AqotecMetaV2(AqotecConnectorV2):
             self.connectToDb()
             cursor = self.conn.cursor()
             if len(metas) != 0:
-                cursor.execute(AqotecMetaV2.QUREY_USE%(database_use))
-                cursor.execute(AqotecMetaV2.QUERY_NOTES%(self._getDatetimeToSqlStrTuble(sinc_time_meta)))
-                data_raw = [row for row in cursor.fetchall()]
                 try:
-                    for dat in data_raw:
-                        if str(dat[4]) not in instance_dic: continue
-                        if not dat[7] or dat[7] == "":continue
-                        if dat[7] in metas:
-                            self._patchStationMetaFromValue(value=dat[10],instance_id=instance_dic[str(dat[4])][AqotecMetaV2.NAME__ID],driver_infos=metas[dat[7]])
-                            sinc_time_meta = dat[1]
-                except:
+                    cursor.execute(AqotecMetaV2.QUREY_USE%(database_use))
+                    cursor.execute(AqotecMetaV2.QUERY_NOTES%(self._getDatetimeToSqlStrTuble(sinc_time_meta)))
+                    data_raw = [row for row in cursor.fetchall()]
+                    try:
+                        for dat in data_raw:
+                            if str(dat[4]) not in instance_dic: continue
+                            if not dat[7] or dat[7] == "":continue
+                            if dat[7] in metas:
+                                self._patchStationMetaFromValue(value=dat[10],instance_id=instance_dic[str(dat[4])][AqotecMetaV2.NAME__ID],driver_infos=metas[dat[7]])
+                                sinc_time_meta = dat[1]
+                    except:
+                        self.labled_nao.updateNoteTimeMetaByName(time=sinc_time_meta,name=sinc_name_meta)
+                        raise(KeyError("can't send notes to nao"))
                     self.labled_nao.updateNoteTimeMetaByName(time=sinc_time_meta,name=sinc_name_meta)
-                    raise(KeyError("can't send notes to nao"))
-                self.labled_nao.updateNoteTimeMetaByName(time=sinc_time_meta,name=sinc_name_meta)
+                except:
+                    print(sys.exc_info())
             # --------     get new notes    ----------
             if len(instance_dic) != 0:
                 cursor = self.conn.cursor()
