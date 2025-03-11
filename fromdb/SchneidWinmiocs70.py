@@ -1060,7 +1060,11 @@ class SchneidMeta(SchneidParamWinmiocs70):
 
 class SchneidTransferCsv(SchneidParamWinmiocs70):
 
-    def __init__(self,interval:timedelta,SyncStatus:SyncronizationStatus,NaoApp:NaoApp,SchneidCSV:SchneidCsvWinmiocs70) -> None:
+    def __init__(self,interval:timedelta,SyncStatus:SyncronizationStatus,NaoApp:NaoApp,SchneidCSV:SchneidCsvWinmiocs70,
+                 wrong_units:dict={}) -> None:
+        '''
+        wrong_units is a fix for wrong units, {<instance_id>:{<sensor_id>:<float(factor)>}}
+        '''
         self.sync_status = SyncStatus
         self.interval = interval
         self.csvs = SchneidCSV
@@ -1068,6 +1072,7 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
         self.nao = NaoApp
         self.new_status = {}
         self.status_count = {}
+        self.wrong_units = wrong_units
 
     def startSyncronization(self, logfile=None, sleep_data_len=1, archiv_sync=False, transfer_sleeper_sec:int=None):
         if not transfer_sleeper_sec: transfer_sleeper_sec = SchneidTransferCsv.DEFAULT_TRASFER_SLEEPER_SECOND
@@ -1265,6 +1270,9 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
             timestamp = str(int(pytz.timezone(SchneidTransferCsv.DEFAULT_SCHNEID_TIMEZONE).localize(timeseries.index[row]).astimezone(pytz.utc).replace(tzinfo=None).timestamp()*1e9))
             for idx in range(len(sensor_ids)):
                 if isnan(timeseries[columns[idx]].iloc[row]):continue
+                if instance_id in self.wrong_units:
+                    if sensor_ids[idx] in self.wrong_units[instance_id]:
+                        timeseries[columns[idx]] *= self.wrong_units[instance_id][sensor_ids[idx]]
                 add_telegraf(f"{asset_id},instance={instance_id} {sensor_ids[idx]}={timeseries[columns[idx]].iloc[row]} {timestamp}")
         return(telegraf_list)  
         
