@@ -1272,8 +1272,12 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
                 if isnan(timeseries[columns[idx]].iloc[row]):continue
                 if instance_id in self.wrong_units:
                     if sensor_ids[idx] in self.wrong_units[instance_id]:
-                        timeseries[columns[idx]] *= self.wrong_units[instance_id][sensor_ids[idx]]
-                add_telegraf(f"{asset_id},instance={instance_id} {sensor_ids[idx]}={timeseries[columns[idx]].iloc[row]} {timestamp}")
+                        value = timeseries[columns[idx]].iloc[row]*self.wrong_units[instance_id][sensor_ids[idx]]
+                    else:
+                        value = timeseries[columns[idx]].iloc[row]
+                else:
+                     value = timeseries[columns[idx]].iloc[row]
+                add_telegraf(f"{asset_id},instance={instance_id} {sensor_ids[idx]}={value} {timestamp}")
         return(telegraf_list)  
         
 
