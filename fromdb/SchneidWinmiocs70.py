@@ -1086,25 +1086,29 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
                     break
                 start_time = time()
                 data_telegraf, sync_reset = self.getTelegrafData()
-                if len(data_telegraf)>0:ret=self.nao.sendTelegrafData(data_telegraf)
-                else:ret=SchneidTransferCsv.STATUS_CODE_GOOD    
-                if ret==SchneidTransferCsv.STATUS_CODE_GOOD:
-                    print(len(data_telegraf), " data posted; sec:",time()-start_time, datetime.now())
-                    start_time = time()
-                    count+=len(data_telegraf)
-                    if sync_reset or time()-sync_timer:
-                        sync_timer = time()
-                        self.setSyncStatus()
-                        self.status=self.getSyncStatus()
-                    if archiv_sync and len(data_telegraf)==0:
+                for idx in range(2):
+                    if len(data_telegraf)>0:ret=self.nao.sendTelegrafData(data_telegraf)
+                    else:ret=SchneidTransferCsv.STATUS_CODE_GOOD
+                    if ret==SchneidTransferCsv.STATUS_CODE_GOOD:
+                        print(len(data_telegraf), " data posted; sec:",time()-start_time, datetime.now())
+                        start_time = time()
+                        count+=len(data_telegraf)
+                        if sync_reset or time()-sync_timer:
+                            sync_timer = time()
+                            self.setSyncStatus()
+                            self.status=self.getSyncStatus()
+                        if archiv_sync and len(data_telegraf)==0:
+                            break
+                        elif len(data_telegraf)<sleep_data_len and not archiv_sync:                    
+                            self.setSyncStatus()
+                            self.status=self.getSyncStatus()  
+                            sleep(transfer_sleeper_sec)
+                            self.csvs.restetFiles()   
                         break
-                    elif len(data_telegraf)<sleep_data_len and not archiv_sync:                    
-                        self.setSyncStatus()
-                        self.status=self.getSyncStatus()  
-                        sleep(transfer_sleeper_sec)
-                        self.csvs.restetFiles()   
-                else:
-                    sleep(SchneidTransferCsv.DEFAULT_ERROR_SLEEP_SECOND)
+                    elif idx==0:
+                        sleep(SchneidTransferCsv.DEFAULT_ERROR_SLEEP_SECOND)
+                    else:
+                        raise(ConnectionError(f"Statuscode from NAO {ret}"))
             except:
                 if logfile: logfile(str(sys.exc_info()))
                 break
