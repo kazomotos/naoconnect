@@ -979,6 +979,7 @@ class AqotecTransferV2(AqotecConnectorV2):
         last_time = self._getLastTime(database=database,table=table,cursor=cursor)
         if last_time == None: return([])
         if last_time <= start_time:return([])
+        if len(data_points) == 0: return([])
         while 1==1:
             start_time=start_time+AqotecTransferV2.DEFAULT_MAX_TIMERANGE
             stop_time=self._getStopTime(start_time=start_time,max_time=last_time)
