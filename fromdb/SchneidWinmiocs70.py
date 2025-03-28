@@ -924,24 +924,25 @@ class SchneidMeta(SchneidParamWinmiocs70):
         meta = self.labled_nao.getInstanceMetaByAttributeInstance(instance_id,driver_infos[SchneidMeta.NAME_META_ID_DB])
         if meta==[]:
             # get data from nao if not labled before
-            instance_infos = self.nao.getInstanceInfos(instance_id)
-            id_att = ""
-            for info in instance_infos[SchneidMeta.NAME_META_VALUES]:
-                if info[SchneidMeta.NAME_META_ID] == driver_infos[SchneidMeta.NAME_META_ID_DB]:
-                    id_att = info[SchneidMeta.NAME__ID]
-            if id_att=="":return(-1)
-            # put initial meta data to local labling db
-            self.labled_nao.putMetaInstance(
-                value=None,
-                meta_id=driver_infos[SchneidMeta.NAME_META_ID_DB],
-                dp=driver_infos[SchneidMeta.NAME_DP],
-                id=id_att,
-                asset_id=driver_infos[SchneidMeta.NAME_DB_ASSET_ID],
-                type=driver_infos[SchneidMeta.NAME_TYPE],
-                dp_pos=None,
-                instance_id=instance_id
-            )
-            meta = self.labled_nao.getInstanceMetaByAttributeInstance(instance_id,driver_infos[SchneidMeta.NAME_META_ID_DB])
+            instance_infos = self.nao.getInstanceInfoAttrebuteValues(instance_id)
+            if not instance_infos.get(SchneidMeta.NAME_META_VALUES) == None:
+                id_att = ""
+                for info in instance_infos[SchneidMeta.NAME_META_VALUES]:
+                    if info[SchneidMeta.NAME_META_ID] == driver_infos[SchneidMeta.NAME_META_ID_DB]:
+                        id_att = info[SchneidMeta.NAME__ID]
+                if id_att=="":return(-1)
+                # put initial meta data to local labling db
+                self.labled_nao.putMetaInstance(
+                    value=None,
+                    meta_id=driver_infos[SchneidMeta.NAME_META_ID_DB],
+                    dp=driver_infos[SchneidMeta.NAME_DP],
+                    id=id_att,
+                    asset_id=driver_infos[SchneidMeta.NAME_DB_ASSET_ID],
+                    type=driver_infos[SchneidMeta.NAME_TYPE],
+                    dp_pos=None,
+                    instance_id=instance_id
+                )
+                meta = self.labled_nao.getInstanceMetaByAttributeInstance(instance_id,driver_infos[SchneidMeta.NAME_META_ID_DB])
         # ceck if meta has chanced
         if meta[0][SchneidMeta.NAME_TYPE] == SchneidMeta.NAME_NUMBER:
             try:
@@ -1006,7 +1007,9 @@ class SchneidMeta(SchneidParamWinmiocs70):
             if data[idx]=="" or data[idx]==None: continue
             meta = self.labled_nao.getInstanceMetaByPosInstance(instance[SchneidMeta.NAME__ID],name_dp[idx],idx)
             if meta==[]: 
-                instance_infos = self.nao.getInstanceInfos(instance[SchneidMeta.NAME__ID])
+                instance_infos = self.nao.getInstanceInfoAttrebuteValues(instance[SchneidMeta.NAME__ID])
+                if not instance_infos.get(SchneidMeta.NAME_META_VALUES) == None:
+                    break
                 self._saveInitialMetaData(instance_infos[SchneidMeta.NAME_META_VALUES], instance[SchneidMeta.NAME__ID],name_dp[idx],number)
                 meta = self.labled_nao.getInstanceMetaByPosInstance(instance[SchneidMeta.NAME__ID],name_dp[idx],idx)
             if meta[0][SchneidMeta.NAME_TYPE] == SchneidMeta.NAME_NUMBER:
@@ -1603,7 +1606,7 @@ class SchneidPostgresHeatMeterSerialSync(SchneidParamWinmiocs70):
         Returns:
             str: The metadata ID for the serial number, or an empty string if not found.
         '''
-        instance_infos = self.naoapp.getInstanceInfos(instance_id)
+        instance_infos = self.naoapp.getInstanceInfoAttrebuteValues(instance_id)
 
         id_att = ""
         for info in instance_infos[SchneidMeta.NAME_META_VALUES]:

@@ -633,7 +633,7 @@ class AqotecMetaV2(AqotecConnectorV2):
         meta = self.labled_nao.getInstanceMetaByAttributeInstance(instance_id,driver_infos[AqotecMetaV2.NAME_META_ID_DB])
         if meta==[]:
             # get data from nao if not labled before
-            instance_infos = self.nao.getInstanceInfos(instance_id)
+            instance_infos = self.nao.getInstanceInfoAttrebuteValues(instance_id)
             id_att = ""
             try:
                 for info in instance_infos[AqotecMetaV2.NAME_META_VALUES]:
@@ -719,7 +719,9 @@ class AqotecMetaV2(AqotecConnectorV2):
             if data[idx]=="" or data[idx]==None: continue
             meta = self.labled_nao.getInstanceMetaByPosInstance(instance[AqotecMetaV2.NAME__ID],pos_meta[idx],name_dp[idx])
             if meta==[]: 
-                instance_infos = self.nao.getInstanceInfos(instance[AqotecMetaV2.NAME__ID])
+                instance_infos = self.nao.getInstanceInfoAttrebuteValues(instance[AqotecMetaV2.NAME__ID])
+                if instance_infos.get(AqotecMetaV2.NAME_META_VALUES) == None:
+                    break
                 self._saveInitialMetaData(instance_infos[AqotecMetaV2.NAME_META_VALUES], instance[AqotecMetaV2.NAME__ID],name_dp[idx],number)
                 meta = self.labled_nao.getInstanceMetaByPosInstance(instance[AqotecMetaV2.NAME__ID],pos_meta[idx],name_dp[idx])
             if meta[0][AqotecMetaV2.NAME_TYPE] == AqotecMetaV2.NAME_NUMBER:

@@ -36,6 +36,7 @@ class NaoApp():
     URL_PATCH_INSTANCE = "/api/nao/instance/%s"
     URL_TELEGRAF = "/api/telegraf"
     URL_INSTANCE = "/api/nao/instance"
+    URL_INSTANCE_ATTREBIUTE = "/api/nao/instance/%s?select=attributevalues,_id"
     URL_PLOT_TIMESERIES = "/api/series/data/plot"
     URL_RAW_TIMESERIES = "/api/series/data/raw"
     URL_INSTANCE_MORE = "/api/nao/instance/more/%s"
@@ -135,6 +136,9 @@ class NaoApp():
 
     def getInstanceInfos(self, instance_id):
         return(self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_INSTANCE_MORE%(instance_id), {}))
+
+    def getInstanceInfoAttrebuteValues(self, instance_id):
+        return(self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_INSTANCE_ATTREBIUTE%(instance_id), {}))
 
     def deleteInstance(self, instance_id):
         return(self._sendDataToNaoJson(NaoApp.NAME_DELETE, NaoApp.URL_INSTANCE+"/"+instance_id, {}))
