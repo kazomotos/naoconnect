@@ -1081,8 +1081,11 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
         if not transfer_sleeper_sec: transfer_sleeper_sec = SchneidTransferCsv.DEFAULT_TRASFER_SLEEPER_SECOND
         count = 0
         sync_timer = time()
+        sync_break_archiv_sinc = False
         while 1==1:
             try: 
+                if sync_break_archiv_sinc:
+                    break
                 if datetime.now().hour >= 23 and not archiv_sync:
                     self.setSyncStatus()
                     self.status=self.getSyncStatus()
@@ -1101,6 +1104,7 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
                             self.setSyncStatus()
                             self.status=self.getSyncStatus()
                         if archiv_sync and len(data_telegraf)==0:
+                            sync_break_archiv_sinc = True
                             break
                         elif len(data_telegraf)<sleep_data_len and not archiv_sync:                    
                             self.setSyncStatus()
