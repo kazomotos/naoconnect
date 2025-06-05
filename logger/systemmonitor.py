@@ -9,24 +9,27 @@ from typing import Optional
 class ReturnInterface:
 
     def __init__(self, avg_cpu_percent:float, avg_ram_percent:float, 
-                 free_disk_gb:float, disk_usage_percent:float) -> None:
+                 free_disk_gb:float, disk_usage_percent:float,
+                 disk_usage_absolute_gb:float) -> None:
         self.avg_cpu_percent = avg_cpu_percent
         self.avg_ram_percent = avg_ram_percent
         self.free_disk_gb = free_disk_gb
         self.disk_usage_percent = disk_usage_percent
+        self.disk_usage_absolute_gb = disk_usage_absolute_gb
 
 
 class LablingInterface:
 
     def __init__(self, asset_id:str, instance_id:str, avg_cpu_percent_id:Optional[str], 
                  avg_ram_percent_id:Optional[str], free_disk_gb_id:Optional[str], 
-                 disk_usage_percent_id:Optional[str]) -> None:
+                 disk_usage_percent_id:Optional[str],disk_usage_absolute_id: Optional[str]) -> None:
         self.asset_id = asset_id
         self.instance_id = instance_id
         self.avg_cpu_percent_id = avg_cpu_percent_id
         self.avg_ram_percent_id = avg_ram_percent_id
         self.free_disk_gb_id = free_disk_gb_id
         self.disk_usage_percent_id = disk_usage_percent_id
+        self.disk_usage_absolute_id = disk_usage_absolute_id
     
 
 class SystemMonitor:
@@ -58,12 +61,14 @@ class SystemMonitor:
         disk = psutil.disk_usage('/')
         free_disk_gb = disk.free / (1024 ** 3)
         disk_usage_percent = disk.percent
+        disk_usage_absolute_gb = disk.used / (1024 ** 3)  # ← NEU
 
         return( ReturnInterface(
             avg_cpu_percent = round(avg_cpu, 2),
             avg_ram_percent = round(avg_ram, 2),
             free_disk_gb = round(free_disk_gb, 2),
-            disk_usage_percent = round(disk_usage_percent, 2)
+            disk_usage_percent = round(disk_usage_percent, 2),
+            disk_usage_absolute_gb = round(disk_usage_absolute_gb, 2) 
         ) )
 
     def stop(self):
@@ -91,8 +96,10 @@ class Logger:
         self._thread.start()
     
     def _logLoop(self):
+        last_time = time.time()
         while not self._stop_event.is_set():
-            time.sleep(self.logging_interval)
+            time.sleep(self.logging_interval - (time.time()-last_time))
+            last_time = time.time()
 
             with self._lock:
                 data = self.System.getAll()
@@ -107,7 +114,8 @@ class Logger:
                     line_parts.append(f"{self.labling.free_disk_gb_id}={data.free_disk_gb}")
                 if self.labling.disk_usage_percent_id:
                     line_parts.append(f"{self.labling.disk_usage_percent_id}={data.disk_usage_percent}")
-
+                if self.labling.disk_usage_absolute_id:
+                    line_parts.append(f"{self.labling.disk_usage_absolute_id}={data.disk_usage_absolute_gb}")
                 if line_parts:
                     line = (
                         f"{self.labling.asset_id},instance={self.labling.instance_id} "
