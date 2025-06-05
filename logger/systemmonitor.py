@@ -30,9 +30,9 @@ class LablingInterface:
     
 
 class SystemMonitor:
-    def __init__(self, interval_seconds:int=5, window_minutes:int=15) -> None:
-        self.interval_seconds = interval_seconds
-        self.window_size = int((60 / interval_seconds) * window_minutes)
+    def __init__(self, sample_interval:int=5, avg_window_minutes:int=15) -> None:
+        self.sample_interval = sample_interval
+        self.window_size = int((60 / sample_interval) * avg_window_minutes)
 
         # Gleitende Fenster für CPU und RAM
         self.cpu_readings = deque(maxlen=self.window_size)
@@ -45,7 +45,7 @@ class SystemMonitor:
 
     def _collectData(self):
         while not self.stop_event.is_set():
-            cpu = psutil.cpu_percent(interval=self.interval_seconds)
+            cpu = psutil.cpu_percent(interval=self.sample_interval)
             ram = psutil.virtual_memory().percent
 
             self.cpu_readings.append(cpu)
@@ -74,14 +74,15 @@ class SystemMonitor:
 
 class Logger:
 
-    def __init__(self, labling:LablingInterface,  interval_seconds:int=5, window_minutes:int=15) -> None:
-        self.interval_seconds = interval_seconds
-        self.window_minutes = window_minutes
+    def __init__(self, labling:LablingInterface, logging_interval:int=300, sample_interval:int=5, avg_window:int=300) -> None:
+        self.sample_interval_sec = sample_interval
+        self.avg_window_minutes = avg_window/60
+        self.logging_interval_minutes = logging_interval
         self.labling = labling
 
         self.System = SystemMonitor(
-            interval_seconds=self.interval_seconds,
-            window_minutes=self.window_minutes
+            sample_interval_sec=self.sample_interval_sec,
+            avg_window_minutes=self.avg_window_minutes
         )
 
         self.telegraf_frame = []
@@ -92,7 +93,7 @@ class Logger:
     
     def _log_loop(self):
         while not self._stop_event.is_set():
-            time.sleep(self.window_minutes * 60)
+            time.sleep(self.logging_interval)
 
             with self._lock:
                 data = self.System.getAll()
