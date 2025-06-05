@@ -30,9 +30,9 @@ class LablingInterface:
     
 
 class SystemMonitor:
-    def __init__(self, sample_interval:int=5, avg_window_minutes:int=15) -> None:
+    def __init__(self, sample_interval:int=5, avg_window:int=15) -> None:
         self.sample_interval = sample_interval
-        self.window_size = int((60 / sample_interval) * avg_window_minutes)
+        self.window_size = int(( sample_interval) * avg_window)
 
         # Gleitende Fenster für CPU und RAM
         self.cpu_readings = deque(maxlen=self.window_size)
@@ -40,7 +40,7 @@ class SystemMonitor:
 
         # Hintergrund-Thread
         self.stop_event = Event()
-        self.thread = Thread(target=self._collectData, daemon=True)
+        self.thread = Thread(target=self._collectData, args=(), daemon=True)
         self.thread.start()
 
     def _collectData(self):
@@ -74,24 +74,23 @@ class SystemMonitor:
 
 class Logger:
 
-    def __init__(self, labling:LablingInterface, logging_interval:int=300, sample_interval:int=5, avg_window:int=300) -> None:
-        self.sample_interval_sec = sample_interval
-        self.avg_window_minutes = avg_window/60
-        self.logging_interval_minutes = logging_interval
+    def __init__(self, labling:LablingInterface, logging_interval:int=300, sample_interval:int=5) -> None:
+        self.sample_interval = sample_interval
+        self.logging_interval = logging_interval
         self.labling = labling
 
         self.System = SystemMonitor(
-            sample_interval_sec=self.sample_interval_sec,
-            avg_window_minutes=self.avg_window_minutes
+            sample_interval=self.sample_interval,
+            avg_window=self.logging_interval
         )
 
         self.telegraf_frame = []
         self._lock = Lock()
         self._stop_event = Event()
-        self._thread = Thread(target=self._log_loop, daemon=True)
+        self._thread = Thread(target=self._logLoop, args=(), daemon=True)
         self._thread.start()
     
-    def _log_loop(self):
+    def _logLoop(self):
         while not self._stop_event.is_set():
             time.sleep(self.logging_interval)
 
