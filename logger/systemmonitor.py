@@ -3,7 +3,6 @@ import time
 from threading import Thread, Event
 from threading import Lock
 from collections import deque
-from datetime import datetime
 from typing import Optional
 
 
@@ -11,10 +10,10 @@ class ReturnInterface:
 
     def __init__(self, avg_cpu_percent:float, avg_ram_percent:float, 
                  free_disk_gb:float, disk_usage_percent:float) -> None:
-        avg_cpu_percent = avg_cpu_percent
-        avg_ram_percent = avg_ram_percent
-        free_disk_gb = free_disk_gb
-        disk_usage_percent = disk_usage_percent
+        self.avg_cpu_percent = avg_cpu_percent
+        self.avg_ram_percent = avg_ram_percent
+        self.free_disk_gb = free_disk_gb
+        self.disk_usage_percent = disk_usage_percent
 
 
 class LablingInterface:
@@ -52,7 +51,7 @@ class SystemMonitor:
             self.cpu_readings.append(cpu)
             self.ram_readings.append(ram)
 
-    def getAll(self):
+    def getAll(self) -> ReturnInterface:
         avg_cpu = sum(self.cpu_readings) / len(self.cpu_readings) if self.cpu_readings else 0.0
         avg_ram = sum(self.ram_readings) / len(self.ram_readings) if self.ram_readings else 0.0
 
