@@ -1501,9 +1501,9 @@ class ControllerIdSyncTime():
         '''
         new_controller_ids = list( set( controller_ids ) - set( self.controller_ids ) )
         for idx in range(len(new_controller_ids)):
-            self.controller_ids.append( controller_ids[idx] )
-            self.sync_dic[controller_ids[idx]] = StructSyncPoint(
-                controller_id=controller_ids[idx],
+            self.controller_ids.append( new_controller_ids[idx] )
+            self.sync_dic[new_controller_ids[idx]] = StructSyncPoint(
+                controller_id=new_controller_ids[idx],
                 asset_id=asset_ids[idx],
                 instance_id=instance_ids[idx],
                 series_id=serial_id,
