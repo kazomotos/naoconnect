@@ -852,8 +852,9 @@ class SchneidMeta(SchneidParamWinmiocs70):
                     print("activate point")
 
     def _ceckDataInPoint(self,dp,lt,gt,b1,b2,returns=False):
-        series:pd.Series = self.check_point_buffer[dp].reset_index(drop=True)
+        series:pd.Series = self.check_point_buffer[dp]
         series = series.mask(series==series.shift(1)).dropna()
+        series = series.reset_index(drop=True)
         data_bool=Series([True]*len(series))
         if lt: data_bool=series.lt(lt)&data_bool
         if gt: data_bool=series.gt(gt)&data_bool
