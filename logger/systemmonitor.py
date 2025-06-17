@@ -10,7 +10,8 @@ class ReturnInterface:
 
     def __init__(self, avg_cpu_percent:float, avg_ram_percent:float, 
                  free_disk_gb:float, disk_usage_percent:float,
-                 disk_usage_absolute_gb:float) -> None:
+                 disk_usage_absolute_gb:float, max_cpu_percent:float) -> None:
+        self.max_cpu_percent = max_cpu_percent
         self.avg_cpu_percent = avg_cpu_percent
         self.avg_ram_percent = avg_ram_percent
         self.free_disk_gb = free_disk_gb
@@ -22,9 +23,11 @@ class LablingInterface:
 
     def __init__(self, asset_id:str, instance_id:str, avg_cpu_percent_id:Optional[str], 
                  avg_ram_percent_id:Optional[str], free_disk_gb_id:Optional[str], 
-                 disk_usage_percent_id:Optional[str],disk_usage_absolute_id: Optional[str]) -> None:
+                 disk_usage_percent_id:Optional[str],disk_usage_absolute_id: Optional[str],
+                 max_cpu_percent_id:Optional[str]) -> None:
         self.asset_id = asset_id
         self.instance_id = instance_id
+        self.max_cpu_percent_id = max_cpu_percent_id
         self.avg_cpu_percent_id = avg_cpu_percent_id
         self.avg_ram_percent_id = avg_ram_percent_id
         self.free_disk_gb_id = free_disk_gb_id
@@ -56,6 +59,7 @@ class SystemMonitor:
 
     def getAll(self) -> ReturnInterface:
         avg_cpu = sum(self.cpu_readings) / len(self.cpu_readings) if self.cpu_readings else 0.0
+        max_cpu = max(self.cpu_readings) if self.cpu_readings else 0.0
         avg_ram = sum(self.ram_readings) / len(self.ram_readings) if self.ram_readings else 0.0
 
         disk = psutil.disk_usage('/')
@@ -66,6 +70,7 @@ class SystemMonitor:
         return( ReturnInterface(
             avg_cpu_percent = round(avg_cpu, 2),
             avg_ram_percent = round(avg_ram, 2),
+            max_cpu_percent=round(max_cpu, 2),
             free_disk_gb = round(free_disk_gb, 2),
             disk_usage_percent = round(disk_usage_percent, 2),
             disk_usage_absolute_gb = round(disk_usage_absolute_gb, 2) 
@@ -116,6 +121,8 @@ class Logger:
                     line_parts.append(f"{self.labling.disk_usage_percent_id}={data.disk_usage_percent}")
                 if self.labling.disk_usage_absolute_id:
                     line_parts.append(f"{self.labling.disk_usage_absolute_id}={data.disk_usage_absolute_gb}")
+                if self.labling.max_cpu_percent_id:
+                    line_parts.append(f"{self.labling.max_cpu_percent_id}={data.max_cpu_percent}")
                 if line_parts:
                     line = (
                         f"{self.labling.asset_id},instance={self.labling.instance_id} "
