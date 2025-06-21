@@ -1,46 +1,6 @@
 from typing import Optional, List
 
 
-class DataPointsConfiguration:
-    '''
-    Configuration class to define allowed system types for asset mapping and associated data points.
-    '''
-    
-    def __init__(self, rm360:bool=False, ug07:bool=False, bhkw:bool=False, ug07_sub_heat_meter:bool=False,
-                 heat_meter:bool=False, rm360_sub_heat_meter:bool=False, network:bool=False) -> None:
-        '''
-        Initializes configuration and sets allowed system types.
-
-        Args:
-            rm360 (bool): Include RM360 systems.
-            ug07 (bool): Include UG07 systems.
-            bhkw (bool): Include BHKW systems.
-            ug07_sub_heat_meter (bool): Include UG07 sub heat meters.
-            heat_meter (bool): Include general heat meters.
-            rm360_sub_heat_meter (bool): Include RM360 sub heat meters.
-            network (bool): Include network systems.
-        '''
-        self.table_substrings = []
-        self.data_point:List['DataPointBase'] = [] 
-        if rm360: self.table_substrings.append("RM360_")
-        if ug07: self.table_substrings.append("UG07_")
-        if bhkw: self.table_substrings.append("BHKW")
-        if heat_meter: self.table_substrings.append("WMZ_")
-        if rm360_sub_heat_meter: self.table_substrings.append("RM360SubZ_")
-        if ug07_sub_heat_meter: self.table_substrings.append("UG07SubZ_")
-        if network: self.table_substrings.append("Netz")
-
-
-    def addDataPoint(self, data_point:'DataPointBase'):
-        '''
-        Adds configured data points to the current set.
-
-        Args:
-            data_point (DataPointBase): DataPointBase-derived object with configuration.
-        '''
-        self.data_point.extend(data_point.dp_config)
-
-
 class AqotecDataPointModel:
     '''
     Model class representing a single Aqotec data point configuration.
@@ -316,31 +276,65 @@ class DataPointHeatMeterNumber(DataPointBase):
     b2:Optional[float] = None
 
 
-class DataPointCollection:
+class DataPointsConfiguration:
     '''
-    Collection for data points.
+    Configuration class to define allowed system types for asset mapping and associated data points.
     '''
+    
+    def __init__(self, rm360:bool=False, ug07:bool=False, bhkw:bool=False, ug07_sub_heat_meter:bool=False,
+                 heat_meter:bool=False, rm360_sub_heat_meter:bool=False, network:bool=False) -> None:
+        '''
+        Initializes configuration and sets allowed system types.
 
-    def heatmeter_energy(nao_sensor_id) -> DataPointBase:
-        return( DataPointHeatMeterEnergy(nao_sensor_id=nao_sensor_id) )
+        Args:
+            rm360 (bool): Include RM360 systems.
+            ug07 (bool): Include UG07 systems.
+            bhkw (bool): Include BHKW systems.
+            ug07_sub_heat_meter (bool): Include UG07 sub heat meters.
+            heat_meter (bool): Include general heat meters.
+            rm360_sub_heat_meter (bool): Include RM360 sub heat meters.
+            network (bool): Include network systems.
+        '''
+        self.table_substrings = []
+        self.data_point:List['DataPointBase'] = [] 
+        if rm360: self.table_substrings.append("RM360_")
+        if ug07: self.table_substrings.append("UG07_")
+        if bhkw: self.table_substrings.append("BHKW")
+        if heat_meter: self.table_substrings.append("WMZ_")
+        if rm360_sub_heat_meter: self.table_substrings.append("RM360SubZ_")
+        if ug07_sub_heat_meter: self.table_substrings.append("UG07SubZ_")
+        if network: self.table_substrings.append("Netz")
 
-    def heatmeter_power(nao_sensor_id) -> DataPointBase:
-        return( DataPointHeatMeterPower(nao_sensor_id=nao_sensor_id) )
 
-    def heatmeter_volume(nao_sensor_id) -> DataPointBase:
-        return( DataPointHeatMeterVolume(nao_sensor_id=nao_sensor_id) )
+    def _addDataPoint(self, data_point:'DataPointBase'):
+        '''
+        Adds configured data points to the current set.
+
+        Args:
+            data_point (DataPointBase): DataPointBase-derived object with configuration.
+        '''
+        self.data_point.extend(data_point.dp_config)
+
+    def addHeatmeterEnergy(self, nao_sensor_id) -> None:
+        self._addDataPoint( DataPointHeatMeterEnergy(nao_sensor_id=nao_sensor_id) )
+
+    def addHeatmeterPower(self, nao_sensor_id) -> None:
+        self._addDataPoint( DataPointHeatMeterPower(nao_sensor_id=nao_sensor_id) )
+
+    def addHeatmeterVolume(self, nao_sensor_id) -> None:
+        self._addDataPoint( DataPointHeatMeterVolume(nao_sensor_id=nao_sensor_id) )
     
-    def heatmeter_flow(nao_sensor_id) -> DataPointBase:
-        return( DataPointHeatMeterFlow(nao_sensor_id=nao_sensor_id) )
+    def addHeatmeterFlow(self, nao_sensor_id) -> None:
+        self._addDataPoint( DataPointHeatMeterFlow(nao_sensor_id=nao_sensor_id) )
     
-    def heatmeter_supply_temp(nao_sensor_id) -> DataPointBase:
-        return( DataPointHeatMeterSupplyTemperature(nao_sensor_id=nao_sensor_id) )
+    def addHeatmeterSupplyTemp(self, nao_sensor_id) -> None:
+        self._addDataPoint( DataPointHeatMeterSupplyTemperature(nao_sensor_id=nao_sensor_id) )
     
-    def heatmeter_return_temp(nao_sensor_id) -> DataPointBase:
-        return( DataPointHeatMeterReturnTemperature(nao_sensor_id=nao_sensor_id) )
+    def addHeatmeterReturnTemp(self, nao_sensor_id) -> None:
+        self._addDataPoint( DataPointHeatMeterReturnTemperature(nao_sensor_id=nao_sensor_id) )
     
-    def heatmeter_spread_temp(nao_sensor_id) -> DataPointBase:
-        return( DataPointHeatMeterTemperaturSpread(nao_sensor_id=nao_sensor_id) )
+    def addHeatmeterSpreadTemp(self, nao_sensor_id) -> None:
+        self._addDataPoint( DataPointHeatMeterTemperaturSpread(nao_sensor_id=nao_sensor_id) )
     
-    def heatmeter_number(nao_sensor_id) -> DataPointBase:
-        return( DataPointHeatMeterNumber(nao_sensor_id=nao_sensor_id) )
+    def addHeatmeterNumber(self, nao_sensor_id) -> None:
+        self._addDataPoint( DataPointHeatMeterNumber(nao_sensor_id=nao_sensor_id) )
