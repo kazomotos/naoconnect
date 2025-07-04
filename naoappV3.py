@@ -209,6 +209,38 @@ class NaoApp():
             )
             return response.status_code
 
+    def sendTelegrafData(self, payload: list, max_sleep: float = 2):
+        '''
+        payload: Liste oder String im Telegraf Line Protocol-Format
+        Beispiel:
+            '<twin>,instance=<instance> <measurement>=<value> <timestamp>'
+        '''
+        if not isinstance(payload, list):
+            sta = self._sendTelegrafData(payload=payload)
+            if self.Messager:
+                count = len(payload.split("\n"))
+                self.Messager.sendCount(count)
+            return sta
+        else:
+            count = len(payload)
+            if count > self.data_per_telegraf_push:
+                last_idx = 0
+                for idx in range(int(ceil(count / self.data_per_telegraf_push)) - 1):
+                    last_idx = idx
+                    chunk = payload[int(idx * self.data_per_telegraf_push):int((idx + 1) * self.data_per_telegraf_push)]
+                    sta = self._sendTelegrafData(payload=chunk)
+                    if sta != NaoApp.STATUS_CODE_GOOD:
+                        return sta
+                    # adaptive sleep, damit der Proxy nicht überlastet wird
+                    sleep(min(max_sleep, 0.1 + idx * 0.04))
+                # letzten Block senden
+                sta = self._sendTelegrafData(payload[int(last_idx * self.data_per_telegraf_push):])
+            else:
+                sta = self._sendTelegrafData(payload)
+            if self.Messager:
+                self.Messager.sendCount(count)
+            return sta
+
 
 class NaoLoggerMessage(NaoApp):
 
