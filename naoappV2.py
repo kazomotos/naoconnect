@@ -56,11 +56,13 @@ class NaoApp():
     QUERY_GET = "?query="
     TELEGRAF_FORMATER = "%s,instance=%s %s=%s %s"
 
-    def __init__(self, host, email, password, local=False, data_per_telegraf_push:int=10000, Messager=False): # type: ignore
+    def __init__(self, host, email, password, local=False, data_per_telegraf_push:int=10000, Messager=False, proxie_host=None, proxie_port=None): # type: ignore
         self.auth = {
             NaoApp.NAME_HOST:host,
             NaoApp.NAME_PAYLOAD:NaoApp.NAME_EMAIL+"="+quote(email)+"&"+NaoApp.NAME_PASSWD+"="+quote(password)
         }
+        self.proxy_host = proxie_host
+        self.proxy_port = proxie_port
         self.headers = NaoApp.QUERY_TRANSFERHEADER
         self.data_per_telegraf_push=data_per_telegraf_push
         self._conneciton = None # type: ignore
@@ -103,14 +105,22 @@ class NaoApp():
 
     def _loginNaoCloud(self):
         try:
-            self._conneciton = http.client.HTTPSConnection(self.auth[NaoApp.NAME_HOST])
+            if self.proxy_host:
+                self._conneciton = http.client.HTTPConnection(self.proxy_host, self.proxy_port)
+                self._conneciton.set_tunnel(self.auth[NaoApp.NAME_HOST], 443)  # 443 für HTTPS
+            else:
+                self._conneciton = http.client.HTTPSConnection(self.auth[NaoApp.NAME_HOST])
             self._conneciton.request(NaoApp.NAME_POST, NaoApp.URL_LOGIN, self.auth[NaoApp.NAME_PAYLOAD], NaoApp.QUERY_LOGINHEADER)
             res = self._conneciton.getresponse()
             data = loads(res.read().decode(NaoApp.NAME_UTF8))
             self.headers[NaoApp.NAME_WEBAUTH] = NaoApp.QUERY_BEARER + data[NaoApp.NAME_TOKENAC]
         except:
             sleep(1) # type: ignore
-            self._conneciton = http.client.HTTPSConnection(self.auth[NaoApp.NAME_HOST])
+            if self.proxy_host:
+                self._conneciton = http.client.HTTPConnection(self.proxy_host, self.proxy_port)
+                self._conneciton.set_tunnel(self.auth[NaoApp.NAME_HOST], 443)  # 443 für HTTPS
+            else:
+                self._conneciton = http.client.HTTPSConnection(self.auth[NaoApp.NAME_HOST])
             self._conneciton.request(NaoApp.NAME_POST, NaoApp.URL_LOGIN, self.auth[NaoApp.NAME_PAYLOAD], NaoApp.QUERY_LOGINHEADER)
             res = self._conneciton.getresponse()
             data = loads(res.read().decode(NaoApp.NAME_UTF8))
