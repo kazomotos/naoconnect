@@ -7,45 +7,63 @@ from typing import Optional
 
 
 class ReturnInterface:
-
     def __init__(self, avg_cpu_percent: float, avg_ram_percent: float,
                  free_disk_gb: float, disk_usage_percent: float,
                  disk_usage_absolute_gb: float, max_cpu_percent: float,
-                 avg_net_rx_kbps: Optional[float] = None, avg_net_tx_kbps: Optional[float] = None) -> None:
+                 disk2_free_gb: Optional[float] = None,
+                 disk2_usage_percent: Optional[float] = None,
+                 disk2_usage_absolute_gb: Optional[float] = None,
+                 avg_net_rx_kbps: Optional[float] = None,
+                 avg_net_tx_kbps: Optional[float] = None) -> None:
         self.max_cpu_percent = max_cpu_percent
         self.avg_cpu_percent = avg_cpu_percent
         self.avg_ram_percent = avg_ram_percent
         self.free_disk_gb = free_disk_gb
         self.disk_usage_percent = disk_usage_percent
         self.disk_usage_absolute_gb = disk_usage_absolute_gb
+        self.disk2_free_gb = disk2_free_gb
+        self.disk2_usage_percent = disk2_usage_percent
+        self.disk2_usage_absolute_gb = disk2_usage_absolute_gb
         self.avg_net_rx_kbps = avg_net_rx_kbps
         self.avg_net_tx_kbps = avg_net_tx_kbps
 
 
 class LablingInterface:
-
-    def __init__(self, asset_id: str, instance_id: str, avg_cpu_percent_id: Optional[str],
-                 avg_ram_percent_id: Optional[str], free_disk_gb_id: Optional[str],
-                 disk_usage_percent_id: Optional[str], disk_usage_absolute_id: Optional[str],
+    def __init__(self, asset_id: str, instance_id: str,
+                 avg_cpu_percent_id: Optional[str],
+                 avg_ram_percent_id: Optional[str],
+                 free_disk_gb_id: Optional[str],
+                 disk_usage_percent_id: Optional[str],
+                 disk_usage_absolute_id: Optional[str],
                  max_cpu_percent_id: Optional[str],
-                 avg_net_rx_kbps_id: Optional[str] = None, avg_net_tx_kbps_id: Optional[str] = None) -> None:
+                 avg_net_rx_kbps_id: Optional[str] = None,
+                 avg_net_tx_kbps_id: Optional[str] = None,
+                 disk2_free_gb_id: Optional[str] = None,
+                 disk2_usage_percent_id: Optional[str] = None,
+                 disk2_usage_absolute_id: Optional[str] = None) -> None:
         self.asset_id = asset_id
         self.instance_id = instance_id
-        self.max_cpu_percent_id = max_cpu_percent_id
         self.avg_cpu_percent_id = avg_cpu_percent_id
         self.avg_ram_percent_id = avg_ram_percent_id
         self.free_disk_gb_id = free_disk_gb_id
         self.disk_usage_percent_id = disk_usage_percent_id
         self.disk_usage_absolute_id = disk_usage_absolute_id
+        self.max_cpu_percent_id = max_cpu_percent_id
         self.avg_net_rx_kbps_id = avg_net_rx_kbps_id
         self.avg_net_tx_kbps_id = avg_net_tx_kbps_id
+        self.disk2_free_gb_id = disk2_free_gb_id
+        self.disk2_usage_percent_id = disk2_usage_percent_id
+        self.disk2_usage_absolute_id = disk2_usage_absolute_id
 
 
 class SystemMonitor:
-    def __init__(self, sample_interval: int = 5, avg_window: int = 15, net_interface: Optional[str] = None) -> None:
+    def __init__(self, sample_interval: int = 5, avg_window: int = 15,
+                 net_interface: Optional[str] = None,
+                 disk2_path: Optional[str] = None) -> None:
         self.sample_interval = sample_interval
         self.window_size = int(sample_interval * avg_window)
         self.net_interface = net_interface
+        self.disk2_path = disk2_path
 
         self.cpu_readings = deque(maxlen=self.window_size)
         self.ram_readings = deque(maxlen=self.window_size)
@@ -93,6 +111,16 @@ class SystemMonitor:
         disk_usage_percent = disk.percent
         disk_usage_absolute_gb = disk.used / (1024 ** 3)
 
+        disk2_free_gb = disk2_usage_percent = disk2_usage_absolute_gb = None
+        if self.disk2_path:
+            try:
+                disk2 = psutil.disk_usage(self.disk2_path)
+                disk2_free_gb = disk2.free / (1024 ** 3)
+                disk2_usage_percent = disk2.percent
+                disk2_usage_absolute_gb = disk2.used / (1024 ** 3)
+            except FileNotFoundError:
+                pass  # Disk2 path invalid or not mounted
+
         avg_net_rx = sum(self.net_rx_readings) / len(self.net_rx_readings) if self.net_rx_readings else None
         avg_net_tx = sum(self.net_tx_readings) / len(self.net_tx_readings) if self.net_tx_readings else None
 
@@ -103,6 +131,9 @@ class SystemMonitor:
             free_disk_gb=round(free_disk_gb, 2),
             disk_usage_percent=round(disk_usage_percent, 2),
             disk_usage_absolute_gb=round(disk_usage_absolute_gb, 2),
+            disk2_free_gb=round(disk2_free_gb, 2) if disk2_free_gb is not None else None,
+            disk2_usage_percent=round(disk2_usage_percent, 2) if disk2_usage_percent is not None else None,
+            disk2_usage_absolute_gb=round(disk2_usage_absolute_gb, 2) if disk2_usage_absolute_gb is not None else None,
             avg_net_rx_kbps=round(avg_net_rx, 2) if avg_net_rx is not None else None,
             avg_net_tx_kbps=round(avg_net_tx, 2) if avg_net_tx is not None else None
         )
@@ -114,7 +145,9 @@ class SystemMonitor:
 
 class Logger:
 
-    def __init__(self, labling: LablingInterface, logging_interval: int = 300, sample_interval: int = 5, net_interface: Optional[str] = None) -> None:
+    def __init__(self, labling: LablingInterface, logging_interval: int = 300,
+                 sample_interval: int = 5, net_interface: Optional[str] = None,
+                 disk2_path: Optional[str] = None) -> None:
         self.sample_interval = sample_interval
         self.logging_interval = logging_interval
         self.labling = labling
@@ -122,7 +155,8 @@ class Logger:
         self.System = SystemMonitor(
             sample_interval=self.sample_interval,
             avg_window=self.logging_interval,
-            net_interface=net_interface
+            net_interface=net_interface,
+            disk2_path=disk2_path
         )
 
         self.telegraf_frame = []
@@ -158,7 +192,12 @@ class Logger:
                     line_parts.append(f"{self.labling.avg_net_rx_kbps_id}={data.avg_net_rx_kbps}")
                 if self.labling.avg_net_tx_kbps_id and data.avg_net_tx_kbps is not None:
                     line_parts.append(f"{self.labling.avg_net_tx_kbps_id}={data.avg_net_tx_kbps}")
-
+                if self.labling.disk2_free_gb_id and data.disk2_free_gb is not None:
+                    line_parts.append(f"{self.labling.disk2_free_gb_id}={data.disk2_free_gb}")
+                if self.labling.disk2_usage_percent_id and data.disk2_usage_percent is not None:
+                    line_parts.append(f"{self.labling.disk2_usage_percent_id}={data.disk2_usage_percent}")
+                if self.labling.disk2_usage_absolute_id and data.disk2_usage_absolute_gb is not None:
+                    line_parts.append(f"{self.labling.disk2_usage_absolute_id}={data.disk2_usage_absolute_gb}")
                 if line_parts:
                     line = (
                         f"{self.labling.asset_id},instance={self.labling.instance_id} "
