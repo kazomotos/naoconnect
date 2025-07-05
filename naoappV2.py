@@ -32,7 +32,7 @@ class NaoApp():
     NAME_DELETE = "DELETE"
     NAME_AVATAR_ID = "_avatar"
     URL_GET_USER_INFO = "/api/user/me"
-    URL_PUT_NOTE = "/api/nao/asset/%s/notes"
+    URL_PUT_NOTE = "/api/nao/assetnote"
     URL_PATCH_INSTANCE = "/api/nao/instance/%s"
     URL_TELEGRAF = "/api/telegraf"
     URL_INSTANCE = "/api/nao/instance"
@@ -83,7 +83,8 @@ class NaoApp():
         return(ret[NaoApp.NAME__ID])
     
     def pushNote(self, asset_id:str, data_note:dict):
-        ret = self._sendDataToNaoJson(NaoApp.NAME_POST,url=NaoApp.URL_PUT_NOTE%(asset_id),payload=data_note)
+        data_note["_asset"] = asset_id
+        ret = self._sendDataToNaoJson(NaoApp.NAME_POST,url=NaoApp.URL_PUT_NOTE,payload=data_note)
         return(ret[NaoApp.NAME__ID])
 
     def _loginNaoLocal(self):

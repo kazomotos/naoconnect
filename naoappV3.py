@@ -32,7 +32,7 @@ class NaoApp():
     NAME_DELETE = "DELETE"
     NAME_AVATAR_ID = "_avatar"
     URL_GET_USER_INFO = "/api/user/me"
-    URL_PUT_NOTE = "/api/nao/asset/%s/notes"
+    URL_PUT_NOTE = "/api/nao/assetnote"
     URL_PATCH_INSTANCE = "/api/nao/instance/%s"
     URL_TELEGRAF = "/api/telegraf"
     URL_INSTANCE = "/api/nao/instance"
@@ -119,8 +119,10 @@ class NaoApp():
     def getUserId(self):
         return self._sendDataToNaoJson(NaoApp.NAME_GET, NaoApp.URL_GET_USER_INFO)[NaoApp.NAME__ID]
 
-    def pushNote(self, asset_id, data_note):
-        return self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_PUT_NOTE % asset_id, data_note)[NaoApp.NAME__ID]
+    def pushNote(self, asset_id:str, data_note:dict):
+        data_note["_asset"] = asset_id
+        ret = self._sendDataToNaoJson(NaoApp.NAME_POST,url=NaoApp.URL_PUT_NOTE,payload=data_note)
+        return(ret[NaoApp.NAME__ID])
 
     def createWorkspace(self, name, avatar=None):
         payload = {NaoApp.NAME_NAME: name, NaoApp.NAME_AVATAR_ID: avatar}
