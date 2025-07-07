@@ -137,13 +137,13 @@ class DataPointHeatMeterVolume(DataPointBase):
     '''
     typ:str = "Meter"
     dp_config_raw:List[tuple[str, str]]  = [
-        ('Volumen', 'DP_1Wert')
-        ('Volumen_in_m3', 'DP_1Wert')
-        ('WZ Volumen', 'DP_52Wert')
-        ('Volumen', 'DP_97Wert')
-        ('WzVolumen', 'DP_54Wert')
-        ('WMZ1 Volumen', 'DP_212Wert')
-        ('Volumen_in_m3', 'DP_2Wert')
+        ('Volumen', 'DP_1Wert'),
+        ('Volumen_in_m3', 'DP_1Wert'),
+        ('WZ Volumen', 'DP_52Wert'),
+        ('Volumen', 'DP_97Wert'),
+        ('WzVolumen', 'DP_54Wert'),
+        ('WMZ1 Volumen', 'DP_212Wert'),
+        ('Volumen_in_m3', 'DP_2Wert'),
     ]
     gt:Optional[float] = 2
     lt:Optional[float] = None
@@ -157,15 +157,15 @@ class DataPointHeatMeterPower(DataPointBase):
     '''
     typ:str = "Sensor"
     dp_config_raw:List[tuple[str, str]]  = [
-        ('mom Leistung', 'DP_2Wert')
-        ('aktuelle Leistung', 'DP_8Wert')
-        ('aktuelle_Leistung_in_kW', 'DP_2Wert')
-        ('WzLeistung', 'DP_55Wert')
-        ('Leistung', 'DP_98Wert')
-        ('WZ Leistung', 'DP_53Wert')
-        ('WMZ1 aktuelle Leistung', 'DP_213Wert')
-        ('aktuelle_Leistung_in_kW', 'DP_3Wert')
-        ('mom.Leistung', 'DP_2Wert')
+        ('mom Leistung', 'DP_2Wert'),
+        ('aktuelle Leistung', 'DP_8Wert'),
+        ('aktuelle_Leistung_in_kW', 'DP_2Wert'),
+        ('WzLeistung', 'DP_55Wert'),
+        ('Leistung', 'DP_98Wert'),
+        ('WZ Leistung', 'DP_53Wert'),
+        ('WMZ1 aktuelle Leistung', 'DP_213Wert'),
+        ('aktuelle_Leistung_in_kW', 'DP_3Wert'),
+        ('mom.Leistung', 'DP_2Wert'),
     ]
     gt:Optional[float] = 0.25
     lt:Optional[float] = None
@@ -179,15 +179,15 @@ class DataPointHeatMeterFlow(DataPointBase):
     '''
     typ:str = "Sensor"
     dp_config_raw:List[tuple[str, str]]  = [
-        ('akt Durchfluss', 'DP_3Wert')
-        ('Durchfluss_in_lph', 'DP_3Wert')
-        ('Durchfluß', 'DP_9Wert')
-        ('WzDurchfluss', 'DP_56Wert')
-        ('Duchfluss long', 'DP_99Wert')
-        ('WZ Duchfluss long', 'DP_54Wert')
-        ('WMZ1 Durchfluss', 'DP_214Wert')
-        ('Durchfluss_in_lph', 'DP_4Wert')
-        ('Durchfluß long', 'DP_3Wert')
+        ('akt Durchfluss', 'DP_3Wert'),
+        ('Durchfluss_in_lph', 'DP_3Wert'),
+        ('Durchfluß', 'DP_9Wert'),
+        ('WzDurchfluss', 'DP_56Wert'),
+        ('Duchfluss long', 'DP_99Wert'),
+        ('WZ Duchfluss long', 'DP_54Wert'),
+        ('WMZ1 Durchfluss', 'DP_214Wert'),
+        ('Durchfluss_in_lph', 'DP_4Wert'),
+        ('Durchfluß long', 'DP_3Wert'),
     ]
     gt:Optional[float] = 1
     lt:Optional[float] = None
@@ -201,16 +201,16 @@ class DataPointHeatMeterSupplyTemperature(DataPointBase):
     '''
     typ:str = "Sensor"
     dp_config_raw:List[tuple[str, str]]  = [
-        ('Vorlauftemp', 'DP_5Wert')
-        ('Vorlauftemperatur Primär', 'DP_6Wert')
-        ('Vorlauftemp_in_C', 'DP_4Wert')
-        ('WzVLPrimär', 'DP_58Wert')
-        ('Vorlauftemp.', 'DP_101Wert')
-        ('WZ Vorlauftemp', 'DP_56Wert')
-        ('WMZ1 Vorlauftemperatur', 'DP_215Wert')
-        ('Vorlauftemp_in_C', 'DP_5Wert')
-        ('Vorlauftemp prim', 'DP_9Wert')
-        ('Vorlauftemp.prim.', 'DP_9Wert')
+        ('Vorlauftemp', 'DP_5Wert'),
+        ('Vorlauftemperatur Primär', 'DP_6Wert'),
+        ('Vorlauftemp_in_C', 'DP_4Wert'),
+        ('WzVLPrimär', 'DP_58Wert'),
+        ('Vorlauftemp.', 'DP_101Wert'),
+        ('WZ Vorlauftemp', 'DP_56Wert'),
+        ('WMZ1 Vorlauftemperatur', 'DP_215Wert'),
+        ('Vorlauftemp_in_C', 'DP_5Wert'),
+        ('Vorlauftemp prim', 'DP_9Wert'),
+        ('Vorlauftemp.prim.', 'DP_9Wert'),
     ]
     gt:Optional[float] = 5
     lt:Optional[float] = 130
@@ -224,16 +224,16 @@ class DataPointHeatMeterReturnTemperature(DataPointBase):
     '''
     typ:str = "Sensor"
     dp_config_raw:List[tuple[str, str]]  = [
-        ('Rücklauftemp', 'DP_4Wert')
-        ('Rücklauftemperatur Primär', 'DP_7Wert')
-        ('Ruecklauftemp_In_C', 'DP_5Wert')
-        ('WzRLPrimär', 'DP_57Wert')
-        ('Rücklauftemp.', 'DP_100Wert')
-        ('WZ Rücklauftemp', 'DP_55Wert')
-        ('WMZ1 Rücklauftemperatur', 'DP_216Wert')
-        ('Ruecklauftemp_In_C', 'DP_6Wert')
-        ('Rücklauftemp prim', 'DP_8Wert')
-        ('Rücklauftemp. prim.', 'DP_8Wert')
+        ('Rücklauftemp', 'DP_4Wert'),
+        ('Rücklauftemperatur Primär', 'DP_7Wert'),
+        ('Ruecklauftemp_In_C', 'DP_5Wert'),
+        ('WzRLPrimär', 'DP_57Wert'),
+        ('Rücklauftemp.', 'DP_100Wert'),
+        ('WZ Rücklauftemp', 'DP_55Wert'),
+        ('WMZ1 Rücklauftemperatur', 'DP_216Wert'),
+        ('Ruecklauftemp_In_C', 'DP_6Wert'),
+        ('Rücklauftemp prim', 'DP_8Wert'),
+        ('Rücklauftemp. prim.', 'DP_8Wert'),
     ]
     gt:Optional[float] = 5
     lt:Optional[float] = 130
@@ -247,13 +247,13 @@ class DataPointHeatMeterTemperaturSpread(DataPointBase):
     '''
     typ:str = "Sensor"
     dp_config_raw:List[tuple[str, str]]  = [
-        ('Spreizung', 'DP_6Wert')
-        ('Spreizung_in_K', 'DP_6Wert')
-        ('Spreizung', 'DP_5Wert')
-        ('WzSpreizung', 'DP_59Wert')
-        ('Spreizung', 'DP_102Wert')
-        ('WZ Spreizung', 'DP_57Wert')
-        ('WMZ1 Spreizung', 'DP_217Wert')
+        ('Spreizung', 'DP_6Wert'),
+        ('Spreizung_in_K', 'DP_6Wert'),
+        ('Spreizung', 'DP_5Wert'),
+        ('WzSpreizung', 'DP_59Wert'),
+        ('Spreizung', 'DP_102Wert'),
+        ('WZ Spreizung', 'DP_57Wert'),
+        ('WMZ1 Spreizung', 'DP_217Wert'),
     ]
     gt:Optional[float] = 5
     lt:Optional[float] = 130
@@ -267,8 +267,8 @@ class DataPointHeatMeterNumber(DataPointBase):
     '''
     typ:str = "Sensor"
     dp_config_raw:List[tuple[str, str]]  = [
-        ('Zählernummer', 'DP_21Wert')
-        ('Seriennummer', 'DP_21Wert')
+        ('Zählernummer', 'DP_21Wert'),
+        ('Seriennummer', 'DP_21Wert'),
     ]
     gt:Optional[float] = 5
     lt:Optional[float] = 130
