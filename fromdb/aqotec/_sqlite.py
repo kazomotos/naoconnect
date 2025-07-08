@@ -111,7 +111,10 @@ class SyncStateManager:
             job (SyncJob): The finished sync job.
             time (datetime): The latest timestamp retrieved during this job (used for updates if applicable).
         '''
-        key = (job.db_name, job.table_name)
+        if "_archiv" in job.table_name:
+            key = (job.db_name, job.table_name[:-7])
+        else:
+            key = (job.db_name, job.table_name)
 
         if job.unsynced:
             existing = self.sync_states.get(key)
