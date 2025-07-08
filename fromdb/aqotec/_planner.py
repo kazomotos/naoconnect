@@ -106,17 +106,17 @@ class SyncPlanner:
                     unsynced=True
                 )
 
+                self.sync_jobs_unsynced.append(SyncJob(
+                    db_name=entry.aqotec_db,
+                    **base_kwargs
+                ))
+
                 if entry.aqotec_db_history:
 
                     self.sync_jobs_unsynced.append(SyncJob(
                         db_name=entry.aqotec_db_history,
                         **base_kwargs
                     ))
-
-                self.sync_jobs_unsynced.append(SyncJob(
-                    db_name=entry.aqotec_db,
-                    **base_kwargs
-                ))
 
             else:
                 _, synced_sensors = self.SincManager.sync_states[key]
@@ -137,6 +137,11 @@ class SyncPlanner:
                         start_time=self.first_sinc_time,
                         unsynced=True
                     )
+                        
+                    self.sync_jobs_unsynced.append(SyncJob(
+                        db_name=entry.aqotec_db,
+                        **base_kwargs
+                    ))
 
                     if entry.aqotec_db_history:
 
@@ -144,11 +149,6 @@ class SyncPlanner:
                             db_name=entry.aqotec_db_history,
                             **base_kwargs
                         ))
-                        
-                    self.sync_jobs_unsynced.append(SyncJob(
-                        db_name=entry.aqotec_db,
-                        **base_kwargs
-                    ))
 
 
     def setJobs(self) -> List[SyncJob]:
