@@ -173,8 +173,9 @@ class _AqotecTableStruct():
         '''
         res = []
         for tab in tables:
-            if tab[-2:] == "_b": # and len(tab) > 4:
-                res.append(tab)
+            if tab[-2:] == "_b":
+                if tab[:-2] in tables:
+                    res.append(tab)
         
         return(res)
 
