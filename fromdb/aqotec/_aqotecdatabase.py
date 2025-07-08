@@ -1,6 +1,10 @@
 from contextlib import contextmanager
-from typing import Optional
+from typing import Optional, Dict, List, Tuple
+from datetime import datetime
+
 import pyodbc
+
+from . import *
 
 class AqotecConnector():
     '''
@@ -128,8 +132,7 @@ class _AqotecTableStruct():
         '''
         self.AqotecConnetion = connection
         self.database_name = database_name
-        self.columns = {}
-        self.controller_ids = {}  
+        self.columns:Dict[str, _AqotecColumnStruct] = {}
 
         self.all_tables = self._getTable()
         self.info_tables = self._searchInfoTables(self.all_tables)
@@ -143,8 +146,6 @@ class _AqotecTableStruct():
         with self.AqotecConnetion.withCursor() as cursor:
             for tab in self.info_tables:
                 self.columns[tab] = _AqotecColumnStruct(cursor=cursor, table_name=tab)
-                if self.columns[tab].controller_id:
-                    self.controller_ids[self.columns[tab].controller_id] = tab
 
     def _getTable(self): 
         '''
@@ -193,7 +194,7 @@ class AqotecDatabaseStructure():
         self.AqotecConnetion = connection
         self.all_db_names = self._getDb()
         self.timeseries_db_names = self._searchTimeseriesDb(self.all_db_names)
-        self.timeseries_tables = {}
+        self.timeseries_tables:Dict[str, _AqotecTableStruct] = {}
 
         self._setTableDict()
 
@@ -235,4 +236,72 @@ class AqotecDatabaseStructure():
         with self.AqotecConnetion.withConn():
             for db_name in self.timeseries_db_names:
                 self.timeseries_tables[db_name] = _AqotecTableStruct(connection=self.AqotecConnetion, database_name=db_name)
-    
+
+
+class AqotecJobExecutor:
+    '''
+    ...
+    '''
+
+    def __init__(self, connector:AqotecConnector):
+        '''
+        ...
+        '''
+        self.connector = connector
+
+
+    def fetchAndFormat(self, job) -> List[str]:
+        '''
+        Fetches sensor data for a given job and converts it to InfluxDB line protocol format.
+
+        - Uses DATETIME2FROMPARTS for precise filtering.
+        - Skips NaN values per sensor, not per row.
+        - Only timestamps with at least one valid sensor value are included.
+
+        Args:
+            job (SyncJob): Job definition containing table, columns, and sync start.
+
+        Returns:
+            List[str]: List of line protocol strings.
+        '''
+        table = job.table_name
+        table = job.table_name
+        db = job.db_name
+        dt = job.start_time
+        columns = job.sensor_columns
+        sensor_ids = job.sensor_ids
+        columns_str = ", ".join(f'"{col}"' for col in columns)
+
+        sql = f'''
+            SELECT DP_Zeitstempel, {columns_str}
+            FROM "{table[:-2]}"
+            WHERE DP_Zeitstempel > DATETIME2FROMPARTS(
+                {dt.year}, {dt.month}, {dt.day},
+                {dt.hour}, {dt.minute}, {dt.second},
+                {dt.microsecond // 1000}, 3
+            )
+            ORDER BY DP_Zeitstempel ASC;
+        '''
+
+        lines: List[str] = []
+        last_time:datetime = None
+
+        with self.connector.withCursorConn() as cursor:
+            cursor.execute(f"USE {db}")
+            cursor.execute(sql)
+            for row in cursor.fetchall():
+                ts = row[0]
+                values = row[1:]
+
+                fields = []
+                for sid, val in zip(sensor_ids, values):
+                    if val is not None:
+                        fields.append(f'{sid}={val}')
+
+                if fields:
+                    last_time = ts  # ⬅️ Merke dir den letzten gültigen Timestamp
+                    timestamp_ns = int(ts.timestamp() * 1e9)
+                    line = f'{job.asset_id},instance={job.instance_id} ' + ",".join(fields) + f' {timestamp_ns}'
+                    lines.append(line)
+
+        return last_time, lines

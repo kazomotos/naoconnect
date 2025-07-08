@@ -1,6 +1,9 @@
+from typing import List, Dict
 from urllib.request import urlopen
 from json import loads
 
+from naoconnect.naoappV2 import NaoApp
+from . import *
 
 class _NaoApiFromMetaModel:
     '''
@@ -37,7 +40,7 @@ class NaoApiLablingFromMetaModel:
             route (str): API route to fetch label information.
         '''
         self.route = route
-        self.labels = []
+        self.labels:List[_NaoApiFromMetaModel] = []
         self.labels_dic = {} 
         self._setLables()
 
@@ -87,7 +90,7 @@ class WorkspacesNao:
         '''
         Initializes the workspace registry.
         '''
-        self.labling_id:dict = {}
+        self.labling_id:Dict[str,_WorkspaceNaoModel] = {}
         self.labling_name:dict = {}
         self.names:list = []
 
@@ -109,4 +112,3 @@ class WorkspacesNao:
                 workspace_id=con["_id"]
             )
             self.labling_name[con["name"]] = self.labling_id[con["_id"]]
-

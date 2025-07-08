@@ -9,15 +9,13 @@ class AqotecDataPointModel:
     as well as threshold and boundary values used for data validation or processing logic.
     '''
 
-    def __init__(self, nao_sensor_id:str, nao_instance_id:str, nao_asset_id:str, dp_name:str, 
+    def __init__(self, nao_sensor_id:str, dp_name:str, 
                  dp_position:str, lt:float, gt:float, b1: float, b2:float) -> None:
         '''
         Initializes a new data point model with identification metadata and validation parameters.
 
         Args:
             nao_sensor_id (str): The sensor ID from the NAO system.
-            nao_instance_id (str): The instance ID the datapoint belongs to.
-            nao_asset_id (str): The asset (device) ID.
             dp_name (str): The descriptive name of the data point.
             dp_position (str): The internal key or position identifier.
             lt (float): Lower threshold value — used to determine if initial values are considered valid.
@@ -31,8 +29,6 @@ class AqotecDataPointModel:
             regardless of future validation status.
         '''
         self.nao_sensor_id = nao_sensor_id
-        self.nao_instance_id = nao_instance_id
-        self.nao_asset_id = nao_asset_id
         self.dp_name = dp_name
         self.dp_position = dp_position
         self.lt = lt
@@ -59,6 +55,22 @@ class AqotecDataPointModel:
                 return element
         return None
 
+    @classmethod
+    def searchMany(cls, liste: list["AqotecDataPointModel"], such_tupel_liste: list[tuple[str, str]]
+                ) -> list["AqotecDataPointModel"]:
+        '''
+        Sucht eine Liste von AqotecDataPointModel-Instanzen nach mehreren (dp_name, dp_position)-Tupeln ab.
+
+        Args:
+            liste (List[AqotecDataPointModel]): Die Liste, in der gesucht wird.
+            such_tupel_liste (List[tuple[str, str]]): Liste von (dp_name, dp_position), nach denen gesucht wird.
+
+        Returns:
+            List[AqotecDataPointModel]: Liste aller passenden Modelle.
+        '''
+        such_set = set(such_tupel_liste)  # Für schnelle Suche
+        return [element for element in liste if (element.dp_name, element.dp_position) in such_set]
+
 
 class DataPointBase:
     '''
@@ -73,7 +85,7 @@ class DataPointBase:
     b1: Optional[float] = None
     b2: Optional[float] = None
 
-    def __init__(self, nao_sensor_id:str, nao_instance_id:str, nao_asset_id:str) -> None:
+    def __init__(self, nao_sensor_id:str) -> None:
         '''
         Initializes base data point with NAO identifiers for sensor, instance, and asset.
 
@@ -83,8 +95,6 @@ class DataPointBase:
             nao_asset_id (str): The NAO asset ID.
         '''
         self.nao_sensor_id = nao_sensor_id
-        self.nao_instance_id = nao_instance_id
-        self.nao_asset_id = nao_asset_id
 
     @property
     def dp_config(self) -> List["AqotecDataPointModel"]:
@@ -95,8 +105,6 @@ class DataPointBase:
         '''
         return( [
             AqotecDataPointModel(
-                nao_asset_id=self.nao_asset_id,
-                nao_instance_id=self.nao_instance_id,
                 nao_sensor_id=self.nao_sensor_id,
                 dp_name=name,
                 dp_position=position,
@@ -314,6 +322,17 @@ class DataPointsConfiguration:
             data_point (DataPointBase): DataPointBase-derived object with configuration.
         '''
         self.data_point.extend(data_point.dp_config)
+
+    def checkTableName(self, table_name) -> bool:
+        '''
+        Überprüft ob die Übergebene Tabelle für den Treiber verwendet werden darf.
+        '''
+        res = False
+        for sub in  self.table_substrings:
+            if sub in table_name:
+                res = True
+                break
+        return(res)
 
     def addHeatmeterEnergy(self, nao_sensor_id) -> None:
         self._addDataPoint( DataPointHeatMeterEnergy(nao_sensor_id=nao_sensor_id) )
