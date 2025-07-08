@@ -186,7 +186,7 @@ class NaoApp():
     def patchInstanceData(self, instance_id:str, payload:dict):
         return(self._sendDataToNaoJson(NaoApp.NAME_PATCH, NaoApp.URL_PATCH_INSTANCE%(instance_id), payload))
     
-    def sendTelegrafData(self, payload:list, max_sleep:float=2):
+    def sendTelegrafData(self, payload:list, max_sleep:float=2, values_count:int=None):
         ''' 
         [ '<twin>,instance=<insatance> <measurement>=<value> <timestamp>' ] 
                                       or
@@ -215,7 +215,10 @@ class NaoApp():
             else:
                 sta = self._sendTelegrafData(payload)
             if self.Messager:
-                self.Messager.sendCount(count)
+                if values_count:
+                    self.Messager.sendCount(values_count)
+                else:
+                    self.Messager.sendCount(count)
             return(sta)
 
     def _sendTelegrafData(self, payload):

@@ -276,33 +276,37 @@ class AqotecJobExecutor:
         sql = f'''
             SELECT DP_Zeitstempel, {columns_str}
             FROM "{table[:-2]}"
-            WHERE DP_Zeitstempel > DATETIME2FROMPARTS(
-                {dt.year}, {dt.month}, {dt.day},
-                {dt.hour}, {dt.minute}, {dt.second},
-                {dt.microsecond // 1000}, 3
-            )
+            WHERE DP_Zeitstempel > DATETIME2FROMPARTS({dt.year}, {dt.month}, {dt.day}, {dt.hour}, {dt.minute}, {dt.second}, {dt.microsecond // 1000}, 3)
             ORDER BY DP_Zeitstempel ASC;
         '''
 
         lines: List[str] = []
         last_time:datetime = None
+        values_count = 0
 
-        with self.connector.withCursorConn() as cursor:
-            cursor.execute(f"USE {db}")
-            cursor.execute(sql)
-            for row in cursor.fetchall():
-                ts = row[0]
-                values = row[1:]
+        try:
+            with self.connector.withCursorConn() as cursor:
+                cursor.execute(f"USE {db}")
+                cursor.execute(sql)
+                for row in cursor.fetchall():
+                    ts = row[0]
+                    values = row[1:]
 
-                fields = []
-                for sid, val in zip(sensor_ids, values):
-                    if val is not None:
-                        fields.append(f'{sid}={val}')
+                    fields = []
+                    for sid, val in zip(sensor_ids, values):
+                        if val is not None:
+                            values_count+=1
+                            fields.append(f'{sid}={val}')
 
-                if fields:
-                    last_time = ts  # ⬅️ Merke dir den letzten gültigen Timestamp
-                    timestamp_ns = int(ts.timestamp() * 1e9)
-                    line = f'{job.asset_id},instance={job.instance_id} ' + ",".join(fields) + f' {timestamp_ns}'
-                    lines.append(line)
+                    if fields:
+                        last_time = ts
+                        timestamp_ns = int(ts.timestamp() * 1e9)
+                        line = f'{job.asset_id},instance={job.instance_id} ' + ",".join(fields) + f' {timestamp_ns}'
+                        lines.append(line)
+        except:
+            if "_archiv" not in db:
+                raise
+            else:
+                print("archive: \n", sql)
 
-        return last_time, lines
+        return last_time, lines, values_count
