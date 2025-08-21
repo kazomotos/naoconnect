@@ -177,7 +177,7 @@ class NaoApp():
             except:
                 return(-1) # type: ignore
             
-    def patchInstanceMeta(self, instance_id, meta_id, value, start:datetime.date=datetime.now(timezone.utc)):
+    def patchInstanceMeta(self, instance_id, meta_id, value, start:datetime=datetime.now(timezone.utc)):
         '''
         '''
         payload = {
@@ -190,7 +190,7 @@ class NaoApp():
         }
         return(self._sendDataToNaoJson(NaoApp.NAME_PATCH, NaoApp.URL_PATCH_META_INSTANCE%(instance_id, meta_id), payload))
 
-    def addInstanceMetaToHistory(self, meta_id, value, start:datetime.date=datetime.now(timezone.utc)):
+    def addInstanceMetaToHistory(self, meta_id, value, start:datetime=datetime.now(timezone.utc)):
         '''
         '''
         payload = {
