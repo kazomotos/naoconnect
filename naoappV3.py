@@ -6,7 +6,9 @@ from copy import copy
 from time import sleep
 from datetime import datetime, timezone
 from math import ceil
-
+'''
+Ähnlich wie V2, wird nur benötigt falls von einem Kritischem Netzwertk heraus Server überwacht werden sollen.
+'''
 class NaoApp():
     NAME_HOST = "host"
     NAME_PAYLOAD = "payload"
