@@ -42,7 +42,7 @@ class NaoApp():
     URL_INSTANCE_MORE = "/api/nao/instance/more/%s"
     URL_WORKSPACE = "/api/nao/workspace"
     URL_ACTIVATE_DATAPOINT = "/api/nao/instance/%s/datapoints"
-    URL_PATCH_META_INSTANCE = "/api/nao/instance/%s/attributevalues/%s"
+    URL_PATCH_META_INSTANCE = "/log/attributevalue/%s"
     URL_WORKSPACE = "/api/nao/workspace"
     URL_ASSET = "/api/nao/asset"
     QUERY_HEADER_JSON = 'application/json'
@@ -178,10 +178,9 @@ class NaoApp():
             
     def patchInstanceMeta(self, instance_id, meta_id, value):
         payload = {
-            NaoApp.NAME__ID: instance_id,
             NaoApp.NAME_VALUE: value
         }
-        return(self._sendDataToNaoJson(NaoApp.NAME_PATCH, NaoApp.URL_PATCH_META_INSTANCE%(instance_id, meta_id), payload))
+        return(self._sendDataToNaoJson(NaoApp.NAME_PATCH, NaoApp.URL_PATCH_META_INSTANCE%(meta_id), payload))
     
     def patchInstanceData(self, instance_id:str, payload:dict):
         return(self._sendDataToNaoJson(NaoApp.NAME_PATCH, NaoApp.URL_PATCH_INSTANCE%(instance_id), payload))
