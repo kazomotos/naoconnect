@@ -964,7 +964,7 @@ class SchneidMeta(SchneidParamWinmiocs70):
         else: dat = str(value)
         if meta[0][SchneidMeta.NAME_VALUE]!=dat:
             # patch meta data
-            self.nao.patchInstanceMeta(meta[0][SchneidMeta.NAME_DB_INSTANCE_ID],meta[0][SchneidMeta.NAME_ID],dat)
+            self.nao.addInstanceMetaToHistory(meta[0][SchneidMeta.NAME_ID],dat)
             self.labled_nao.patchInstanceMetaValueByAttributeInstance(instance_id,driver_infos[SchneidMeta.NAME_META_ID_DB], dat)
             print("patch meta")
 
@@ -1025,7 +1025,7 @@ class SchneidMeta(SchneidParamWinmiocs70):
                     dat = None
             else: dat = str(data[idx])
             if meta[0][SchneidMeta.NAME_VALUE]!=dat:
-                self.nao.patchInstanceMeta(meta[0][SchneidMeta.NAME_DB_INSTANCE_ID],meta[0][SchneidMeta.NAME_ID],dat)
+                self.nao.addInstanceMetaToHistory(meta[0][SchneidMeta.NAME_ID],dat)
                 self.labled_nao.patchInstanceMetaValueByPosInstance(instance[SchneidMeta.NAME__ID],name_dp[idx],idx, dat)
                 print("patch meta")
 
@@ -1693,8 +1693,8 @@ class SchneidPostgresHeatMeterSerialSync(SchneidParamWinmiocs70):
 
             meta_data = self.sync_status.meta_dic[controller_id]
             if meta_data.value != last_serial:
-                res = self.naoapp.patchInstanceMeta(
-                    instance_id = meta_data.instance_id,
+                res = self.naoapp.addInstanceMetaToHistory(
+                    start=sync_data.last_time,
                     meta_id = meta_data.self_id,
                     value = last_serial
                 )

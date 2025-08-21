@@ -674,7 +674,7 @@ class AqotecMetaV2(AqotecConnectorV2):
         else: dat = str(value)
         if meta[0][AqotecMetaV2.NAME_VALUE]!=dat:
             # patch meta data
-            self.nao.patchInstanceMeta(meta[0][AqotecMetaV2.NAME_DB_INSTANCE_ID],meta[0][AqotecMetaV2.NAME_ID],dat)
+            self.nao.addInstanceMetaToHistory(meta[0][AqotecMetaV2.NAME_ID],dat)
             self.labled_nao.patchInstanceMetaValueByAttributeInstance(instance_id,driver_infos[AqotecMetaV2.NAME_META_ID_DB], dat)
             print("patch meta")
 
@@ -736,7 +736,7 @@ class AqotecMetaV2(AqotecConnectorV2):
                     dat = None
             else: dat = str(data[idx])
             if meta[0][AqotecMetaV2.NAME_VALUE]!=dat:
-                self.nao.patchInstanceMeta(meta[0][AqotecMetaV2.NAME_DB_INSTANCE_ID],meta[0][AqotecMetaV2.NAME_ID],dat)
+                self.nao.addInstanceMetaToHistory(meta[0][AqotecMetaV2.NAME_ID],dat)
                 self.labled_nao.patchInstanceMetaValueByPosInstance(instance[AqotecMetaV2.NAME__ID],pos_meta[idx],name_dp[idx], dat)
                 print("patch meta")
 
