@@ -57,11 +57,12 @@ class NaoApp():
     QUERY_GET = "?query="
     TELEGRAF_FORMATER = "%s,instance=%s %s=%s %s"
 
-    def __init__(self, host, email, password, local=False, data_per_telegraf_push:int=10000, Messager=False): # type: ignore
+    def __init__(self, host, email, password, local=False, data_per_telegraf_push:int=10000, Messager=False, timeout=120): # type: ignore
         self.auth = {
             NaoApp.NAME_HOST:host,
             NaoApp.NAME_PAYLOAD:NaoApp.NAME_EMAIL+"="+quote(email)+"&"+NaoApp.NAME_PASSWD+"="+quote(password)
         }
+        self.timeout = timeout
         self.headers = NaoApp.QUERY_TRANSFERHEADER
         self.data_per_telegraf_push=data_per_telegraf_push
         self._conneciton = None # type: ignore
@@ -90,14 +91,14 @@ class NaoApp():
 
     def _loginNaoLocal(self):
         try:
-            self._conneciton = http.client.HTTPConnection(self.auth[NaoApp.NAME_HOST])
+            self._conneciton = http.client.HTTPConnection(self.auth[NaoApp.NAME_HOST],timeout=self.timeout)
             self._conneciton.request(NaoApp.NAME_POST, NaoApp.URL_LOGIN, self.auth[NaoApp.NAME_PAYLOAD], NaoApp.QUERY_LOGINHEADER)
             res = self._conneciton.getresponse()
             data = loads(res.read().decode(NaoApp.NAME_UTF8))
             self.headers[NaoApp.NAME_WEBAUTH] = NaoApp.QUERY_BEARER + data[NaoApp.NAME_TOKENAC]
         except:
             sleep(1) # type: ignore
-            self._conneciton = http.client.HTTPConnection(self.auth[NaoApp.NAME_HOST])
+            self._conneciton = http.client.HTTPConnection(self.auth[NaoApp.NAME_HOST],timeout=self.timeout)
             self._conneciton.request(NaoApp.NAME_POST, NaoApp.URL_LOGIN, self.auth[NaoApp.NAME_PAYLOAD], NaoApp.QUERY_LOGINHEADER)
             res = self._conneciton.getresponse()
             data = loads(res.read().decode(NaoApp.NAME_UTF8))
@@ -105,14 +106,14 @@ class NaoApp():
 
     def _loginNaoCloud(self):
         try:
-            self._conneciton = http.client.HTTPSConnection(self.auth[NaoApp.NAME_HOST])
+            self._conneciton = http.client.HTTPSConnection(self.auth[NaoApp.NAME_HOST],timeout=self.timeout)
             self._conneciton.request(NaoApp.NAME_POST, NaoApp.URL_LOGIN, self.auth[NaoApp.NAME_PAYLOAD], NaoApp.QUERY_LOGINHEADER)
             res = self._conneciton.getresponse()
             data = loads(res.read().decode(NaoApp.NAME_UTF8))
             self.headers[NaoApp.NAME_WEBAUTH] = NaoApp.QUERY_BEARER + data[NaoApp.NAME_TOKENAC]
         except:
             sleep(1) # type: ignore
-            self._conneciton = http.client.HTTPSConnection(self.auth[NaoApp.NAME_HOST])
+            self._conneciton = http.client.HTTPSConnection(self.auth[NaoApp.NAME_HOST],timeout=self.timeout)
             self._conneciton.request(NaoApp.NAME_POST, NaoApp.URL_LOGIN, self.auth[NaoApp.NAME_PAYLOAD], NaoApp.QUERY_LOGINHEADER)
             res = self._conneciton.getresponse()
             data = loads(res.read().decode(NaoApp.NAME_UTF8))
