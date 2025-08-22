@@ -57,7 +57,7 @@ class NaoApp():
     QUERY_GET = "?query="
     TELEGRAF_FORMATER = "%s,instance=%s %s=%s %s"
 
-    def __init__(self, host, email, password, local=False, data_per_telegraf_push=10000, Messager=False):
+    def __init__(self, host, email, password, local=False, data_per_telegraf_push=10000, Messager=False, timeout=120):
         self.auth = {
             NaoApp.NAME_HOST: host,
             NaoApp.NAME_EMAIL: email,
@@ -66,6 +66,7 @@ class NaoApp():
         self.base_url = f"https://{host}"
         self.headers = NaoApp.QUERY_TRANSFERHEADER.copy()
         self.data_per_telegraf_push = data_per_telegraf_push
+        self.timeout = timeout
         self.local = local
         self.Messager = Messager
         self.session = requests.Session()
@@ -96,7 +97,7 @@ class NaoApp():
         
         method = method.upper()
         try:
-            response = self.session.request(method, full_url, headers=headers, data=payload)
+            response = self.session.request(method, full_url, headers=headers, data=payload, timeout=self.timeout)
             response.raise_for_status()
             if response.text:
                 return response.json()
@@ -106,7 +107,7 @@ class NaoApp():
             self._loginNao()
             headers = copy(self.headers)
             headers[NaoApp.NAME_CONTENT_HEADER] = NaoApp.QUERY_HEADER_JSON
-            response = self.session.request(method, full_url, headers=headers, data=payload)
+            response = self.session.request(method, full_url, headers=headers, data=payload, timeout=self.timeout)
             response.raise_for_status()
             if response.text:
                 return response.json()
