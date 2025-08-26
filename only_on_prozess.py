@@ -1,21 +1,81 @@
-from os import getpid
-import psutil
-import ctypes
-import sys
+# only_one_process.py
+import os, sys, atexit, tempfile
+from pathlib import Path
 
-def onlyOneProzess(prozess_name=b"nao-prozess"):
-    current_pid = getpid()
+try:
+    import fcntl  # POSIX flock
+except ImportError:
+    fcntl = None
 
-    for proc in psutil.process_iter(['pid', 'name']):
+def only_one_process(lock_name: str = "desigocc-nao-logging", lock_dir: str | None = None):
+    """
+    Erzwingt Single-Instance per flock. Beendet das Programm,
+    wenn bereits eine andere Instanz läuft.
+
+    Nutzung:
+        from only_one_process import only_one_process
+        only_one_process("desigocc-nao-logging")
+    """
+    if fcntl is None:
+        # Fallback: best effort Lockfile (ohne flock); besser: psutil/pidfile nutzen
+        lock_dir = lock_dir or tempfile.gettempdir()
+        lockfile = Path(lock_dir) / f"{lock_name}.lock"
         try:
-            if proc.pid != current_pid and proc.info['name'] == prozess_name.decode():
-                RED_BOLD = "\033[1;31m"
-                RESET = "\033[0m"
-                print(f"{RED_BOLD}Instanz mit Namen '{prozess_name.decode()}' läuft bereits (PID {proc.pid}). Beende mich selbst.{RESET}")
+            fd = os.open(lockfile, os.O_CREAT | os.O_EXCL | os.O_RDWR, 0o644)
+        except FileExistsError:
+            print(f"\033[1;31mInstanz '{lock_name}' läuft bereits (Lock existiert).\033[0m")
+            sys.exit(0)
+        os.write(fd, str(os.getpid()).encode())
+        def _cleanup():
+            try: os.close(fd)
+            except: pass
+            try: os.remove(lockfile)
+            except: pass
+        atexit.register(_cleanup)
+        return
 
-                sys.exit(0)
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
-            continue
+    # flock-Variante
+    lock_dir = lock_dir or ("/var/lock" if os.access("/var/lock", os.W_OK) else tempfile.gettempdir())
+    Path(lock_dir).mkdir(parents=True, exist_ok=True)
+    lockfile = Path(lock_dir) / f"{lock_name}.lock"
 
-    libc = ctypes.cdll.LoadLibrary("libc.so.6")
-    libc.prctl(15, prozess_name, 0, 0, 0)
+    # Datei öffnen (bleibt während der Laufzeit offen – wichtig!)
+    fd = os.open(lockfile, os.O_RDWR | os.O_CREAT, 0o644)
+
+    try:
+        # exklusiv & non-blocking sperren
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        # Jemand hält bereits den Lock
+        try:
+            with open(lockfile, "r") as f:
+                pid_txt = f.read().strip()
+        except Exception:
+            pid_txt = "?"
+        print(f"\033[1;31mInstanz '{lock_name}' läuft bereits (PID {pid_txt}).\033[0m")
+        sys.exit(0)
+
+    # Unsere PID reinschreiben (nur informativ)
+    try:
+        os.ftruncate(fd, 0)
+        os.write(fd, str(os.getpid()).encode())
+        os.fsync(fd)
+    except Exception:
+        pass
+
+    # Beim Exit Lock lösen & Datei löschen
+    def _cleanup():
+        try:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+        except Exception:
+            pass
+        try:
+            os.close(fd)
+        except Exception:
+            pass
+        try:
+            os.remove(lockfile)
+        except Exception:
+            pass
+
+    atexit.register(_cleanup)
