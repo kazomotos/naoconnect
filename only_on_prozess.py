@@ -7,7 +7,7 @@ try:
 except ImportError:
     fcntl = None
 
-def only_one_process(lock_name: str = "desigocc-nao-logging", lock_dir: str | None = None):
+def onlyOneProcess(lock_name: str = "desigocc-nao-logging", lock_dir: str | None = None):
     """
     Erzwingt Single-Instance per flock. Beendet das Programm,
     wenn bereits eine andere Instanz läuft.
