@@ -110,7 +110,10 @@ class _AqotecColumnStruct():
         data = self.__cursor.fetchall()
         
         if len(data) > 0:
-            self.controller_id = data[0][3]
+            if str(data[0][3]) == self.table_name[:-2].split("R")[-1]:
+                self.controller_id = data[0][3]
+            else:
+                pass
             self.line_id = data[0][2]
 
         self.all_columns = [(dat[5], dat[1]) for dat in data]

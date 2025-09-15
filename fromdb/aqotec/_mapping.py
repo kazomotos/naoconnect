@@ -81,6 +81,10 @@ class AqotecNaoMapping:
 
         for label in self.naolabling.labels:
             controller_id = label.aqotec_controller_id
+
+            if controller_id == None:
+                continue
+
             workspace_id = label.workspace_id
 
             db_model = self.workspaces.labling_id.get(workspace_id)

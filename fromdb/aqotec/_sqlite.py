@@ -111,12 +111,12 @@ class SyncStateManager:
             job (SyncJob): The finished sync job.
             time (datetime): The latest timestamp retrieved during this job (used for updates if applicable).
         '''
-        if "_archiv" in job.table_name:
-            key = (job.db_name, job.table_name[:-7])
-            table_name = job.table_name[:-7]
+        if "_archiv" in job.db_name:
+            db_name = job.db_name[:-7]
         else:
-            key = (job.db_name, job.table_name)
-            table_name = job.table_name
+            db_name = job.db_name
+        
+        key = (db_name, job.table_name)
 
         if job.unsynced:
             existing = self.sync_states.get(key)
@@ -125,8 +125,8 @@ class SyncStateManager:
                 old_time, old_sensors = existing
                 updated_sensor_list = list(set(old_sensors).union(set(job.sensor_columns)))
                 self.updateSyncedColumns(
-                    job.db_name,
-                    table_name,
+                    db_name,
+                    job.table_name,
                     updated_sensor_list,
                     old_time
                 )
@@ -134,15 +134,15 @@ class SyncStateManager:
 
             else:
                 self.updateSyncedColumns(
-                    job.db_name,
-                    table_name,
+                    db_name,
+                    job.table_name,
                     job.sensor_columns,
                     time
                 )
                 self.sync_states[key] = (time, job.sensor_columns)
 
         else:
-            self.updateSyncTime(job.db_name, table_name, time)
+            self.updateSyncTime(db_name, job.table_name, time)
             if key in self.sync_states:
                 _, sensors = self.sync_states[key]
                 self.sync_states[key] = (time, sensors)
