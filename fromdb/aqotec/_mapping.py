@@ -80,9 +80,8 @@ class AqotecNaoMapping:
         mapping = []
 
         for label in self.naolabling.labels:
-            controller_id = label.aqotec_controller_id
 
-            if controller_id == None:
+            if label.aqotec_controller_id == None and label.alternative_tabel_name == None:
                 continue
 
             workspace_id = label.workspace_id
@@ -103,7 +102,15 @@ class AqotecNaoMapping:
 
             for table_name, col_struct in db_struct.columns.items():
 
-                if col_struct.controller_id != controller_id:
+                if label.alternative_tabel_name:
+                    if label.alternative_tabel_name.split("_b")[0] != table_name.split("_b")[0]:
+                        continue
+                
+                elif label.aqotec_line_id:
+                    if col_struct.controller_id != label.aqotec_controller_id or col_struct.line_id != label.aqotec_line_id:
+                        continue
+
+                elif col_struct.controller_id != label.aqotec_controller_id:
                     continue
 
                 for config in self.driver_configs:
@@ -124,7 +131,7 @@ class AqotecNaoMapping:
                             aqotec_db=db_prefix,
                             aqotec_db_history=db_prefix_history,
                             aqotec_table=table_name,
-                            controller_id=controller_id,
+                            controller_id=label.aqotec_controller_id,
                             sensor_models=dp_models
                         )
                     )

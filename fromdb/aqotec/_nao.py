@@ -18,12 +18,14 @@ class _NaoApiFromMetaModel:
         Initializes a model instance with API identification values.
 
         Args:
-            instance_dic (dict): Dictionary containing 'AssetID', 'TwinID', 'WorkspaceID', and 'AqotecRegerID'.
+            instance_dic (dict): Dictionary containing 'AssetID', 'TwinID', 'WorkspaceID', 'AqtecLinienID', and 'AqotecRegerID'.
         '''
         self.instance_id = instance_dic["AssetID"]
         self.asset_id = instance_dic["TwinID"]
         self.workspace_id = instance_dic["WorkspaceID"]
         self.aqotec_controller_id = instance_dic["AqotecRegerID"]
+        self.aqotec_line_id = instance_dic["AqtecLinienID"]
+        self.alternative_tabel_name = instance_dic["AlternativTabellenName"]
 
 
 class NaoApiLablingFromMetaModel:
