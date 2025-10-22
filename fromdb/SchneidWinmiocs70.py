@@ -1245,10 +1245,21 @@ class SchneidTransferCsv(SchneidParamWinmiocs70):
             start_time=start_time,
             stop_time=stop_time,
         )
-        if len(timeseries)==0:return([])
-        if database not in self.new_status:self.new_status[database]={}
-        if status_instance[SchneidTransferCsv.NAME_TABLE] not in self.new_status[database]:self.new_status[database][status_instance[SchneidTransferCsv.NAME_TABLE]]={}
+
+        if database not in self.new_status:
+            self.new_status[database]={}
+
+        if status_instance[SchneidTransferCsv.NAME_TABLE] not in self.new_status[database]:
+            self.new_status[database][status_instance[SchneidTransferCsv.NAME_TABLE]]={}
+
+        if len(timeseries)==0:
+            if name_sync == SchneidTransferCsv.NAME_UNSYCRONICIZIED:
+                if status_instance[SchneidTransferCsv.NAME_TIME_SYNCRONICZIED] != None:
+                    self.new_status[database][status_instance[SchneidTransferCsv.NAME_TABLE]][name_time] = pd.Timestamp(status_instance[SchneidTransferCsv.NAME_TIME_SYNCRONICZIED])
+            return([])
+
         self.new_status[database][status_instance[SchneidTransferCsv.NAME_TABLE]][name_time]=timeseries.index[-1]
+
         return(self._formatTimeseriesToTelegrafFrame(
             timeseries=timeseries,
             sensor_ids=[id for item in status_instance[name_sync] for id in item.values()],
