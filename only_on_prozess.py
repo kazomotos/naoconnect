@@ -1,5 +1,6 @@
 # only_one_process.py
 import os, sys, atexit, tempfile
+from typing import Union 
 from pathlib import Path
 
 try:
@@ -7,7 +8,7 @@ try:
 except ImportError:
     fcntl = None
 
-def onlyOneProzess(lock_name: str = "desigocc-nao-logging", lock_dir: str | None = None):
+def onlyOneProzess(lock_name: str = "desigocc-nao-logging", lock_dir: Union[str, None] = None):
     """
     Erzwingt Single-Instance per flock. Beendet das Programm,
     wenn bereits eine andere Instanz läuft.
