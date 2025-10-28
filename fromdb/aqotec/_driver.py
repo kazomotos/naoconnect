@@ -277,6 +277,8 @@ class DataPointHeatMeterNumber(DataPointBase):
     dp_config_raw:List[tuple[str, str]]  = [
         ('Zählernummer', 'DP_21Wert'),
         ('Seriennummer', 'DP_21Wert'),
+        ('Seriennummer', 'DP_2Wert'),
+        ('Zählernummer', 'DP_2Wert')
     ]
     gt:Optional[float] = 5
     lt:Optional[float] = 130
