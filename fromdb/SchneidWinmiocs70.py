@@ -1499,24 +1499,22 @@ class ControllerIdSyncTime():
             fi.write(dumps( { "sync_time": sync_time, "meta_data": meta_data } ))
 
     
-    def checkAndSetNewControllerIdsWithDefaultTime(self, controller_ids:list, asset_ids:list, instance_ids:list,
-                                                    serial_id:str) -> None:
+    def checkAndSetNewControllerIdsWithDefaultTime(self, controller_ids:list, serial_id:str) -> None:
         '''
         Adds new controller IDs to the synchronization dictionary with a default timestamp.
 
         Args:
             controller_ids (list): A list of controller IDs to check and add if missing.
-            asset_ids (list): Corresponding asset IDs for the controllers.
-            instance_ids (list): Corresponding instance IDs for the controllers.
             serial_id (str): The series ID associated with these controllers.
         '''
         new_controller_ids = list( set( controller_ids ) - set( self.controller_ids ) )
         for idx in range(len(new_controller_ids)):
-            self.controller_ids.append( new_controller_ids[idx] )
-            self.sync_dic[new_controller_ids[idx]] = StructSyncPoint(
-                controller_id=new_controller_ids[idx],
-                asset_id=asset_ids[idx],
-                instance_id=instance_ids[idx],
+            controller = new_controller_ids[idx]
+            self.controller_ids.append( controller )
+            self.sync_dic[controller] = StructSyncPoint(
+                controller_id=controller,
+                asset_id=self.meta_dic[controller].asset_id,
+                instance_id=self.meta_dic[controller].instance_id,
                 series_id=serial_id,
                 last_time=self.default_start_time
             )
@@ -1606,8 +1604,6 @@ class SchneidPostgresHeatMeterSerialSync(SchneidParamWinmiocs70):
 
         self.sync_status.checkAndSetNewControllerIdsWithDefaultTime(
             controller_ids=controller_ids, 
-            asset_ids=asset_ids, 
-            instance_ids=instance_ids, 
             serial_id=self.serial_id
         )
 
