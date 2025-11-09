@@ -1499,12 +1499,13 @@ class ControllerIdSyncTime():
             fi.write(dumps( { "sync_time": sync_time, "meta_data": meta_data } ))
 
     
-    def checkAndSetNewControllerIdsWithDefaultTime(self, controller_ids:list, serial_id:str) -> None:
+    def checkAndSetNewControllerIdsWithDefaultTime(self, controller_ids:list, controller_infos:dict, serial_id:str) -> None:
         '''
         Adds new controller IDs to the synchronization dictionary with a default timestamp.
 
         Args:
             controller_ids (list): A list of controller IDs to check and add if missing.
+            controller_infos (dict): A dict with asset and instance id for all controllers.
             serial_id (str): The series ID associated with these controllers.
         '''
         new_controller_ids = list( set( controller_ids ) - set( self.controller_ids ) )
@@ -1513,8 +1514,8 @@ class ControllerIdSyncTime():
             self.controller_ids.append( controller )
             self.sync_dic[controller] = StructSyncPoint(
                 controller_id=controller,
-                asset_id=self.meta_dic[controller].asset_id,
-                instance_id=self.meta_dic[controller].instance_id,
+                asset_id=controller_infos[controller]["asset_id"],
+                instance_id=controller_infos[controller]["instance_id"],
                 series_id=serial_id,
                 last_time=self.default_start_time
             )
@@ -1596,14 +1597,17 @@ class SchneidPostgresHeatMeterSerialSync(SchneidParamWinmiocs70):
         controller_ids = []
         asset_ids = []
         instance_ids = []
+        all_dict = {}
         instances = self.naolabiling.getInstances()
         for instance in instances:
             asset_ids.append(instance["_asset"])
             instance_ids.append(instance["_id"])
             controller_ids.append(int(instance["name"].split("_prot")[0]))
+            all_dict[int(instance["name"].split("_prot")[0])] = {"instance_id": instance["_id"], "asset_id": instance["_asset"]}
 
         self.sync_status.checkAndSetNewControllerIdsWithDefaultTime(
             controller_ids=controller_ids, 
+            controller_infos=all_dict,
             serial_id=self.serial_id
         )
 
