@@ -193,7 +193,9 @@ class NaoApp():
 
     def addInstanceMetaToHistory(self, meta_id, value, start:datetime=datetime.now(timezone.utc)):
         '''
+        veraltet.... !?
         '''
+        return(-1)
         payload = {
             "value": value,
             "start": start.strftime("%Y-%m-%dT%H:%M:%S.000Z")

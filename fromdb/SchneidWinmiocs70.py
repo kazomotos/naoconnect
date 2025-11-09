@@ -964,9 +964,13 @@ class SchneidMeta(SchneidParamWinmiocs70):
         else: dat = str(value)
         if meta[0][SchneidMeta.NAME_VALUE]!=dat:
             # patch meta data
-            self.nao.addInstanceMetaToHistory(meta[0][SchneidMeta.NAME_ID],dat)
-            self.labled_nao.patchInstanceMetaValueByAttributeInstance(instance_id,driver_infos[SchneidMeta.NAME_META_ID_DB], dat)
-            print("patch meta")
+            res = self.nao.addInstanceMetaToHistory(instance_id, meta[0][SchneidMeta.NAME_ID],dat)
+            if isinstance(res,dict):
+                if "_id" in res:
+                    self.labled_nao.patchInstanceMetaValueByAttributeInstance(instance_id,driver_infos[SchneidMeta.NAME_META_ID_DB], dat)
+                    print("patch meta")
+                else: print("can't patch")
+            else: print("can't patch")
 
     def _getAssetMetaQuery(self, number=1):
         if number==1:
@@ -1001,7 +1005,7 @@ class SchneidMeta(SchneidParamWinmiocs70):
                 instance_id=instance_id
             )
 
-    def _patchStationMeta(self, data,instance,name_dp,number):
+    def _patchStationMeta(self, data, instance, name_dp, number):
         for idx in data:
             sleep(0.05)
             if idx not in name_dp: continue
@@ -1009,7 +1013,7 @@ class SchneidMeta(SchneidParamWinmiocs70):
             meta = self.labled_nao.getInstanceMetaByPosInstance(instance[SchneidMeta.NAME__ID],name_dp[idx],idx)
             if meta==[]: 
                 instance_infos = self.nao.getInstanceInfoAttrebuteValues(instance[SchneidMeta.NAME__ID])
-                if not instance_infos.get(SchneidMeta.NAME_META_VALUES) == None:
+                if instance_infos.get(SchneidMeta.NAME_META_VALUES) == None:
                     break
                 self._saveInitialMetaData(instance_infos[SchneidMeta.NAME_META_VALUES], instance[SchneidMeta.NAME__ID],name_dp[idx],number)
                 meta = self.labled_nao.getInstanceMetaByPosInstance(instance[SchneidMeta.NAME__ID],name_dp[idx],idx)
@@ -1025,9 +1029,17 @@ class SchneidMeta(SchneidParamWinmiocs70):
                     dat = None
             else: dat = str(data[idx])
             if meta[0][SchneidMeta.NAME_VALUE]!=dat:
-                self.nao.addInstanceMetaToHistory(meta[0][SchneidMeta.NAME_ID],dat)
-                self.labled_nao.patchInstanceMetaValueByPosInstance(instance[SchneidMeta.NAME__ID],name_dp[idx],idx, dat)
-                print("patch meta")
+                res = self.nao.patchInstanceMeta(
+                    instance_id=instance["_id"],
+                    meta_id=meta[0][SchneidMeta.NAME_ID],
+                    value=dat
+                )
+                if isinstance(res,dict):
+                    if "_id" in res:
+                        self.labled_nao.patchInstanceMetaValueByPosInstance(instance[SchneidMeta.NAME__ID],name_dp[idx],idx, dat)
+                        print("patch meta")
+                    else: print("can't patch")
+                else: print("can't patch")
 
     def patchSyncStatus(self):
         data = self.labled_points.getNoSincPoints()
@@ -1704,7 +1716,8 @@ class SchneidPostgresHeatMeterSerialSync(SchneidParamWinmiocs70):
 
             meta_data = self.sync_status.meta_dic[controller_id]
             if meta_data.value != last_serial:
-                res = self.naoapp.addInstanceMetaToHistory(
+                res = self.naoapp.patchInstanceMeta(
+                    instance_id=sync_data.instance_id,
                     start=sync_data.last_time,
                     meta_id = meta_data.self_id,
                     value = last_serial
