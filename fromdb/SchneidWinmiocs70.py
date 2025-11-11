@@ -1635,6 +1635,9 @@ class SchneidPostgresHeatMeterSerialSync(SchneidParamWinmiocs70):
             str: The metadata ID for the serial number, or an empty string if not found.
         '''
         instance_infos = self.naoapp.getInstanceInfoAttrebuteValues(instance_id)
+    
+        if instance_infos == '':
+            return("")
 
         id_att = ""
         for info in instance_infos[SchneidMeta.NAME_META_VALUES]:
