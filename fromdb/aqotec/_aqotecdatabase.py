@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 from typing import Optional, Dict, List, Tuple
-from datetime import datetime
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo 
 
 import pyodbc
 
@@ -247,11 +248,19 @@ class AqotecJobExecutor:
     ...
     '''
 
-    def __init__(self, connector:AqotecConnector):
+    def __init__(self, connector:AqotecConnector, tz="utc"):
         '''
         ...
         '''
+        self.tz = tz
+
         self.connector = connector
+
+        if tz.lower() == "utc":
+            self.tzinfo = timezone.utc
+        else:
+            # z.B. tz = "Europe/Berlin"
+            self.tzinfo = ZoneInfo(tz)
 
 
     def fetchAndFormat(self, job) -> List[str]:
@@ -295,17 +304,31 @@ class AqotecJobExecutor:
                     ts = row[0]
                     values = row[1:]
 
+                    if ts.tzinfo is None:
+                        local_dt = ts.replace(tzinfo=self.tzinfo)
+                    else:
+                        # Falls DB wider Erwarten schon tzinfo hat, einfach nehmen
+                        local_dt = ts
+
+                    ts_utc = local_dt.astimezone(timezone.utc)
+
                     fields = []
                     for sid, val in zip(sensor_ids, values):
                         if val is not None:
-                            values_count+=1
+                            values_count += 1
                             fields.append(f'{sid}={val}')
 
                     if fields:
-                        last_time = ts
-                        timestamp_ns = int(ts.timestamp() * 1e9)
-                        line = f'{job.asset_id},instance={job.instance_id} ' + ",".join(fields) + f' {timestamp_ns}'
+                        last_time = ts_utc
+                        # 3) Unix-Zeit in ns aus **UTC**-Zeit
+                        timestamp_ns = int(ts_utc.timestamp() * 1e9)
+                        line = (
+                            f'{job.asset_id},instance={job.instance_id} '
+                            + ",".join(fields)
+                            + f' {timestamp_ns}'
+                        )
                         lines.append(line)
+                        
         except:
             if "_archiv" not in db:
                 raise
