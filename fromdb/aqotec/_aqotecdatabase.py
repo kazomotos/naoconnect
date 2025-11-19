@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 from typing import Optional, Dict, List, Tuple
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo 
 
 import pyodbc
@@ -310,7 +310,7 @@ class AqotecJobExecutor:
                         # Falls DB wider Erwarten schon tzinfo hat, einfach nehmen
                         local_dt = ts
 
-                    ts_utc = local_dt.astimezone(timezone.utc)
+                    ts_utc = local_dt.astimezone(timezone.utc) - timedelta(minutes=1)
 
                     fields = []
                     for sid, val in zip(sensor_ids, values):
@@ -319,7 +319,7 @@ class AqotecJobExecutor:
                             fields.append(f'{sid}={val}')
 
                     if fields:
-                        last_time = ts_utc
+                        last_time = ts_utc 
                         # 3) Unix-Zeit in ns aus **UTC**-Zeit
                         timestamp_ns = int(ts_utc.timestamp() * 1e9)
                         line = (
