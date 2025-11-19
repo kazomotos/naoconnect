@@ -248,7 +248,7 @@ class AqotecJobExecutor:
     ...
     '''
 
-    def __init__(self, connector:AqotecConnector, tz="utc"):
+    def __init__(self, connector:AqotecConnector, tz="Europe/Berlin"):
         '''
         ...
         '''
@@ -328,7 +328,7 @@ class AqotecJobExecutor:
                             + f' {timestamp_ns}'
                         )
                         lines.append(line)
-                        
+
         except:
             if "_archiv" not in db:
                 raise
