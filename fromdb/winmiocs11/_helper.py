@@ -117,13 +117,26 @@ def read_stations_from_api(api_ids: str, hast_asset_attributes: dict) -> dict:
 
     Die Funktion ist bewusst generisch gehalten und bekommt daher die
     Attribut-Beschreibung aus `main.py` übergeben.
+
+    Initiale Sonderlogik für frisch angelegte Stationen:
+    Falls das Metadatum `Regler-ID` in NAO noch nicht gesetzt ist, wird einmalig
+    geprüft, ob sich der Instanzname als Integer interpretieren lässt. Ist das
+    der Fall, wird dieser Wert vorübergehend als Regler-ID verwendet, damit die
+    Station direkt nach dem Anlegen schon der Postgres-Zuordnung zugeordnet
+    werden kann. Im anschließenden Metadaten-Sync wird `Regler-ID` trotzdem
+    regulär nach NAO geschrieben. Sobald dieses Metadatum vorhanden ist, ist es
+    wieder die alleinige Quelle der Zuordnung; spätere Namensänderungen sind
+    dann ohne Einfluss.
     """
     stations_nao: dict = {}
     with urlopen(api_ids) as response:
         meta_nao_data = json.loads(response.read())["results"]
 
     for dat in meta_nao_data:
-        if dat["Regler-ID"] is None:
+        controller_id = _normalize_controller_id(dat.get("Regler-ID"))
+        if controller_id is None:
+            controller_id = _normalize_controller_id(dat.get("name"))
+        if controller_id is None:
             continue
 
         result = {"Instance-ID": dat["Instance-ID"]}
@@ -135,7 +148,7 @@ def read_stations_from_api(api_ids: str, hast_asset_attributes: dict) -> dict:
                     "value": dat.get(attr_name),
                     "id": dat.get(nao_id_key),
                 }
-        stations_nao[dat["Regler-ID"]] = result
+        stations_nao[controller_id] = result
 
     return stations_nao
 
@@ -406,16 +419,14 @@ def _build_geolocation_from_attr(attr_value: Any) -> list[float]:
     return [lon, lat]
 
 
-def _build_station_name(controller_id: int, partner_name: Any) -> str:
+def _build_station_name(controller_id: int) -> str:
     """
-    Erzeugt den Instanznamen gemäß Vorgabe:
-    - `partner.name`, falls vorhanden
-    - sonst `Regler-ID: <Regler-ID>`
+    Erzeugt den Instanznamen für neu angelegte Stationen.
+
+    Der Name ist bewusst exakt die Regler-ID, damit die Zuordnung auch direkt
+    nach dem Anlegen eindeutig bleibt, bevor die Metadaten nachgezogen wurden.
     """
-    normalized_name = _normalize_scalar(partner_name)
-    if normalized_name:
-        return str(normalized_name)
-    return f"Regler-ID: {controller_id}"
+    return str(controller_id)
 
 
 def build_station_creation_infos(postgres: ScheindPostgresWinmiocs70) -> dict[int, dict]:
@@ -424,12 +435,12 @@ def build_station_creation_infos(postgres: ScheindPostgresWinmiocs70) -> dict[in
     Stationen in NAO benötigt werden.
     """
     creation_infos: dict[int, dict] = {}
-    for partner_id, name, attr in _fetch_partner_creation_rows(postgres):
+    for partner_id, _name, attr in _fetch_partner_creation_rows(postgres):
         controller_id = _normalize_controller_id(partner_id)
         if controller_id is None:
             continue
         creation_infos[controller_id] = {
-            "name": _build_station_name(controller_id, name),
+            "name": _build_station_name(controller_id),
             "geolocation": _build_geolocation_from_attr(attr),
         }
     return creation_infos
@@ -560,6 +571,8 @@ def create_missing_stations_from_postgres(
     stations_nao: dict,
     workspace_id: str,
     asset_id: str,
+    min_controller_id: int | None = None,
+    max_controller_id: int | None = None,
     description: str = "Station aus Schneid",
 ) -> StationCreationSummary:
     """
@@ -574,6 +587,11 @@ def create_missing_stations_from_postgres(
     creation_infos = build_station_creation_infos(postgres)
 
     for controller_id, station_info in creation_infos.items():
+        if min_controller_id is not None and controller_id < min_controller_id:
+            continue
+        if max_controller_id is not None and controller_id > max_controller_id:
+            continue
+
         summary.checked_controller_ids += 1
 
         if controller_id in stations_by_controller:
