@@ -191,16 +191,21 @@ class NaoApp():
         }
         return(self._sendDataToNaoJson(NaoApp.NAME_PATCH, NaoApp.URL_PATCH_META_INSTANCE%(instance_id, meta_id), payload))
 
-    def addInstanceMetaToHistory(self, meta_id, value, start:datetime=datetime.now(timezone.utc)):
+    def patchInstanceMetaHistory(self, instance_id:str,  meta_id:str, history:list) -> dict:
         '''
-        veraltet.... !?
+        history = [
+            {
+                "value": <value>,
+                "start": <datetime>
+            }
+        ]
         '''
-        return(-1)
+        for hist in history:
+            hist["start"] = hist["start"].strftime("%Y-%m-%dT%H:%M:%S.000Z")
         payload = {
-            "value": value,
-            "start": start.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+            "history": history
         }
-        return(self._sendDataToNaoJson(NaoApp.NAME_PATCH, NaoApp.URL_ADD_META_INSTANCE%(meta_id), payload))
+        return(self._sendDataToNaoJson(NaoApp.NAME_PATCH, NaoApp.URL_PATCH_META_INSTANCE%(instance_id, meta_id), payload))
     
     def patchInstanceData(self, instance_id:str, payload:dict):
         return(self._sendDataToNaoJson(NaoApp.NAME_PATCH, NaoApp.URL_PATCH_INSTANCE%(instance_id), payload))
