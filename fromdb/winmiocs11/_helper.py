@@ -7,6 +7,7 @@ import hashlib
 import json
 import re
 from typing import Any, Iterable
+from urllib.request import urlopen
 
 import pandas as pd
 
@@ -103,6 +104,40 @@ def save_meta_sync_info(file_path: str, meta_sync_info: dict) -> None:
     """Schreibt den lokalen Synchronisierungsstand formatiert in JSON."""
     with open(file_path, "w", encoding="utf-8") as file:
         json.dump(meta_sync_info, file, indent=2, ensure_ascii=False, sort_keys=True)
+
+
+def read_stations_from_api(api_ids: str, hast_asset_attributes: dict) -> dict:
+    """
+    Liest die aktuelle Stationskonfiguration aus der NAO-Metadaten-API.
+
+    Rückgabeformat:
+    - Schlüssel: Regler-ID
+    - Wert: Dictionary mit `Instance-ID` sowie den aktuell in NAO vorhandenen
+      Metadatenwerten und den zugehörigen `NAO-ID-...`-Referenzen.
+
+    Die Funktion ist bewusst generisch gehalten und bekommt daher die
+    Attribut-Beschreibung aus `main.py` übergeben.
+    """
+    stations_nao: dict = {}
+    with urlopen(api_ids) as response:
+        meta_nao_data = json.loads(response.read())["results"]
+
+    for dat in meta_nao_data:
+        if dat["Regler-ID"] is None:
+            continue
+
+        result = {"Instance-ID": dat["Instance-ID"]}
+        for key in hast_asset_attributes:
+            attr_name = hast_asset_attributes[key]["name"]
+            nao_id_key = f"NAO-ID-{attr_name}"
+            if attr_name in dat or nao_id_key in dat:
+                result[attr_name] = {
+                    "value": dat.get(attr_name),
+                    "id": dat.get(nao_id_key),
+                }
+        stations_nao[dat["Regler-ID"]] = result
+
+    return stations_nao
 
 
 def _normalize_controller_id(value: Any) -> int | None:
