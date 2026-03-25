@@ -1,0 +1,67 @@
+{
+  "driver_only_wz_as_hast_csv": {
+    "1": {
+      "name": "WMZ-Wärmemenge",
+      "id": "sensor_example_energy",
+      "name_dp": "WZ Wärmemenge(kWh)",
+      "dp": 0,
+      "gt": 10,
+      "lt": null,
+      "b1": 240,
+      "b2": 266,
+      "type": "Meter"
+    }
+  },
+  "driver_ug6_csv": {
+    "1": {
+      "name": "WMZ-Wärmemenge",
+      "id": "sensor_example_ug06_energy",
+      "name_dp": "WZ Wärmemenge(kWh)",
+      "dp": 0,
+      "gt": 10,
+      "lt": null,
+      "b1": 240,
+      "b2": 266,
+      "type": "Meter"
+    }
+  },
+  "driver_ug8_csv": {
+    "1": {
+      "name": "Aussentemperatur",
+      "id": "sensor_example_ug08_outdoor_temp",
+      "name_dp": "Außentemp.(°C)",
+      "dp": 20,
+      "gt": -40,
+      "lt": 130,
+      "b1": 0.5,
+      "b2": 1.5,
+      "type": "Sensor"
+    }
+  },
+  "driver_ug10_csv": {
+    "1": {
+      "name": "Aussentemperatur",
+      "id": "sensor_example_ug10_outdoor_temp",
+      "name_dp": "Außentemp.(°C)",
+      "dp": 20,
+      "gt": -40,
+      "lt": 130,
+      "b1": 0.5,
+      "b2": 1.5,
+      "type": "Sensor"
+    }
+  },
+  "driver_ug12_csv": {
+    "1": {
+      "name": "Aussentemperatur",
+      "id": "sensor_example_ug12_outdoor_temp",
+      "name_dp": "T6 Aussentemp.(°C)",
+      "dp": 0,
+      "gt": -40,
+      "lt": 130,
+      "b1": 0.5,
+      "b2": 1.5,
+      "type": "Sensor"
+    }
+  }
+}

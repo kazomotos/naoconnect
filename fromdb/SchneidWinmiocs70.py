@@ -284,7 +284,7 @@ class SchneidCsvWinmiocs70(SchneidParamWinmiocs70):
     TIME_FORMAT_TIMESTEPS = '%Y-%m-%d %H:%M:%S'
 
 
-    def __init__(self, file_path: str = None) -> None:
+    def __init__(self, file_path: str = None, extra_files:list=[]) -> None:
         '''
         Initializes the SchneidCsvWinmiocs70 object, optionally setting the file path to the CSV data directory.
         
@@ -295,6 +295,7 @@ class SchneidCsvWinmiocs70(SchneidParamWinmiocs70):
         self.files = []
         self.hast_files = []
         self.files_columns = {}
+        self.extra_files = extra_files
         self.files_infos = {}
 
         if self.file_path: 
@@ -334,7 +335,8 @@ class SchneidCsvWinmiocs70(SchneidParamWinmiocs70):
         The header information is used to identify the structure of each file, and the column headers are parsed for each CSV.
         '''
         for file in self.files:
-            if SchneidCsvWinmiocs70.DATA_FILE_FORMAT not in file: continue
+            if file in self.extra_files: pass
+            elif SchneidCsvWinmiocs70.DATA_FILE_FORMAT not in file: continue
             if SchneidCsvWinmiocs70.DATA_FILE_FORMAT_ENDING not in file: continue
             header = self.getFileHeader( file )
             self.files_columns[file] = self.getColsFromColumnHeader( header[SchneidCsvWinmiocs70.DICTNAME_COLUMN_HEADER] )

@@ -1,0 +1,17 @@
+{
+  "targets": [
+    {
+      "key": "example_buffer_911",
+      "table": "911_puffer.csv",
+      "asset_id": "asset_example_buffer",
+      "instance_id": "instance_example_buffer",
+      "sensors": [
+        {
+          "sensor_id": "sensor_example_buffer_top",
+          "name_dp": "T.Puffer 1(°C)",
+          "dp": 0
+        }
+      ]
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+from os import path
 from datetime import datetime
 import json
 
@@ -6,6 +7,7 @@ from naoconnect.fromdb.winmiocs11 import (
     load_meta_sync_info,
     read_stations_from_api,
     save_meta_sync_info,
+    sync_csv_series_from_schneid,
     sync_meter_series_from_postgres,
     sync_station_metadata_from_postgres,
 )
@@ -25,7 +27,13 @@ Ziel der Datei:
 Sie zeigt die Struktur einer produktiven main.py, ohne projektspezifische Geheimnisse
 preiszugeben. Die eigentliche Fachlogik liegt weiterhin im Helper bzw. in den importierten
 Sync-Funktionen. Diese main.py orchestriert nur den Ablauf.
+
+Die Datei zeigt bewusst beide Bereiche:
+- Metadaten und Postgres-Zeitreihen
+- CSV-Zeitreihen aus Schneid / Winmiocs11
 """
+
+BASE_DIR = path.dirname(path.abspath(__file__))
 
 # -----------------------------------------------------------------------------
 # 1) NAO-Zugänge und Infrastruktur (anonymisiert)
@@ -52,6 +60,60 @@ hast_asset_id = "asset_example_hast_0001"
 
 # Sensor-ID für die Zählernummern-Zeitreihe.
 meter_number_id = "sensor_example_meter_number_0001"
+
+
+# -----------------------------------------------------------------------------
+# 2b) Lokale Dateien für den CSV-Zeitreihensync
+# -----------------------------------------------------------------------------
+# Diese Dateien liegen typischerweise lokal auf dem Synchronisierungsserver.
+#
+# driver_schneid.json:
+#   Bestehender HAST-Driver mit der fachlichen Zuordnung von CSV-Spalten zu
+#   NAO-Sensoren.
+#
+# csv_special_assets.json:
+#   Neue lokale JSON-Konfiguration für Sonderassets, die nicht über die HAST-
+#   Regler-ID-Logik aufgelöst werden können.
+#
+# schneid_csv_sync.sqlite3:
+#   Neuer technischer Synchronisationsstand für den CSV-Zeitreihensync.
+#
+# syncronizied_status_old.json:
+#   Optionale Altdatei für eine einmalige Migration des früheren JSON-Status.
+CSV_DRIVER_FILE = path.join(BASE_DIR, "driver_schneid.example.json")
+CSV_SPECIAL_ASSET_CONFIG_FILE = path.join(BASE_DIR, "csv_special_assets.example.json")
+CSV_SYNC_SQLITE_FILE = path.join(BASE_DIR, "schneid_csv_sync.example.sqlite3")
+CSV_LEGACY_SYNC_STATUS_FILE = None
+
+
+# -----------------------------------------------------------------------------
+# 2c) Quellpfade für Schneid-CSV-Dateien
+# -----------------------------------------------------------------------------
+# In der Produktivumgebung liegen diese Dateien typischerweise unter
+# `C:\Winmiocs11\PROTCSV` und `C:\Winmiocs11\ARCHIVE`.
+#
+# Für lokale Tests oder Dokumentationsbeispiele können genauso gut andere Pfade
+# gesetzt werden. Die eigentliche Sync-Logik erwartet lediglich:
+# - ein Verzeichnis mit dem aktuellen PROTCSV-Bestand
+# - optional ein Archivwurzelverzeichnis mit Ordnern `PROTCSV_YYYYMMDDHHMMSS`
+CSV_CURRENT_DIR = r"C:\Winmiocs11\PROTCSV"
+CSV_ARCHIVE_ROOT_DIR = r"C:\Winmiocs11\ARCHIVE"
+
+
+# -----------------------------------------------------------------------------
+# 2d) Optionale Korrekturfaktoren für bekannte Einheitenfehler
+# -----------------------------------------------------------------------------
+# Schneid kann in Einzelfällen Werte mit fachlich falscher Einheit liefern.
+# Diese Korrektur wird weiterhin unterstützt, obwohl grundsätzlich Rohdaten
+# übertragen werden.
+#
+# Struktur:
+# {
+#   "<instance-id>": {
+#       "<sensor-id>": 10.0
+#   }
+# }
+CSV_WRONG_UNITS = {}
 
 
 # -----------------------------------------------------------------------------
@@ -252,13 +314,44 @@ series_summary = sync_meter_series_from_postgres(
 
 
 # -----------------------------------------------------------------------------
-# 12) Lokalen Sync-Zustand persistieren
+# 12) Lokalen Postgres-Sync-Zustand persistieren
 # -----------------------------------------------------------------------------
 save_meta_sync_info(META_SYNC_FILE, meta_sync_info)
 
 
 # -----------------------------------------------------------------------------
-# 13) Technische Zusammenfassung für Log, Shell oder Scheduler
+# 13) CSV-Zeitreihensynchronisierung aus Schneid / Winmiocs11
+# -----------------------------------------------------------------------------
+# Aufgabe dieses Schritts:
+# - aktuelle und archivierte PROTCSV-Dateien erkennen
+# - HAST-Sensoren über `driver_schneid.json` und die aktuelle Regler-ID-Zuordnung
+#   auflösen
+# - Sonderassets über die lokale JSON-Konfiguration abbilden
+# - den technischen Fortschritt in SQLite speichern
+# - Messwerte im Telegraf-Format als Rohdaten an NAO senden
+#
+# Wichtige Schneid-Besonderheiten:
+# - `gt`, `lt`, `b1`, `b2` dienen nur zur erstmaligen Sensor-Erkennung
+# - nach der Freischaltung werden Rohdaten übertragen
+# - bei Header-/Stationswechseln wird für neue Sensoren nur bis zum
+#   Wechselzeitpunkt rücksynchronisiert
+csv_series_summary = sync_csv_series_from_schneid(
+    nao_connect=NaoConnect,
+    stations_nao=stations_nao,
+    hast_asset_id=hast_asset_id,
+    driver_file_path=CSV_DRIVER_FILE,
+    sqlite_file_path=CSV_SYNC_SQLITE_FILE,
+    actual_csv_dir=CSV_CURRENT_DIR,
+    archive_root_dir=CSV_ARCHIVE_ROOT_DIR,
+    special_asset_config_path=CSV_SPECIAL_ASSET_CONFIG_FILE,
+    legacy_sync_status_path=CSV_LEGACY_SYNC_STATUS_FILE,
+    wrong_units=CSV_WRONG_UNITS,
+    default_start_time=datetime(2010, 1, 1),
+)
+
+
+# -----------------------------------------------------------------------------
+# 14) Technische Zusammenfassung für Log, Shell oder Scheduler
 # -----------------------------------------------------------------------------
 print(
     json.dumps(
@@ -266,6 +359,7 @@ print(
             "station_creation": station_creation_summary.__dict__ if station_creation_summary else None,
             "metadata": metadata_summary.__dict__,
             "meter_series": series_summary.__dict__,
+            "csv_series": csv_series_summary.__dict__,
         },
         ensure_ascii=False,
         indent=2,
