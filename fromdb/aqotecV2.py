@@ -452,9 +452,18 @@ class AqotecMetaV2(AqotecConnectorV2):
         if len(asset_meta) > 0:
             name_db = ""
             for instance in instances:
-                # not for subz
-                if AqotecMetaV2.INSTANCE_NAME_ADDITIVE_SUBZ in instance[AqotecMetaV2.NAME_NAME]: continue
                 if not asset_meta.get(instance[AqotecMetaV2.NAME_ASSET_ID]): continue
+                if AqotecMetaV2.INSTANCE_NAME_ADDITIVE_SUBZ in instance[AqotecMetaV2.NAME_NAME]: 
+                    meta_names = asset_meta[instance[AqotecMetaV2.NAME_ASSET_ID]].split(",")
+                    pos_dp_anid = []
+                    meta_anid = ["AnID"]   
+                    for idx in range(len(meta_names)):
+                        if meta_names[idx] == "AnID":
+                            pos_dp_anid.append(pos_dp[idx])
+                            break
+                    if len(pos_dp_anid) > 0:
+                        self._patchStationMeta([instance["name"].split("R")[-1]],instance, pos_dp_anid, meta_anid, number=1)
+                    continue
                 try: 
                     if instance[AqotecMetaV2.NAME_DATABASE]!=name_db:
                         cursor.execute(AqotecMetaV2.QUREY_USE%(
