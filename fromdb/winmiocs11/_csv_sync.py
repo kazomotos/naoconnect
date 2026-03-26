@@ -533,7 +533,7 @@ def _resolve_special_sensor_configs(
 
 def _build_mapping_start_time(
     table_sources: list[CsvFileInfo],
-    latest_signature: str,
+    latest_table_id: str,
     default_start_time: datetime,
 ) -> datetime:
     """
@@ -541,8 +541,10 @@ def _build_mapping_start_time(
 
     Die Regel ist bewusst einfach:
     Es wird nur die zusammenhaengende Kette der neuesten Dateien mit gleicher
-    Header-Signatur betrachtet. Sobald eine aeltere Datei eine andere Signatur
-    traegt, endet die Ruecksynchronisierung neuer Sensoren an diesem Punkt.
+    Tabellen-ID betrachtet. Sobald eine aeltere Datei eine andere Tabellen-ID
+    traegt, endet die Ruecksynchronisierung neuer Sensoren an diesem Punkt. 
+    Hinweis: in der Tabellen ID ist der Regler z.B. UG08 hinterlegt, wodurch
+    ein Reglerwechsel dadurch abgebildet ist.
     """
     if not table_sources:
         return default_start_time
@@ -550,7 +552,7 @@ def _build_mapping_start_time(
     boundary = default_start_time
     for index in range(len(table_sources) - 1, -1, -1):
         file_info = table_sources[index]
-        if file_info.header_signature == latest_signature:
+        if file_info.table_id == latest_table_id:
             continue
         if file_info.last_write_time is not None:
             boundary = max(boundary, file_info.last_write_time)
@@ -607,7 +609,7 @@ def build_csv_targets(
                 driver_section=driver_section,
                 mapping_start_time=_build_mapping_start_time(
                     table_sources=table_sources,
-                    latest_signature=latest_file.header_signature,
+                    latest_table_id=latest_file.table_id,
                     default_start_time=default_start_time,
                 ),
             )
@@ -635,7 +637,7 @@ def build_csv_targets(
                 driver_section=None,
                 mapping_start_time=_build_mapping_start_time(
                     table_sources=sources_by_table[table_name],
-                    latest_signature=latest_file.header_signature,
+                    latest_table_id=latest_file.table_id,
                     default_start_time=default_start_time,
                 ),
             )
@@ -1127,7 +1129,9 @@ def sync_csv_series_from_schneid(
                 summary.changed_headers += 1
 
             sample_dataframe = None
-            effective_new_sensor_start = store.get_target_new_sensor_start_time(target.target_key) or target.mapping_start_time or default_start_time
+            # effective_new_sensor_start = store.get_target_new_sensor_start_time(target.target_key) or target.mapping_start_time or default_start_time
+            ## ob mappeng start time überhaupt verwendet werden muss, wird noch geprüft, daher erst mal auskommentiert.
+            effective_new_sensor_start = store.get_target_new_sensor_start_time(target.target_key) or default_start_time
             active_sensors: list[tuple[CsvSensorConfig, sqlite3.Row | None, datetime]] = []
 
             for sensor_config in target.sensors:
