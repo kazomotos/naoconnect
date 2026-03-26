@@ -170,7 +170,7 @@ def _to_utc_nanoseconds(value: datetime) -> int:
     Schneid schreibt die Zeitstempel lokal in Europe/Berlin. Genau diese
     Annahme wurde auch im Altcode verwendet und muss erhalten bleiben.
     """
-    localized = pd.Timestamp(value).tz_localize(CSV_TIMEZONE)
+    localized = pd.Timestamp(value).tz_localize(CSV_TIMEZONE, ambiguous=False)
     return int(localized.tz_convert("UTC").value)
 
 
