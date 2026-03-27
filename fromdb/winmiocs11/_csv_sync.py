@@ -312,12 +312,28 @@ def _read_csv_dataframe(file_path: str, lines: int | str = 10) -> pd.DataFrame:
                 encoding=CSV_ENCODING,
             )
         except pd.errors.ParserError:
-            dataframe = pd.read_csv(
-                StringIO("\n".join(buffer[start_index + line_number + 100 :])),
-                sep=CSV_DELIMITER,
-                header=None,
-                encoding=CSV_ENCODING,
-            )
+            remaining_buffer = buffer[start_index + line_number :]
+            steps = 20
+            idx_add = int(len(remaining_buffer) / 20)
+            if idx_add == 0:
+                steps = len(remaining_buffer)
+                idx_add = 1
+
+            dataframe = None
+            for idx in range(steps):
+                try:
+                    dataframe = pd.read_csv(
+                        StringIO("\n".join(buffer[start_index + line_number + int(idx_add * idx) :])),
+                        sep=CSV_DELIMITER,
+                        header=None,
+                        encoding=CSV_ENCODING,
+                    )
+                    break
+                except pd.errors.ParserError:
+                    continue
+
+            if dataframe is None:
+                raise
 
     dataframe[0] = pd.to_datetime(dataframe[0], format=CSV_TIME_FORMAT_TIMESTEPS)
     dataframe.set_index(0, inplace=True)

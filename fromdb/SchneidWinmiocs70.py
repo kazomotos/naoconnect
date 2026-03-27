@@ -535,7 +535,19 @@ class SchneidCsvWinmiocs70(SchneidParamWinmiocs70):
                 buffer = pd.read_csv(StringIO('\n'.join(buffer[line_number+buff:])), sep=SchneidCsvWinmiocs70.CSV_DELIMITER, header=None, encoding=SchneidCsvWinmiocs70.CSV_ENCODING)
             
             except  pd.errors.ParserError as e:
-                buffer = pd.read_csv(StringIO('\n'.join(buffer[line_number+100+buff:])), sep=SchneidCsvWinmiocs70.CSV_DELIMITER, header=None, encoding=SchneidCsvWinmiocs70.CSV_ENCODING)
+
+                steps = 20
+                idx_add = int(len(buffer[line_number+buff:])/20)
+                if idx_add == 0:
+                    steps = int(len(buffer[line_number+buff:]))
+                    idx_add = 1
+
+                for idx in range(steps):
+                    try:
+                        buffer = pd.read_csv(StringIO('\n'.join(buffer[line_number+int(idx_add*idx)+buff:])), sep=SchneidCsvWinmiocs70.CSV_DELIMITER, header=None, encoding=SchneidCsvWinmiocs70.CSV_ENCODING)
+                        break
+                    except  pd.errors.ParserError as e:
+                        continue
         
         buffer[0] = pd.to_datetime(buffer[0], format=SchneidCsvWinmiocs70.TIME_FORMAT_TIMESTEPS)
         buffer.set_index(0, inplace=True)
