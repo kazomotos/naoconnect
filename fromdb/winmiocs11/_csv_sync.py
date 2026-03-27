@@ -254,13 +254,17 @@ def _parse_csv_info(info_header: str) -> tuple[str | None, str | None, datetime 
 
 def _read_csv_dataframe(file_path: str, lines: int | str = 10) -> pd.DataFrame:
     """
-    Liest Schneid-CSV-Dateien mit der gleichen robusten Rueckwaertslogik wie im Altcode.
+    Liest Schneid-CSV-Dateien mit robuster Rueckwaertslogik.
 
     Besonderheit bei Schneid:
-    Wenn innerhalb derselben Datei der Regler bzw. Stationstyp gewechselt hat,
-    kann sich die Struktur mitten in der Datei aendern. Das fuehrt beim Parsen zu
-    Fehlern. Die Logik versucht daher bewusst, nur den letzten konsistenten Teil
-    der Datei zu lesen. Genau dieses Verhalten wird fuer den neuen Sync erhalten.
+    Innerhalb derselben Datei koennen Regler- oder Stationstypen wechseln. Dabei
+    aendert sich die CSV-Struktur mitten in der Datei, was beim direkten Einlesen
+    zu `ParserError` fuehrt.
+
+    Die Fallback-Logik springt deshalb nach einem Parsefehler schrittweise weiter
+    nach vorn, bis nur noch der letzte konsistente CSV-Abschnitt gelesen wird.
+    So bleibt das Einlesen auch dann stabil, wenn eine Datei im vorderen Bereich
+    ungueltige oder fachlich nicht mehr passende Zeilen enthaelt.
     """
     if lines == "all":
         with open(file_path, "r", encoding=CSV_ENCODING) as handle:
