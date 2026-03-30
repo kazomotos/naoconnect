@@ -1,82 +1,93 @@
 # only_one_process.py
-import os, sys, atexit, tempfile
-from typing import Union 
+import os
+import sys
+import atexit
+import tempfile
 from pathlib import Path
+from typing import Union
 
-try:
-    import fcntl  # POSIX flock
-except ImportError:
-    fcntl = None
+if os.name == "nt":
+    import msvcrt
+else:
+    import fcntl
 
-def onlyOneProzess(lock_name: str = "desigocc-nao-logging", lock_dir: Union[str, None] = None):
-    """
-    Erzwingt Single-Instance per flock. Beendet das Programm,
-    wenn bereits eine andere Instanz läuft.
 
-    Nutzung:
-        from only_one_process import only_one_process
-        only_one_process("desigocc-nao-logging")
-    """
-    if fcntl is None:
-        # Fallback: best effort Lockfile (ohne flock); besser: psutil/pidfile nutzen
-        lock_dir = lock_dir or tempfile.gettempdir()
-        lockfile = Path(lock_dir) / f"{lock_name}.lock"
-        try:
-            fd = os.open(lockfile, os.O_CREAT | os.O_EXCL | os.O_RDWR, 0o644)
-        except FileExistsError:
-            print(f"\033[1;31mInstanz '{lock_name}' läuft bereits (Lock existiert).\033[0m")
-            sys.exit(0)
-        os.write(fd, str(os.getpid()).encode())
-        def _cleanup():
-            try: os.close(fd)
-            except: pass
-            try: os.remove(lockfile)
-            except: pass
-        atexit.register(_cleanup)
-        return
+_LOCK_HANDLE = None
+_LOCK_PATH = None
 
-    # flock-Variante
-    lock_dir = lock_dir or ("/var/lock" if os.access("/var/lock", os.W_OK) else tempfile.gettempdir())
+
+def onlyOneProzess(
+    lock_name: str = "desigocc-nao-logging",
+    lock_dir: Union[str, None] = None
+):
+    global _LOCK_HANDLE, _LOCK_PATH
+
+    lock_dir = lock_dir or tempfile.gettempdir()
     Path(lock_dir).mkdir(parents=True, exist_ok=True)
     lockfile = Path(lock_dir) / f"{lock_name}.lock"
+    _LOCK_PATH = lockfile
 
-    # Datei öffnen (bleibt während der Laufzeit offen – wichtig!)
-    fd = os.open(lockfile, os.O_RDWR | os.O_CREAT, 0o644)
+    # Datei immer normal öffnen/anlegen.
+    # Die Datei darf dauerhaft existieren.
+    f = open(lockfile, "a+b")
+    _LOCK_HANDLE = f
 
     try:
-        # exklusiv & non-blocking sperren
-        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        if os.name == "nt":
+            # Für Windows mindestens 1 Byte locken
+            f.seek(0)
+            if lockfile.stat().st_size == 0:
+                f.write(b" ")
+                f.flush()
+
+            f.seek(0)
+            msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            fcntl.flock(f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+
     except OSError:
-        # Jemand hält bereits den Lock
         try:
-            with open(lockfile, "r") as f:
-                pid_txt = f.read().strip()
+            f.seek(0)
+            pid_txt = f.read().decode(errors="ignore").strip()
         except Exception:
             pid_txt = "?"
         print(f"\033[1;31mInstanz '{lock_name}' läuft bereits (PID {pid_txt}).\033[0m")
+        f.close()
         sys.exit(0)
 
-    # Unsere PID reinschreiben (nur informativ)
+    # PID reinschreiben, rein informativ
     try:
-        os.ftruncate(fd, 0)
-        os.write(fd, str(os.getpid()).encode())
-        os.fsync(fd)
+        f.seek(0)
+        f.truncate()
+        f.write(str(os.getpid()).encode())
+        f.flush()
+        os.fsync(f.fileno())
     except Exception:
         pass
 
-    # Beim Exit Lock lösen & Datei löschen
     def _cleanup():
+        global _LOCK_HANDLE
+        if _LOCK_HANDLE is None:
+            return
+
         try:
-            fcntl.flock(fd, fcntl.LOCK_UN)
+            if os.name == "nt":
+                _LOCK_HANDLE.seek(0)
+                msvcrt.locking(_LOCK_HANDLE.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(_LOCK_HANDLE.fileno(), fcntl.LOCK_UN)
         except Exception:
             pass
+
         try:
-            os.close(fd)
+            _LOCK_HANDLE.close()
         except Exception:
             pass
-        try:
-            os.remove(lockfile)
-        except Exception:
-            pass
+
+        _LOCK_HANDLE = None
+
+        # Absichtlich KEIN os.remove(lockfile)!
+        # Die Datei darf bestehen bleiben.
+        # Gesperrt/nicht gesperrt ist entscheidend, nicht Existenz.
 
     atexit.register(_cleanup)
