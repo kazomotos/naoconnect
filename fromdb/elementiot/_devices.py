@@ -30,6 +30,7 @@ class _DeviceOut(TypedDict):
     lon: float | None
     lat: float | None
     fields: _JsonValue
+    stats: _JsonValue
     tags: list[_TagOut]
 
 
@@ -144,6 +145,7 @@ def _reduce_device(device: dict[str, _JsonValue]) -> _DeviceOut:
         "lon": longitude,
         "lat": latitude,
         "fields": device.get("fields"),
+        "stats": device.get("stats"),
         "tags": _reduce_tags(device),
     }
 
@@ -164,6 +166,9 @@ def get_devices_out(base_url: str, api_key: str) -> list[_DeviceOut]:
                 "fields": {
                     "seriennummer": "12345678",
                     "typ": "zaehler",
+                },
+                "stats": {
+                    "transceived_at": "2026-03-30T16:06:08.219593Z",
                 },
                 "tags": [
                     {
