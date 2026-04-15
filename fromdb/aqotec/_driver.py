@@ -292,7 +292,7 @@ class DataPointsConfiguration:
     '''
     
     def __init__(self, rm360:bool=False, ug07:bool=False, bhkw:bool=False, ug07_sub_heat_meter:bool=False,
-                 heat_meter:bool=False, rm360_sub_heat_meter:bool=False, network:bool=False) -> None:
+                 heat_meter:bool=False, rm360_sub_heat_meter:bool=False, network:bool=False, extra_subs:List[str]=[]) -> None:
         '''
         Initializes configuration and sets allowed system types.
 
@@ -305,7 +305,7 @@ class DataPointsConfiguration:
             rm360_sub_heat_meter (bool): Include RM360 sub heat meters.
             network (bool): Include network systems.
         '''
-        self.table_substrings = []
+        self.table_substrings = extra_subs
         self.data_point:List['DataPointBase'] = [] 
         if rm360: self.table_substrings.append("RM360_")
         if ug07: self.table_substrings.append("UG07_")
