@@ -147,6 +147,7 @@ def _reduce_device(device: dict[str, _JsonValue]) -> _DeviceOut:
         "fields": device.get("fields"),
         "stats": device.get("stats"),
         "tags": _reduce_tags(device),
+        "parser_id": device.get("parser_id")
     }
 
 
