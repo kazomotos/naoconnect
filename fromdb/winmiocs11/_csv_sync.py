@@ -1024,6 +1024,15 @@ def _build_telegraf_frames(
     if sensor_config.dp is None or sensor_config.dp not in dataframe.columns:
         return [], 0, None
 
+    unit_factor = None
+    instance_wrong_units = wrong_units.get(target.instance_id)
+    if instance_wrong_units is not None:
+        unit_factor = instance_wrong_units.get(sensor_config.sensor_id)
+    if unit_factor is None:
+        all_wrong_units = wrong_units.get("all")
+        if all_wrong_units is not None:
+            unit_factor = all_wrong_units.get(sensor_config.sensor_id)
+
     payload: list[str] = []
     empty_values_skipped = 0
     last_seen_time = None
@@ -1035,8 +1044,8 @@ def _build_telegraf_frames(
         if numeric_value is None:
             empty_values_skipped += 1
             continue
-        if target.instance_id in wrong_units and sensor_config.sensor_id in wrong_units[target.instance_id]:
-            numeric_value = numeric_value * wrong_units[target.instance_id][sensor_config.sensor_id]
+        if unit_factor is not None:
+            numeric_value = numeric_value * unit_factor
         payload.append(
             f"{target.asset_id},instance={target.instance_id} "
             f"{sensor_config.sensor_id}={numeric_value} {_to_utc_nanoseconds(timestamp)}"
