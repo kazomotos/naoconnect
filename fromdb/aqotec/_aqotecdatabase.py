@@ -2,6 +2,7 @@ from contextlib import contextmanager
 from typing import Optional, Dict, List, Tuple
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo 
+import time
 
 import pyodbc
 
@@ -248,11 +249,12 @@ class AqotecJobExecutor:
     ...
     '''
 
-    def __init__(self, connector:AqotecConnector, tz="Europe/Berlin"):
+    def __init__(self, connector:AqotecConnector, tz="Europe/Berlin", dev_cons=False):
         '''
         ...
         '''
         self.tz = tz
+        self.dev_cons = dev_cons
 
         self.connector = connector
 
@@ -296,6 +298,7 @@ class AqotecJobExecutor:
         last_time:datetime = None
         values_count = 0
 
+        starts = time.time()
         try:
             with self.connector.withCursorConn() as cursor:
                 cursor.execute(f"USE {db}")
@@ -335,4 +338,5 @@ class AqotecJobExecutor:
             else:
                 print("archive: \n", sql)
 
+        if self.dev_cons: print("get Aqtoec date in: ", round(time.time() - starts, 3), "sec, len:", len(lines))
         return last_time, lines, values_count
