@@ -250,19 +250,23 @@ class NaoApp():
             payload = NaoApp.FORMAT_TELEFRAF_FRAME_SEPERATOR.join(payload)
         try:
             self._conneciton.request(NaoApp.NAME_POST, NaoApp.URL_TELEGRAF, payload, self.headers) # type: ignore
-            status = self._conneciton.getresponse().status # type: ignore
-            self._conneciton.close() # type: ignore
+            res = self._conneciton.getresponse()
+            status = res.status
+            res.close()
             if status != NaoApp.STATUS_CODE_GOOD:
                 self._loginNao()
                 self._conneciton.request(NaoApp.NAME_POST, NaoApp.URL_TELEGRAF, payload, self.headers) # type: ignore
-                status = self._conneciton.getresponse().status # type: ignore
-                self._conneciton.close() # type: ignore
+                res = self._conneciton.getresponse()
+                status = res.status
+                res.close()
         except:
             self._loginNao()
             self._conneciton.request(NaoApp.NAME_POST, NaoApp.URL_TELEGRAF, payload, self.headers) # type: ignore
-            status = self._conneciton.getresponse().status # type: ignore
-            self._conneciton.close() # type: ignore
+            res = self._conneciton.getresponse()
+            status = res.status
+            res.close()
         return(status)
+
 
     '''
     GET SOME DATA FROM  NAO
