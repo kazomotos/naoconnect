@@ -51,7 +51,6 @@ class NaoApp():
     NAME_TOKENAC = "accessToken"
     QUERY_LOGINHEADER = {'Content-Type': 'application/x-www-form-urlencoded'}
     URL_LOGIN = "/api/user/auth/login"
-    QUERY_TRANSFERHEADER = {"Authorization": "", 'Content-Type': 'text/plain', 'Cookie': ""}
     FORMAT_TELEFRAF_FRAME_SEPERATOR = "\n"
     STATUS_CODE_GOOD = 204
     QUERY_GET = "?query="
@@ -64,7 +63,7 @@ class NaoApp():
             NaoApp.NAME_PASSWD: password,
         }
         self.base_url = f"https://{host}"
-        self.headers = NaoApp.QUERY_TRANSFERHEADER.copy()
+        self.headers = {"Authorization": "", 'Content-Type': 'text/plain', 'Cookie': ""}
         self.data_per_telegraf_push = data_per_telegraf_push
         self.timeout = timeout
         self.local = local

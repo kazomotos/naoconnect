@@ -60,11 +60,6 @@ class NaoAssetCreator(object):
     NAME_UTF8 = "utf-8"
     METHOD_GET = "GET"
     METHOD_POST = "POST"
-    TRANSFER_HEADERS = {
-        "Authorization": "",
-        "Content-Type": "text/plain",
-        "Cookie": "",
-    }
     LOGIN_HEADERS = {
         "Content-Type": "application/x-www-form-urlencoded",
     }
@@ -100,7 +95,7 @@ class NaoAssetCreator(object):
         self.host = host
         self.local = local
         self.timeout = timeout
-        self.headers = copy(self.TRANSFER_HEADERS)
+        self.headers = {"Authorization": "","Content-Type": "text/plain","Cookie": "" }
         self._login_payload = "email=%s&password=%s" % (
             quote(email),
             quote(password),

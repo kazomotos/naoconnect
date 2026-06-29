@@ -45,7 +45,6 @@ class NaoApp(Param):
     BEARER = "Bearer "
     TRANSFERCONFIG = "transfer_config"
     LOGINHEADER = {'Content-Type': 'application/x-www-form-urlencoded'}
-    TRANSFERHEADER = {"Authorization": "", 'Content-Type': 'text/plain', 'Cookie': ""}
     MESSAGELOGIN = "MESSAGE: login nao"
     TRANSFERINTERVAL = "transferinterval"
     DATAPERTELEGRAF = "max_data_per_telegraf"
@@ -71,7 +70,7 @@ class NaoApp(Param):
         }
         self.error_log = error_log
         self.__conneciton = None # type: ignore
-        self.headers = NaoApp.TRANSFERHEADER
+        self.headers = {"Authorization": "", 'Content-Type': 'text/plain', 'Cookie': ""}
         self.db = TinyDb(tiny_db_name)
         self.local=local
         self.DataFromDb = DataFromDb
