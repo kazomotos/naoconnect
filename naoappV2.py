@@ -133,7 +133,7 @@ class NaoApp():
             NaoApp.NAME_ASSET_ID: asset_id,
             NaoApp.NAME_WORKSPACE_ID: workspace_id,
             NaoApp.NAME_ATTRIBUTEVALUES: attributevalues,
-            "range": {"start":start}
+            "range": {"start":start.isoformat()}
         }
         return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_INSTANCE, payload))
 
