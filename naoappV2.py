@@ -125,7 +125,7 @@ class NaoApp():
         }
         return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_WORKSPACE, payload))
     
-    def createInstance(self, name, description, asset_id, workspace_id, geolocation=[], attributevalues=[]):
+    def createInstance(self, name, description, asset_id, workspace_id, geolocation=[], attributevalues=[], start:datetime=datetime(1970,1,1,0,0,0)):
         payload = {
             NaoApp.NAME_NAME: name,
             NaoApp.NAME_DESCRIPTION: description,
@@ -133,6 +133,7 @@ class NaoApp():
             NaoApp.NAME_ASSET_ID: asset_id,
             NaoApp.NAME_WORKSPACE_ID: workspace_id,
             NaoApp.NAME_ATTRIBUTEVALUES: attributevalues,
+            "range": {"start":start}
         }
         return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_INSTANCE, payload))
 
