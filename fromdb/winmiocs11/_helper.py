@@ -7,7 +7,7 @@ import hashlib
 import json
 import re
 from typing import Any, Iterable
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 import pandas as pd
 
@@ -106,7 +106,11 @@ def save_meta_sync_info(file_path: str, meta_sync_info: dict) -> None:
         json.dump(meta_sync_info, file, indent=2, ensure_ascii=False, sort_keys=True)
 
 
-def read_stations_from_api(api_ids: str, hast_asset_attributes: dict) -> dict:
+def read_stations_from_api(
+    api_ids: str,
+    hast_asset_attributes: dict,
+    api_token: str | None = None,
+) -> dict:
     """
     Liest die aktuelle Stationskonfiguration aus der NAO-Metadaten-API.
 
@@ -128,8 +132,15 @@ def read_stations_from_api(api_ids: str, hast_asset_attributes: dict) -> dict:
     wieder die alleinige Quelle der Zuordnung; spätere Namensänderungen sind
     dann ohne Einfluss.
     """
+    request = Request(api_ids)
+    if api_token:
+        auth_value = api_token.strip()
+        if not auth_value.lower().startswith("bearer "):
+            auth_value = f"Bearer {auth_value}"
+        request.add_header("Authorization", auth_value)
+
     stations_nao: dict = {}
-    with urlopen(api_ids) as response:
+    with urlopen(request) as response:
         meta_nao_data = json.loads(response.read())["results"]
 
     for dat in meta_nao_data:

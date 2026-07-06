@@ -180,11 +180,12 @@ hast_asset_attributes = {
 # Die Helper-Logik baut daraus ein Dictionary der Form:
 #   Regler-ID -> Instance-ID + vorhandene Meta-Werte + zugehörige Meta-IDs
 META_API_TOKEN = "<META_READ_TOKEN>"
-api_ids = f"https://example-project.nao-cloud.invalid/api/access/instance/{META_API_TOKEN}"
+api_ids = "https://example-project.nao-cloud.invalid/api/access/instance"
 
 stations_nao = read_stations_from_api(
     api_ids=api_ids,
     hast_asset_attributes=hast_asset_attributes,
+    api_token=META_API_TOKEN,
 )
 
 
@@ -273,6 +274,7 @@ if autocreat_stations:
         stations_nao = read_stations_from_api(
             api_ids=api_ids,
             hast_asset_attributes=hast_asset_attributes,
+            api_token=META_API_TOKEN,
         )
 else:
     station_creation_summary = None
