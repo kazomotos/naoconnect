@@ -7,6 +7,7 @@ import hashlib
 import json
 import re
 from typing import Any, Iterable
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 
 import pandas as pd
@@ -110,6 +111,7 @@ def read_stations_from_api(
     api_ids: str,
     hast_asset_attributes: dict,
     api_token: str | None = None,
+    filter_meta: list[dict[str, Any]] | None = None,
 ) -> dict:
     """
     Liest die aktuelle Stationskonfiguration aus der NAO-Metadaten-API.
@@ -122,43 +124,96 @@ def read_stations_from_api(
     Die Funktion ist bewusst generisch gehalten und bekommt daher die
     Attribut-Beschreibung aus `main.py` übergeben.
 
-    Initiale Sonderlogik für frisch angelegte Stationen:
-    Falls das Metadatum `Regler-ID` in NAO noch nicht gesetzt ist, wird einmalig
-    geprüft, ob sich der Instanzname als Integer interpretieren lässt. Ist das
-    der Fall, wird dieser Wert vorübergehend als Regler-ID verwendet, damit die
-    Station direkt nach dem Anlegen schon der Postgres-Zuordnung zugeordnet
-    werden kann. Im anschließenden Metadaten-Sync wird `Regler-ID` trotzdem
-    regulär nach NAO geschrieben. Sobald dieses Metadatum vorhanden ist, ist es
-    wieder die alleinige Quelle der Zuordnung; spätere Namensänderungen sind
-    dann ohne Einfluss.
+    Die Zuordnung erfolgt ausschließlich über das Metadatum `Regler-ID`.
+    Stationen ohne gültige `Regler-ID` werden übersprungen.
+
+    Beispiel für filter_meta:
+        [
+            {"country": "DE"},
+            {"active": True},
+            {"station_type": "weather"},
+        ]
+
+    Die einzelnen Filter-Dictionaries werden zu einem gemeinsamen Filter
+    zusammengeführt und als JSON im Query-Parameter `filter` übertragen.
     """
-    request = Request(api_ids)
+
+    request_url = api_ids
+
+    if filter_meta:
+        combined_filter: dict[str, Any] = {}
+
+        for filter_item in filter_meta:
+            combined_filter.update(filter_item)
+
+        filter_json = json.dumps(
+            combined_filter,
+            separators=(",", ":"),
+        )
+
+        # Bereits vorhandene Query-Parameter beibehalten.
+        url_parts = urlsplit(api_ids)
+        query_params = dict(
+            parse_qsl(
+                url_parts.query,
+                keep_blank_values=True,
+            )
+        )
+
+        query_params["filter"] = filter_json
+
+        request_url = urlunsplit(
+            (
+                url_parts.scheme,
+                url_parts.netloc,
+                url_parts.path,
+                urlencode(query_params),
+                url_parts.fragment,
+            )
+        )
+
+    request = Request(request_url)
+
     if api_token:
         auth_value = api_token.strip()
+
         if not auth_value.lower().startswith("bearer "):
             auth_value = f"Bearer {auth_value}"
+
         request.add_header("Authorization", auth_value)
 
-    stations_nao: dict = {}
     with urlopen(request) as response:
-        meta_nao_data = json.loads(response.read())["results"]
+        response_data = json.loads(
+            response.read().decode("utf-8")
+        )
+
+    meta_nao_data = response_data["results"]
+
+    stations_nao: dict = {}
 
     for dat in meta_nao_data:
-        controller_id = _normalize_controller_id(dat.get("Regler-ID"))
-        if controller_id is None:
-            controller_id = _normalize_controller_id(dat.get("name"))
+        # Kein Fallback über den Instanznamen.
+        controller_id = _normalize_controller_id(
+            dat.get("Regler-ID")
+        )
+
         if controller_id is None:
             continue
 
-        result = {"Instance-ID": dat["Instance-ID"]}
-        for key in hast_asset_attributes:
-            attr_name = hast_asset_attributes[key]["name"]
+        result = {
+            "Instance-ID": dat["Instance-ID"],
+        }
+
+        for attribute in hast_asset_attributes.values():
+            attr_name = attribute["name"]
             nao_id_key = f"NAO-ID-{attr_name}"
+
             if attr_name in dat or nao_id_key in dat:
                 result[attr_name] = {
                     "value": dat.get(attr_name),
                     "id": dat.get(nao_id_key),
                 }
+
         stations_nao[controller_id] = result
 
     return stations_nao
