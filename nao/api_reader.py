@@ -78,9 +78,10 @@ def read_nao_api(
     try:
         # Neuer Endpoint: Token im Authorization-Header
         with urlopen(request) as response:
-            response_data = json.loads(
-                response.read().decode("utf-8")
-            )
+            response_data = response.read().decode("utf-8")
+
+        if response_data != "":
+            response_data = json.loads(response_data)
 
     except (HTTPError, URLError):
         # Alter Endpoint: Token im URL-Pfad
@@ -110,10 +111,11 @@ def read_nao_api(
         )
 
         with urlopen(fallback_url) as response:
-            response_data = json.loads(
-                response.read().decode("utf-8")
-            )
-
+            response_data = response.read().decode("utf-8")
+            
+        if response_data != "":
+            response_data = json.loads(response_data)
+            
     return response_data["results"]
 
 

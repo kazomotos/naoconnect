@@ -201,7 +201,8 @@ class NaoApp():
         ]
         '''
         for hist in history:
-            hist["start"] = hist["start"].strftime("%Y-%m-%dT%H:%M:%S.000Z")
+            if isinstance(hist["start"], datetime):
+                hist["start"] = hist["start"].strftime("%Y-%m-%dT%H:%M:%S.000Z")
         payload = {
             "history": history
         }
