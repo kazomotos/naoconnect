@@ -325,64 +325,56 @@ class NaoApp():
         start: datetime,
         stop: datetime,
         factor: float = 1.0,
-        limit: int = 50000,
     ) -> dict:
         """
-        Liest eine Raw-Zeitreihe vom Quellserver und formatiert sie fuer einen
-        NAO-zu-NAO-Transfer auf den Zielserver.
+        Liest eine Raw-Zeitreihe ueber die nicht paginierte Raw-API und
+        formatiert sie fuer einen NAO-zu-NAO-Transfer auf den Zielserver.
         """
-        cursor = None
         values = []
         last_time = None
 
-        while True:
-            payload = {
-                "select": {
-                    "asset": source_asset_id,
-                    "instance": source_instance_id,
-                    "series": [source_series_id],
-                    "range": {
-                        "start": start.isoformat(),
-                        "stop": stop.isoformat(),
-                    },
+        payload = {
+            "select": {
+                "points": [
+                    {
+                        "id": source_series_id,
+                        "asset": source_asset_id,
+                        "instance": source_instance_id,
+                        "series": source_series_id,
+                    }
+                ],
+                "range": {
+                    "start": start.isoformat(),
+                    "stop": stop.isoformat(),
                 },
-                "pagination": {
-                    "limit": limit,
-                },
-            }
-            if cursor:
-                payload["pagination"]["cursor"] = cursor
+            },
+            "format": "list",
+        }
 
-            response = self._sendDataToNaoJson(
-                NaoApp.NAME_POST,
-                NaoApp.URL_RAW_ALIGNED_TIMESERIES,
-                payload=payload,
-            )
-            if isinstance(response, dict) and "result" not in response:
-                raise RuntimeError(f"Raw API Antwort ohne result: {response}")
-            result = response.get("result", {}) if isinstance(response, dict) else {}
-            time_values = result.get("time", [])
-            series_values = result.get("series", [])
+        response = self._sendDataToNaoJson(
+            NaoApp.NAME_POST,
+            NaoApp.URL_RAW_TIMESERIES,
+            payload=payload,
+        )
+        if isinstance(response, dict) and "result" not in response:
+            raise RuntimeError(f"Raw API Antwort ohne result: {response}")
+        result = response.get("result", []) if isinstance(response, dict) else []
 
-            if series_values:
-                raw_values = series_values[0].get("values", [])
-                for timestamp, value in zip(time_values, raw_values):
-                    if value is None:
-                        continue
-                    values.append(
-                        {
-                            "time": pd.to_datetime(timestamp, utc=True),
-                            "value": float(value) * factor,
-                        }
-                    )
-                    last_time = timestamp
-
-            pagination = result.get("pagination", {})
-            if not pagination.get("hasMore"):
-                break
-            cursor = pagination.get("nextCursor")
-            if not cursor:
-                break
+        for series_result in result:
+            if series_result.get("id") != source_series_id:
+                continue
+            time_values = series_result.get("time", [])
+            raw_values = series_result.get("value", [])
+            for timestamp, value in zip(time_values, raw_values):
+                if value is None:
+                    continue
+                values.append(
+                    {
+                        "time": pd.to_datetime(timestamp, utc=True),
+                        "value": float(value) * factor,
+                    }
+                )
+                last_time = timestamp
 
         if not values:
             return {
@@ -424,4 +416,3 @@ class NaoLoggerMessage(NaoApp):
     def sendRestart(self) -> None:
         try:self.sendSingleData(asset=self.asset,instance=self.instance,sensor=self.restart_series,value=1)
         except:pass
-
