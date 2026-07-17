@@ -6,6 +6,7 @@ from copy import copy
 from time import sleep
 from datetime import datetime, timezone
 from math import ceil
+import pandas as pd
 
 class NaoApp():
     NAME_HOST = "host"
@@ -39,6 +40,7 @@ class NaoApp():
     URL_INSTANCE_ATTREBIUTE = "/api/nao/instance/%s?select=attributevalues,_id"
     URL_PLOT_TIMESERIES = "/api/series/data/plot"
     URL_RAW_TIMESERIES = "/api/series/data/raw"
+    URL_RAW_ALIGNED_TIMESERIES = "/api/series/data/raw/instance-aligned"
     URL_INSTANCE_MORE = "/api/nao/instance/more/%s"
     URL_WORKSPACE = "/api/nao/workspace"
     URL_ACTIVATE_DATAPOINT = "/api/nao/instance/%s/datapoints"
@@ -213,9 +215,9 @@ class NaoApp():
     
     def sendTelegrafData(self, payload:list, max_sleep:float=2, values_count:int=None):
         ''' 
-        [ '<twin>,instance=<insatance> <measurement>=<value> <timestamp>' ] 
+        [ '<asset_id>,instance=<insatance-id> <series-id>=<value> <timestamp-nano-second>' ] 
                                       or
-          '<twin>,instance=<insatance> <measurement>=<value> <timestamp>'
+          '<asset_id>,instance=<insatance-id> <series-id>=<value> <timestamp-nano-second>'
         '''
         if type(payload) != list:
             sta = self._sendTelegrafData(payload=payload)
@@ -226,17 +228,16 @@ class NaoApp():
         else:
             count = len(payload)
             if count > self.data_per_telegraf_push:
-                last_idx = 0
-                for idx in range(int(ceil(len(payload)/self.data_per_telegraf_push))-1):
-                    last_idx = idx
-                    sta = self._sendTelegrafData(payload[int(idx*self.data_per_telegraf_push):int(idx*self.data_per_telegraf_push)+self.data_per_telegraf_push])
+                for idx in range(int(ceil(len(payload)/self.data_per_telegraf_push))):
+                    start = int(idx*self.data_per_telegraf_push)
+                    stop = start+self.data_per_telegraf_push
+                    sta = self._sendTelegrafData(payload[start:stop])
                     if sta != 204:
                         return(sta)
                     if 0.1+idx*0.04 > max_sleep:
                         sleep(max_sleep)
                     else:
                         sleep(0.1+idx*0.04)
-                sta = self._sendTelegrafData(payload[int(last_idx*self.data_per_telegraf_push):])
             else:
                 sta = self._sendTelegrafData(payload)
             if self.Messager:
@@ -312,6 +313,99 @@ class NaoApp():
 
     def getRawformatetTimeseries(self, select):
         return(self._sendDataToNaoJson(NaoApp.NAME_POST, NaoApp.URL_RAW_TIMESERIES, payload=select))
+
+    def getRawAlignedTimeseriesNaoToNao(
+        self,
+        source_asset_id: str,
+        source_instance_id: str,
+        source_series_id: str,
+        target_asset_id: str,
+        target_instance_id: str,
+        target_series_id: str,
+        start: datetime,
+        stop: datetime,
+        factor: float = 1.0,
+        limit: int = 50000,
+    ) -> dict:
+        """
+        Liest eine Raw-Zeitreihe vom Quellserver und formatiert sie fuer einen
+        NAO-zu-NAO-Transfer auf den Zielserver.
+        """
+        cursor = None
+        values = []
+        last_time = None
+
+        while True:
+            payload = {
+                "select": {
+                    "asset": source_asset_id,
+                    "instance": source_instance_id,
+                    "series": [source_series_id],
+                    "range": {
+                        "start": start.isoformat(),
+                        "stop": stop.isoformat(),
+                    },
+                },
+                "pagination": {
+                    "limit": limit,
+                },
+            }
+            if cursor:
+                payload["pagination"]["cursor"] = cursor
+
+            response = self._sendDataToNaoJson(
+                NaoApp.NAME_POST,
+                NaoApp.URL_RAW_ALIGNED_TIMESERIES,
+                payload=payload,
+            )
+            if isinstance(response, dict) and "result" not in response:
+                raise RuntimeError(f"Raw API Antwort ohne result: {response}")
+            result = response.get("result", {}) if isinstance(response, dict) else {}
+            time_values = result.get("time", [])
+            series_values = result.get("series", [])
+
+            if series_values:
+                raw_values = series_values[0].get("values", [])
+                for timestamp, value in zip(time_values, raw_values):
+                    if value is None:
+                        continue
+                    values.append(
+                        {
+                            "time": pd.to_datetime(timestamp, utc=True),
+                            "value": float(value) * factor,
+                        }
+                    )
+                    last_time = timestamp
+
+            pagination = result.get("pagination", {})
+            if not pagination.get("hasMore"):
+                break
+            cursor = pagination.get("nextCursor")
+            if not cursor:
+                break
+
+        if not values:
+            return {
+                "last_time": None,
+                "dataframe": pd.DataFrame(columns=["time", "value"]),
+                "telegraf": [],
+            }
+
+        dataframe = pd.DataFrame(values)
+        timestamps = [
+            int(timestamp.timestamp()*1000000000)
+            for timestamp in dataframe["time"]
+        ]
+        telegraf = [
+            f"{target_asset_id},instance={target_instance_id} {target_series_id}={value} {timestamp}"
+            for value, timestamp in zip(dataframe["value"].to_list(), timestamps)
+        ]
+
+        return {
+            "last_time": pd.to_datetime(last_time, utc=True).to_pydatetime(),
+            "dataframe": dataframe,
+            "telegraf": telegraf,
+        }
 
 
 class NaoLoggerMessage(NaoApp):
