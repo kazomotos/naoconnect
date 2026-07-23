@@ -4,7 +4,6 @@ import http.client
 from math import ceil
 from copy import copy
 from json import dumps, loads
-from logging.handlers import DatagramHandler
 from random import random
 from threading import Thread
 from time import sleep, time, time_ns

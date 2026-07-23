@@ -119,5 +119,4 @@ def read_nao_api(
     return response_data["results"]
 
 
-
-
+readNaoApi = read_nao_api
