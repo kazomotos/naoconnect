@@ -322,7 +322,7 @@ class AqotecJobExecutor:
                             fields.append(f'{sid}={val}')
 
                     if fields:
-                        last_time = ts_utc 
+                        last_time = ts 
                         # 3) Unix-Zeit in ns aus **UTC**-Zeit
                         timestamp_ns = int(ts_utc.timestamp() * 1e9)
                         line = (
