@@ -23,8 +23,8 @@ class _NaoApiFromMetaModel:
         self.instance_id = instance_dic["AssetID"]
         self.asset_id = instance_dic["TwinID"]
         self.workspace_id = instance_dic["WorkspaceID"]
-        self.aqotec_controller_id = instance_dic["AqotecRegerID"]
-        self.aqotec_line_id = instance_dic["AqtecLinienID"]
+        self.aqotec_controller_id = int(instance_dic["AqotecRegerID"]) if instance_dic["AqotecRegerID"] is not None else None
+        self.aqotec_line_id = int(instance_dic["AqtecLinienID"]) if instance_dic["AqtecLinienID"] is not None else None
         self.alternative_tabel_name = instance_dic["AlternativTabellenName"]
 
 
